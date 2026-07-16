@@ -1,0 +1,278 @@
+.hero{
+    min-height:90vh;
+    background:#F8F5EE;
+    overflow:hidden;
+    display:flex;
+    align-items:center;
+    padding:70px 0;
+}
+.hero-left{
+    width:100%;
+}
+
+
+.hero-left h1{
+
+    font-size:45px;
+
+    line-height:60px;
+
+    color:#1F4D3A;
+
+    font-weight:700;
+
+    margin-bottom:25px;
+
+    animation: hero-fade-up 0.7s ease 0.15s both;
+}
+
+.hero-left p{
+
+    font-size:20px;
+
+    color:#555;
+
+    line-height:34px;
+
+   max-width:550px;
+
+    margin-bottom:40px;
+
+    animation: hero-fade-up 0.7s ease 0.3s both;
+}
+
+.hero-buttons{
+
+    display:flex;
+
+    gap:20px;
+
+    animation: hero-fade-up 0.7s ease 0.45s both;
+}
+
+.primary-btn{
+
+    background:#1F4D3A;
+
+    color:white;
+
+    padding:18px 35px;
+
+    border-radius:14px;
+
+    text-decoration:none;
+
+    font-weight:600;
+
+    display: inline-block;
+
+    transition: transform 0.25s ease, box-shadow 0.25s ease, background 0.25s ease;
+    box-shadow: 0 6px 16px rgba(31,77,58,0.2);
+}
+
+.primary-btn:hover{
+    background:#2F6B54;
+    transform: translateY(-3px);
+    box-shadow: 0 12px 24px rgba(31,77,58,0.3);
+}
+
+.primary-btn:active{
+    transform: translateY(-1px);
+}
+
+.secondary-btn{
+
+    border:2px solid #1F4D3A;
+
+    color:#1F4D3A;
+
+    padding:18px 35px;
+
+    border-radius:14px;
+
+    text-decoration:none;
+
+    font-weight:600;
+
+    display: inline-block;
+
+    transition: transform 0.25s ease, background 0.25s ease, color 0.25s ease;
+}
+
+.secondary-btn:hover{
+    background:#1F4D3A;
+    color:white;
+    transform: translateY(-3px);
+}
+
+.secondary-btn:active{
+    transform: translateY(-1px);
+}
+
+/* ---------- Right side ---------- */
+.hero-right{
+    position:relative;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    animation:hero-fade-in .9s ease .2s both;
+}
+
+/* Glow, ring, and image scale together with clamp() + aspect-ratio,
+   so it's always a true circle at any screen width. The glow and ring
+   are centered with inset:0 + margin:auto (relative to .hero-right)
+   instead of a fixed "right" offset — that offset was tuned for the
+   desktop layout and pushed the ring off past the edge of the column
+   on mobile, where .hero-right is centered instead of right-aligned,
+   causing it to get clipped by .hero's overflow:hidden. */
+
+.hero-glow{
+    position: absolute;
+    inset: 0;
+    margin: auto;
+    width: clamp(220px, 32vw, 380px);
+    aspect-ratio: 1 / 1;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(212,160,23,0.28) 0%, rgba(212,160,23,0) 70%);
+    animation: hero-glow-pulse 4s ease-in-out infinite;
+    z-index: 0;
+}
+
+.hero-ring{
+    position: absolute;
+    inset: 0;
+    margin: auto;
+    width: clamp(260px, 38vw, 460px);
+    aspect-ratio: 1 / 1;
+    border: 2px dashed rgba(31,77,58,0.25);
+    border-radius: 50%;
+    animation: hero-ring-spin 30s linear infinite;
+    z-index: 0;
+}
+
+/* This wrapper floats up and down; the circle inside only handles
+   shape/shadow/hover, so the float animation and the hover scale
+   don't fight over the same "transform" property. */
+.hero-image-float{
+    position: relative;
+    z-index: 1;
+    animation: hero-float 5s ease-in-out infinite;
+}
+
+.hero-image{
+    width:clamp(220px, 34vw, 420px);
+    aspect-ratio: 1 / 1;
+
+    border-radius:50%;
+    overflow:hidden;
+
+    display:flex;
+    justify-content:center;
+    align-items:center;
+
+    background:#fff;
+
+    box-shadow:0 20px 40px rgba(31,77,58,.18);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.hero-image:hover{
+    transform: scale(1.04);
+    box-shadow: 0 26px 50px rgba(31,77,58,0.26);
+}
+
+.hero-image img{
+    width:100%;
+    height:100%;
+    object-fit:cover;
+    object-position:center;
+    transition: transform 0.4s ease;
+}
+
+.hero-image:hover img{
+    transform: scale(1.08);
+}
+
+/* ---------- Keyframes ---------- */
+@keyframes hero-fade-up{
+    from{ opacity: 0; transform: translateY(24px); }
+    to{ opacity: 1; transform: translateY(0); }
+}
+
+@keyframes hero-fade-in{
+    from{ opacity: 0; }
+    to{ opacity: 1; }
+}
+
+@keyframes hero-float{
+    0%, 100%{ transform: translateY(0); }
+    50%{ transform: translateY(-16px); }
+}
+
+@keyframes hero-ring-spin{
+    from{ transform: rotate(0deg); }
+    to{ transform: rotate(360deg); }
+}
+
+@keyframes hero-glow-pulse{
+    0%, 100%{ opacity: 0.7; transform: scale(1); }
+    50%{ opacity: 1; transform: scale(1.08); }
+}
+
+/* ---------- Responsive ---------- */
+@media(max-width:991px){
+
+.hero{
+    padding:60px 0;
+    text-align:center;
+}
+
+.hero-left{
+    margin-bottom:50px;
+}
+
+.hero-left h1{
+    font-size:38px;
+    line-height:52px;
+}
+
+.hero-left p{
+    max-width:100%;
+    font-size:20px;
+    margin-left:auto;
+    margin-right:auto;
+}
+
+.hero-buttons{
+    justify-content:center;
+}
+
+.hero-right{
+    margin-top:30px;
+}
+
+/* Bigger image + proportionally bigger glow/ring on mobile, since the
+   stacked layout has the full viewport width to work with instead of
+   sharing it with the text column. */
+.hero-image{
+    width: clamp(260px, 62vw, 380px);
+}
+
+.hero-glow{
+    width: clamp(280px, 58vw, 340px);
+}
+
+.hero-ring{
+    width: clamp(320px, 68vw, 420px);
+}
+
+}
+
+@media (prefers-reduced-motion: reduce){
+    .hero-left h1, .hero-left p, .hero-buttons, .hero-right,
+    .hero-image, .hero-image-float, .hero-ring, .hero-glow,
+    .primary-btn, .secondary-btn{
+        animation: none !important;
+        transition: none !important;
+    }
+}
