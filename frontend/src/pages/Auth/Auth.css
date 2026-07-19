@@ -435,6 +435,21 @@
     background:#2F6B54;
 }
 
+.forgot-link{
+    text-align:right;
+    color:#1F4D3A;
+    font-weight:600;
+    cursor:pointer;
+    margin-top:-8px;
+    margin-bottom:8px;
+    transition:.3s;
+}
+
+.forgot-link:hover{
+    color:#D4A017;
+    transform:translateX(-2px);
+}
+
 @keyframes popup{
     from{
         opacity:0;

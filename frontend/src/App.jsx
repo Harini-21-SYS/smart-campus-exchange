@@ -1,20 +1,28 @@
 import {  Routes, Route } from "react-router-dom";
-
+import Products from "./pages/Products/Products";
 import Landing from "./pages/Landing/Landing";
 import Auth from "./pages/Auth/Auth";
+import ProtectedRoute from "./components/ProtectedRoute/ProtectedRoute";
 
 function App() {
   return (
    <>
       <Routes>
 
-        {/* Landing Page */}
-        <Route path="/" element={<Landing />} />
+  <Route path="/" element={<Landing />} />
 
-        {/* Login / Register */}
-        <Route path="/auth" element={<Auth />} />
+  <Route path="/auth" element={<Auth />} />
 
-      </Routes>
+  <Route
+    path="/products"
+    element={
+      <ProtectedRoute>
+        <Products />
+      </ProtectedRoute>
+    }
+  />
+
+</Routes>
       </>
    
   );
