@@ -496,6 +496,8 @@ function Auth() {
           </form>
         )}
       </div>
+
+      {/* -------- Email Verification OTP -------- */}
       {showOtpModal && (
         <div className="otp-overlay">
 
@@ -504,6 +506,7 @@ function Auth() {
             <button
               className="otp-close"
               onClick={closeOtpModal}
+              aria-label="Close"
             >
               <FaTimes />
             </button>
@@ -516,7 +519,7 @@ function Auth() {
 
             <div className="otp-inputs">
 
-              {[0, 1, 2, 3, 4, 5].map((index) => (
+              {[0, 1, 2, 3].map((index) => (
                 <input
                   key={index}
                   type="text"
@@ -553,6 +556,8 @@ function Auth() {
 
         </div>
       )}
+
+      {/* -------- Forgot Password: enter email -------- */}
       {showForgotModal && (
 
         <div className="otp-overlay">
@@ -564,6 +569,7 @@ function Auth() {
               onClick={() =>
                 setShowForgotModal(false)
               }
+              aria-label="Close"
             >
               <FaTimes />
             </button>
@@ -575,6 +581,7 @@ function Auth() {
             </p>
 
             <input
+              className="modal-input"
               type="email"
               placeholder="College Email"
               value={forgotEmail}
@@ -595,11 +602,23 @@ function Auth() {
         </div>
 
       )}
+
+      {/* -------- Forgot Password: verify OTP -------- */}
       {showForgotOtpModal && (
 
         <div className="otp-overlay">
 
           <div className="otp-modal">
+
+            <button
+              className="otp-close"
+              onClick={() =>
+                setShowForgotOtpModal(false)
+              }
+              aria-label="Close"
+            >
+              <FaTimes />
+            </button>
 
             <h2>Verify OTP</h2>
 
@@ -608,6 +627,7 @@ function Auth() {
             </p>
 
             <input
+              className="modal-input"
               type="text"
               placeholder="Enter OTP"
               value={forgotOtp}
@@ -629,15 +649,31 @@ function Auth() {
 
       )}
 
+      {/* -------- Reset Password -------- */}
       {showResetPasswordModal && (
 
         <div className="otp-overlay">
 
           <div className="otp-modal">
 
+            <button
+              className="otp-close"
+              onClick={() =>
+                setShowResetPasswordModal(false)
+              }
+              aria-label="Close"
+            >
+              <FaTimes />
+            </button>
+
             <h2>Reset Password</h2>
 
+            <p>
+              Choose a new password for your account.
+            </p>
+
             <input
+              className="modal-input"
               type="password"
               placeholder="New Password"
               value={resetData.newPassword}
@@ -650,6 +686,7 @@ function Auth() {
             />
 
             <input
+              className="modal-input"
               type="password"
               placeholder="Confirm Password"
               value={resetData.confirmPassword}
