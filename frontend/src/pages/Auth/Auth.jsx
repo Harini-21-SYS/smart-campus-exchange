@@ -1,33 +1,45 @@
 import "./Auth.css";
 import AuthImg from "../../assets/auth.jpg";
-import { registerUser, verifyOtp, loginUser, resendOtp, forgotPassword, verifyForgotOtp, resetPassword } from "../../services/authService";
+import {
+  registerUser,
+  verifyOtp,
+  loginUser,
+  resendOtp,
+  forgotPassword,
+  verifyForgotOtp,
+  resetPassword,
+} from "../../services/authService";
 import { useState, useRef, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { FaArrowLeft, FaTimes } from "react-icons/fa";
+import {
+  FaArrowLeft,
+  FaTimes,
+  FaCheckCircle,
+  FaExclamationCircle,
+  FaEnvelope,
+  FaLock,
+} from "react-icons/fa";
 
 function Auth() {
   const [isLogin, setIsLogin] = useState(true);
   const [showOtpModal, setShowOtpModal] = useState(false);
 
-  const [showForgotModal,
-    setShowForgotModal] = useState(false);
+  const [showForgotModal, setShowForgotModal] = useState(false);
+  const [showForgotOtpModal, setShowForgotOtpModal] = useState(false);
+  const [showResetPasswordModal, setShowResetPasswordModal] = useState(false);
 
-  const [showForgotOtpModal,
-    setShowForgotOtpModal] = useState(false);
+  const [forgotOtp, setForgotOtp] = useState("");
 
-  const [showResetPasswordModal,
-    setShowResetPasswordModal] = useState(false);
-
-  const [forgotOtp,
-    setForgotOtp] = useState("");
-
-  const [resetData,
-    setResetData] = useState({
-      newPassword: "",
-      confirmPassword: ""
-    });
+  const [resetData, setResetData] = useState({
+    newPassword: "",
+    confirmPassword: "",
+  });
 
   const [forgotEmail, setForgotEmail] = useState("");
+
+  // ---------- Register is a 3-step wizard so nothing needs to scroll ----------
+  const [registerStep, setRegisterStep] = useState(1);
+  const TOTAL_STEPS = 3;
 
   const [registerData, setRegisterData] = useState({
     fullName: "",
@@ -46,105 +58,114 @@ function Auth() {
 
   const [otp, setOtp] = useState("");
   const navigate = useNavigate();
+
   useEffect(() => {
-
     const token = localStorage.getItem("token");
-
     if (token) {
       navigate("/products");
     }
-
   }, [navigate]);
 
   const otpInputRefs = useRef([]);
 
-  const handleRegisterChange = (e) => {
+  // ---------- Toast notifications (replaces alert()) ----------
+  const [toasts, setToasts] = useState([]);
 
+  const showToast = (message, type = "success") => {
+    const id = Date.now() + Math.random();
+    setToasts((t) => [...t, { id, message, type }]);
+    setTimeout(() => {
+      setToasts((t) => t.filter((toast) => toast.id !== id));
+    }, 4000);
+  };
+
+  const dismissToast = (id) => {
+    setToasts((t) => t.filter((toast) => toast.id !== id));
+  };
+
+  // ---------- Enter key advances to the next field ----------
+  // Works for any input/select sitting inside a <form>: Enter moves
+  // focus to the next field, or — on the last field — clicks
+  // whichever "next step" / submit button is present in that form.
+  const handleEnterNext = (e) => {
+    if (e.key !== "Enter") return;
+    e.preventDefault();
+
+    const form = e.target.form;
+    if (!form) return;
+
+    const focusable = Array.from(form.querySelectorAll("input, select"));
+    const index = focusable.indexOf(e.target);
+
+    if (index > -1 && index < focusable.length - 1) {
+      focusable[index + 1].focus();
+    } else {
+      const trigger = form.querySelector(".step-next-btn, .login-btn");
+      trigger?.click();
+    }
+  };
+
+  const handleRegisterChange = (e) => {
     setRegisterData({
       ...registerData,
       [e.target.name]: e.target.value,
     });
-    console.log(e.target.name, e.target.value);
   };
 
   const handleLoginChange = (e) => {
-
     setLoginData({
       ...loginData,
-      [e.target.name]: e.target.value
+      [e.target.name]: e.target.value,
     });
+  };
 
+  const goNextStep = () => {
+    setRegisterStep((s) => Math.min(s + 1, TOTAL_STEPS));
+  };
+
+  const goBackStep = () => {
+    setRegisterStep((s) => Math.max(s - 1, 1));
   };
 
   const handleRegister = async (e) => {
-
     e.preventDefault();
 
     try {
-
       const response = await registerUser(registerData);
-
       console.log(response);
 
+      showToast("Almost there — check your inbox for the OTP! ✨", "success");
       setShowOtpModal(true);
-
     } catch (error) {
-
       console.error(error);
-
-      alert(
-        error.response?.data?.message ||
-        "Registration Failed"
+      showToast(
+        error.response?.data?.message || "Registration failed. Please try again.",
+        "error"
       );
     }
   };
 
   const handleLogin = async (e) => {
-
     e.preventDefault();
 
     try {
-
-      const response =
-        await loginUser(loginData);
-
+      const response = await loginUser(loginData);
       console.log(response);
 
-      localStorage.setItem(
-        "token",
-        response.token
-      );
+      localStorage.setItem("token", response.token);
+      localStorage.setItem("email", response.email);
+      localStorage.setItem("role", response.role);
 
-      localStorage.setItem(
-        "email",
-        response.email
-      );
+      showToast("Welcome back! Taking you to the marketplace 🎓", "success");
 
-      localStorage.setItem(
-        "role",
-        response.role
-      );
-
-      alert("Login Successful");
-
-
-
-      navigate("/products");
-
+      setTimeout(() => navigate("/products"), 900);
     } catch (error) {
-
       console.error(error);
-
-      alert(
-        error.response?.data?.message ||
-        "Login Failed"
+      showToast(
+        error.response?.data?.message || "Login failed. Check your details and try again.",
+        "error"
       );
     }
-  };
-
-  const openOtpModal = (e) => {
-    e.preventDefault(); // prevent form refresh
-    setShowOtpModal(true);
   };
 
   const closeOtpModal = () => {
@@ -152,161 +173,85 @@ function Auth() {
   };
 
   const handleVerifyOtp = async () => {
-
     try {
-
-      const response =
-        await verifyOtp({
-
-          email:
-            registerData.collegeEmail,
-
-          otp: otp
-        });
+      const response = await verifyOtp({
+        email: registerData.collegeEmail,
+        otp: otp,
+      });
 
       console.log(response);
-
-      alert(response.message);
+      showToast("You're verified! Welcome to Campus Exchange 🎉", "success");
 
       setShowOtpModal(false);
-
-      navigate("/products");
-
+      setTimeout(() => navigate("/products"), 900);
     } catch (error) {
-
       console.error(error);
-
-      alert(
-        error.response?.data?.message ||
-        "Invalid OTP"
-      );
+      showToast(error.response?.data?.message || "That OTP didn't match — try again.", "error");
     }
   };
 
   const handleResendOtp = async () => {
-
     try {
-
-      const response =
-        await resendOtp(
-          registerData.collegeEmail
-        );
-
-      alert(response.message);
-
+      const response = await resendOtp(registerData.collegeEmail);
+      showToast(response.message || "A fresh OTP is on its way 📩", "success");
     } catch (error) {
-
       console.error(error);
-
-      alert(
-        error.response?.data?.message ||
-        "Failed to resend OTP"
-      );
+      showToast(error.response?.data?.message || "Couldn't resend the OTP.", "error");
     }
   };
 
   const handleVerifyForgotOtp = async () => {
-
     try {
+      const response = await verifyForgotOtp({
+        email: forgotEmail,
+        otp: forgotOtp,
+      });
 
-      const response =
-        await verifyForgotOtp({
-
-          email: forgotEmail,
-
-          otp: forgotOtp
-        });
-
-      alert(response.message);
-
+      showToast(response.message || "OTP verified — set your new password.", "success");
       setShowForgotOtpModal(false);
-
       setShowResetPasswordModal(true);
-
     } catch (error) {
-
-      alert(
-        error.response?.data?.message ||
-        "Invalid OTP"
-      );
+      showToast(error.response?.data?.message || "That OTP didn't match — try again.", "error");
     }
   };
 
   const handleForgotPassword = async () => {
-
     try {
-
-      const response =
-        await forgotPassword({
-          email: forgotEmail
-        });
-
-      alert(response.message);
-
+      const response = await forgotPassword({ email: forgotEmail });
+      showToast(response.message || "OTP sent to your email 📩", "success");
       setShowForgotModal(false);
-
       setShowForgotOtpModal(true);
-
     } catch (error) {
-
       console.error(error);
-
-      alert(
-        error.response?.data?.message ||
-        "Failed to send OTP"
-      );
+      showToast(error.response?.data?.message || "Couldn't send the OTP.", "error");
     }
   };
 
   const handleResetPassword = async () => {
-
     try {
+      const response = await resetPassword({
+        email: forgotEmail,
+        newPassword: resetData.newPassword,
+        confirmPassword: resetData.confirmPassword,
+      });
 
-      const response =
-        await resetPassword({
-
-          email: forgotEmail,
-
-          newPassword:
-            resetData.newPassword,
-
-          confirmPassword:
-            resetData.confirmPassword
-        });
-
-      alert(response.message);
-
+      showToast(response.message || "Password reset! You're all set to log in 🔐", "success");
       setShowResetPasswordModal(false);
-
     } catch (error) {
-
-      alert(
-        error.response?.data?.message ||
-        "Reset Failed"
-      );
+      showToast(error.response?.data?.message || "Reset failed. Please try again.", "error");
     }
   };
 
   // Keeps only the last typed digit, then jumps focus to the next box.
   const handleOtpChange = (e, index) => {
-
-    const value =
-      e.target.value
-        .replace(/[^0-9]/g, "")
-        .slice(-1);
-
+    const value = e.target.value.replace(/[^0-9]/g, "").slice(-1);
     e.target.value = value;
 
     const otpArray = otp.split("");
-
     otpArray[index] = value;
-
     setOtp(otpArray.join(""));
 
-    if (
-      value &&
-      index < otpInputRefs.current.length - 1
-    ) {
+    if (value && index < otpInputRefs.current.length - 1) {
       otpInputRefs.current[index + 1]?.focus();
     }
   };
@@ -318,14 +263,26 @@ function Auth() {
     }
   };
 
-
   return (
-    <div
-      className="auth-container"
-      style={{ backgroundImage: `url(${AuthImg})` }}
-    >
+    <div className="auth-container" style={{ backgroundImage: `url(${AuthImg})` }}>
       {/* Static dark overlay for legibility over the photo */}
       <div className="auth-overlay"></div>
+
+      {/* Toast notifications */}
+      <div className="toast-stack">
+        {toasts.map((t) => (
+          <div key={t.id} className={`toast-item toast-${t.type}`}>
+            <span className="toast-icon">
+              {t.type === "success" ? <FaCheckCircle /> : <FaExclamationCircle />}
+            </span>
+            <span className="toast-message">{t.message}</span>
+            <button className="toast-close" onClick={() => dismissToast(t.id)}>
+              <FaTimes />
+            </button>
+            <div className="toast-progress"></div>
+          </div>
+        ))}
+      </div>
 
       {/* Back to Home */}
       <Link to="/" className="back-home">
@@ -336,28 +293,22 @@ function Auth() {
       {/* Authentication Card */}
       <div className="auth-card">
         <h2>Welcome to Campus Exchange</h2>
-        <p>
-          {isLogin
-            ? "Login to continue"
-            : "Create your account"}
-        </p>
+        <p>{isLogin ? "Login to continue" : "Create your account"}</p>
 
         {/* Login/Register Tabs */}
         <div className="tab-buttons">
-          <div
-            className={`tab-slider ${isLogin ? "left" : "right"}`}
-          ></div>
+          <div className={`tab-slider ${isLogin ? "left" : "right"}`}></div>
 
-          <button
-            className={isLogin ? "active" : ""}
-            onClick={() => setIsLogin(true)}
-          >
+          <button className={isLogin ? "active" : ""} onClick={() => setIsLogin(true)}>
             Login
           </button>
 
           <button
             className={!isLogin ? "active" : ""}
-            onClick={() => setIsLogin(false)}
+            onClick={() => {
+              setIsLogin(false);
+              setRegisterStep(1);
+            }}
           >
             Register
           </button>
@@ -371,6 +322,7 @@ function Auth() {
               name="collegeEmail"
               value={loginData.collegeEmail}
               onChange={handleLoginChange}
+              onKeyDown={handleEnterNext}
               placeholder="College Email"
             />
 
@@ -379,147 +331,192 @@ function Auth() {
               name="password"
               value={loginData.password}
               onChange={handleLoginChange}
+              onKeyDown={handleEnterNext}
               placeholder="Password"
             />
 
-            <p
-              className="forgot-link"
-              onClick={() => setShowForgotModal(true)}
-            >
+            <p className="forgot-link" onClick={() => setShowForgotModal(true)}>
               Forgot Password?
             </p>
 
-            <button
-              className="login-btn"
-              type="button"
-              onClick={handleLogin}
-            >
+            <button className="login-btn" type="button" onClick={handleLogin}>
               Login
             </button>
           </form>
         ) : (
-          /* Register Form */
+          /* Register Form — 3 steps, no scrolling */
           <form className="auth-form">
-            <input
-              type="text"
-              name="fullName"
-              value={registerData.fullName}
-              onChange={handleRegisterChange}
-              placeholder="Full Name"
-            />
+            {/* Step progress indicator */}
+            <div className="step-tracker">
+              {[1, 2, 3].map((step) => (
+                <div key={step} className="step-track-item">
+                  <div
+                    className={`step-dot ${
+                      registerStep === step
+                        ? "step-current"
+                        : registerStep > step
+                        ? "step-done"
+                        : ""
+                    }`}
+                  >
+                    {registerStep > step ? <FaCheckCircle /> : step}
+                  </div>
+                  {step < 3 && (
+                    <div
+                      className={`step-line ${registerStep > step ? "step-line-done" : ""}`}
+                    ></div>
+                  )}
+                </div>
+              ))}
+            </div>
 
-            <input
-              type="email"
-              name="collegeEmail"
-              value={registerData.collegeEmail}
-              onChange={handleRegisterChange}
-              placeholder="College Email"
-            />
+            {registerStep === 1 && (
+              <>
+                <input
+                  type="text"
+                  name="fullName"
+                  value={registerData.fullName}
+                  onChange={handleRegisterChange}
+                  onKeyDown={handleEnterNext}
+                  placeholder="Full Name"
+                  autoFocus
+                />
 
-            <input
-              type="text"
-              name="registerNumber"
-              value={registerData.registerNumber}
-              onChange={handleRegisterChange}
-              placeholder="Register Number"
-            />
+                <input
+                  type="email"
+                  name="collegeEmail"
+                  value={registerData.collegeEmail}
+                  onChange={handleRegisterChange}
+                  onKeyDown={handleEnterNext}
+                  placeholder="College Email"
+                />
 
-            <select
-              name="department"
-              value={registerData.department}
-              onChange={handleRegisterChange}
-            >
-              <option value="" disabled>
-                Select Department
-              </option>
+                <input
+                  type="text"
+                  name="registerNumber"
+                  value={registerData.registerNumber}
+                  onChange={handleRegisterChange}
+                  onKeyDown={handleEnterNext}
+                  placeholder="Register Number"
+                />
 
-              <option>Computer Science</option>
-              <option>Computer Application</option>
-              <option>Commerce</option>
-              <option>Business Administration</option>
-              <option>Mathematics</option>
-              <option>Physics</option>
-              <option>Chemistry</option>
-              <option>Zoology</option>
-              <option>Botany</option>
-              <option>English</option>
-            </select>
+                <button className="step-next-btn" type="button" onClick={goNextStep}>
+                  Continue
+                </button>
+              </>
+            )}
 
-            <select defaultValue="">
-              <option value="" disabled>
-                Select Year
-              </option>
+            {registerStep === 2 && (
+              <>
+                <select
+                  name="department"
+                  value={registerData.department}
+                  onChange={handleRegisterChange}
+                  onKeyDown={handleEnterNext}
+                >
+                  <option value="" disabled>
+                    Select Department
+                  </option>
 
-              <option>1st Year</option>
-              <option>2nd Year</option>
-              <option>3rd Year</option>
-            </select>
+                  <option>Computer Science</option>
+                  <option>Computer Application</option>
+                  <option>Commerce</option>
+                  <option>Business Administration</option>
+                  <option>Mathematics</option>
+                  <option>Physics</option>
+                  <option>Chemistry</option>
+                  <option>Zoology</option>
+                  <option>Botany</option>
+                  <option>English</option>
+                </select>
 
-            <input
-              type="tel"
-              name="mobileNumber"
-              value={registerData.mobileNumber}
-              onChange={handleRegisterChange}
-              placeholder="Phone Number"
-            />
+                <select defaultValue="" onKeyDown={handleEnterNext}>
+                  <option value="" disabled>
+                    Select Year
+                  </option>
 
-            <input
-              type="password"
-              name="password"
-              value={registerData.password}
-              onChange={handleRegisterChange}
-              placeholder="Password"
-            />
+                  <option>1st Year</option>
+                  <option>2nd Year</option>
+                  <option>3rd Year</option>
+                </select>
 
-            <input
-              type="password"
-              name="confirmPassword"
-              value={registerData.confirmPassword}
-              onChange={handleRegisterChange}
-              placeholder="Confirm Password"
-            />
+                <input
+                  type="tel"
+                  name="mobileNumber"
+                  value={registerData.mobileNumber}
+                  onChange={handleRegisterChange}
+                  onKeyDown={handleEnterNext}
+                  placeholder="Phone Number"
+                />
 
-            <button
-              className="login-btn"
-              type="button"
-              onClick={handleRegister}
-            >
-              Send OTP
-            </button>
+                <div className="step-btn-row">
+                  <button className="step-back-btn" type="button" onClick={goBackStep}>
+                    Back
+                  </button>
+                  <button className="step-next-btn" type="button" onClick={goNextStep}>
+                    Continue
+                  </button>
+                </div>
+              </>
+            )}
+
+            {registerStep === 3 && (
+              <>
+                <input
+                  type="password"
+                  name="password"
+                  value={registerData.password}
+                  onChange={handleRegisterChange}
+                  onKeyDown={handleEnterNext}
+                  placeholder="Password"
+                  autoFocus
+                />
+
+                <input
+                  type="password"
+                  name="confirmPassword"
+                  value={registerData.confirmPassword}
+                  onChange={handleRegisterChange}
+                  onKeyDown={handleEnterNext}
+                  placeholder="Confirm Password"
+                />
+
+                <div className="step-btn-row">
+                  <button className="step-back-btn" type="button" onClick={goBackStep}>
+                    Back
+                  </button>
+                  <button className="login-btn" type="button" onClick={handleRegister}>
+                    Send OTP
+                  </button>
+                </div>
+              </>
+            )}
+
             <p className="switch-text">
               Already have an account?
-              <span onClick={() => setIsLogin(true)}>
-                {" "}
-                Login
-              </span>
+              <span onClick={() => setIsLogin(true)}> Login</span>
             </p>
           </form>
         )}
       </div>
 
-      {/* -------- Email Verification OTP -------- */}
+      {/* ---------- OTP Verification Modal ---------- */}
       {showOtpModal && (
         <div className="otp-overlay">
-
           <div className="otp-modal">
-
-            <button
-              className="otp-close"
-              onClick={closeOtpModal}
-              aria-label="Close"
-            >
+            <button className="otp-close" onClick={closeOtpModal}>
               <FaTimes />
             </button>
 
-            <h2>Email Verification</h2>
+            <div className="modal-badge">
+              <FaEnvelope />
+            </div>
 
-            <p>
-              Enter the 6-digit OTP sent to your college email.
-            </p>
+            <h2>Email Verification</h2>
+            <p>Enter the 6-digit OTP sent to your college email.</p>
 
             <div className="otp-inputs">
-
-              {[0, 1, 2, 3].map((index) => (
+              {[0, 1, 2, 3, 4, 5].map((index) => (
                 <input
                   key={index}
                   type="text"
@@ -530,192 +527,137 @@ function Auth() {
                   onKeyDown={(e) => handleOtpKeyDown(e, index)}
                 />
               ))}
-
             </div>
 
             <p className="otp-resend">
               Didn't receive OTP?
-
-              <span
-                onClick={handleResendOtp}
-                style={{ cursor: "pointer" }}
-              >
-                Resend OTP
-              </span>
-
+              <span onClick={handleResendOtp}> Resend OTP</span>
             </p>
 
-            <button
-              className="verify-btn"
-              onClick={handleVerifyOtp}
-            >
+            <button className="verify-btn" onClick={handleVerifyOtp}>
               Verify OTP
             </button>
-
           </div>
-
         </div>
       )}
 
-      {/* -------- Forgot Password: enter email -------- */}
+      {/* ---------- Forgot Password Modal ---------- */}
       {showForgotModal && (
-
         <div className="otp-overlay">
-
           <div className="otp-modal">
-
-            <button
-              className="otp-close"
-              onClick={() =>
-                setShowForgotModal(false)
-              }
-              aria-label="Close"
-            >
+            <button className="otp-close" onClick={() => setShowForgotModal(false)}>
               <FaTimes />
             </button>
+
+            <div className="modal-badge">
+              <FaLock />
+            </div>
 
             <h2>Forgot Password</h2>
+            <p>Enter your registered college email and we'll send you an OTP.</p>
 
-            <p>
-              Enter your registered email.
-            </p>
+            <div className="modal-input-group">
+              <FaEnvelope className="modal-input-icon" />
+              <input
+                type="email"
+                placeholder="College Email"
+                value={forgotEmail}
+                onChange={(e) => setForgotEmail(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleForgotPassword()}
+                autoFocus
+              />
+            </div>
 
-            <input
-              className="modal-input"
-              type="email"
-              placeholder="College Email"
-              value={forgotEmail}
-              onChange={(e) =>
-                setForgotEmail(e.target.value)
-              }
-            />
-
-            <button
-              className="verify-btn"
-              onClick={handleForgotPassword}
-            >
+            <button className="verify-btn" onClick={handleForgotPassword}>
               Send OTP
             </button>
-
           </div>
-
         </div>
-
       )}
 
-      {/* -------- Forgot Password: verify OTP -------- */}
+      {/* ---------- Forgot Password OTP Modal ---------- */}
       {showForgotOtpModal && (
-
         <div className="otp-overlay">
-
           <div className="otp-modal">
-
-            <button
-              className="otp-close"
-              onClick={() =>
-                setShowForgotOtpModal(false)
-              }
-              aria-label="Close"
-            >
-              <FaTimes />
-            </button>
+            <div className="modal-badge">
+              <FaEnvelope />
+            </div>
 
             <h2>Verify OTP</h2>
+            <p>Enter the OTP sent to {forgotEmail || "your email"}.</p>
 
-            <p>
-              Enter OTP sent to email
-            </p>
+            <div className="modal-input-group">
+              <FaLock className="modal-input-icon" />
+              <input
+                type="text"
+                inputMode="numeric"
+                placeholder="Enter OTP"
+                value={forgotOtp}
+                onChange={(e) => setForgotOtp(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleVerifyForgotOtp()}
+                autoFocus
+              />
+            </div>
 
-            <input
-              className="modal-input"
-              type="text"
-              placeholder="Enter OTP"
-              value={forgotOtp}
-              onChange={(e) =>
-                setForgotOtp(e.target.value)
-              }
-            />
-
-            <button
-              className="verify-btn"
-              onClick={handleVerifyForgotOtp}
-            >
+            <button className="verify-btn" onClick={handleVerifyForgotOtp}>
               Verify OTP
             </button>
-
           </div>
-
         </div>
-
       )}
 
-      {/* -------- Reset Password -------- */}
+      {/* ---------- Reset Password Modal ---------- */}
       {showResetPasswordModal && (
-
         <div className="otp-overlay">
-
           <div className="otp-modal">
-
-            <button
-              className="otp-close"
-              onClick={() =>
-                setShowResetPasswordModal(false)
-              }
-              aria-label="Close"
-            >
-              <FaTimes />
-            </button>
+            <div className="modal-badge">
+              <FaLock />
+            </div>
 
             <h2>Reset Password</h2>
+            <p>Choose a new password for your account.</p>
 
-            <p>
-              Choose a new password for your account.
-            </p>
+            <div className="modal-input-group">
+              <FaLock className="modal-input-icon" />
+              <input
+                type="password"
+                placeholder="New Password"
+                value={resetData.newPassword}
+                onChange={(e) =>
+                  setResetData({ ...resetData, newPassword: e.target.value })
+                }
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.currentTarget
+                      .closest(".otp-modal")
+                      .querySelector('input[placeholder="Confirm Password"]')
+                      ?.focus();
+                  }
+                }}
+                autoFocus
+              />
+            </div>
 
-            <input
-              className="modal-input"
-              type="password"
-              placeholder="New Password"
-              value={resetData.newPassword}
-              onChange={(e) =>
-                setResetData({
-                  ...resetData,
-                  newPassword: e.target.value
-                })
-              }
-            />
+            <div className="modal-input-group">
+              <FaLock className="modal-input-icon" />
+              <input
+                type="password"
+                placeholder="Confirm Password"
+                value={resetData.confirmPassword}
+                onChange={(e) =>
+                  setResetData({ ...resetData, confirmPassword: e.target.value })
+                }
+                onKeyDown={(e) => e.key === "Enter" && handleResetPassword()}
+              />
+            </div>
 
-            <input
-              className="modal-input"
-              type="password"
-              placeholder="Confirm Password"
-              value={resetData.confirmPassword}
-              onChange={(e) =>
-                setResetData({
-                  ...resetData,
-                  confirmPassword: e.target.value
-                })
-              }
-            />
-
-            <button
-              className="verify-btn"
-              onClick={handleResetPassword}
-            >
+            <button className="verify-btn" onClick={handleResetPassword}>
               Reset Password
             </button>
-
           </div>
-
         </div>
-
       )}
-
-
-
     </div>
-
-
   );
 }
 
