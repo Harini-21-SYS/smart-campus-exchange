@@ -15,6 +15,9 @@ public class Student {
 @GeneratedValue(strategy = GenerationType.IDENTITY)
 private Long studentId;
 
+@Column(name = "profile_image")
+private String profileImage;
+
 @Column(nullable = false)
 private String fullName;
 
@@ -51,7 +54,7 @@ public Student(Long studentId, String fullName, String collegeEmail,
                String registerNumber, String department,
                String mobileNumber, String password,
                boolean emailVerified, boolean accountEnabled,
-               Role role, LocalDateTime createdAt) {
+               Role role, LocalDateTime createdAt,String profileImage) {
 
     this.studentId = studentId;
     this.fullName = fullName;
@@ -64,6 +67,7 @@ public Student(Long studentId, String fullName, String collegeEmail,
     this.accountEnabled = accountEnabled;
     this.role = role;
     this.createdAt = createdAt;
+    this.profileImage = profileImage;
 }
 
 @PrePersist
@@ -77,6 +81,14 @@ public Long getStudentId() {
 
 public void setStudentId(Long studentId) {
     this.studentId = studentId;
+}
+
+public String getProfileImage() {
+    return profileImage;
+}
+
+public void setProfileImage(String profileImage) {
+    this.profileImage = profileImage;
 }
 
 public String getFullName() {
