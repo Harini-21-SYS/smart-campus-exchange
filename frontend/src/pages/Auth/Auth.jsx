@@ -160,12 +160,17 @@ function Auth() {
 
       setTimeout(() => navigate("/products"), 900);
     } catch (error) {
-      console.error(error);
-      showToast(
-        error.response?.data?.message || "Login failed. Check your details and try again.",
-        "error"
-      );
-    }
+
+    console.log("LOGIN ERROR STATUS:", error.response?.status);
+    console.log("LOGIN ERROR DATA:", error.response?.data);
+    console.log("LOGIN ERROR MESSAGE:", error.response?.data?.message);
+
+    showToast(
+      error.response?.data?.message ||
+        "Login failed. Check your details and try again.",
+      "error"
+    );
+  }
   };
 
   const closeOtpModal = () => {
@@ -430,15 +435,7 @@ function Auth() {
                   <option>English</option>
                 </select>
 
-                <select defaultValue="" onKeyDown={handleEnterNext}>
-                  <option value="" disabled>
-                    Select Year
-                  </option>
-
-                  <option>1st Year</option>
-                  <option>2nd Year</option>
-                  <option>3rd Year</option>
-                </select>
+                
 
                 <input
                   type="tel"

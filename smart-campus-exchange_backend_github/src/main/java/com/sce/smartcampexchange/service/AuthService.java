@@ -104,6 +104,7 @@ public String register(
 
     pending.setDepartment(
             request.getDepartment());
+    
 
     pending.setMobileNumber(
             request.getMobileNumber());
@@ -163,6 +164,7 @@ public String verifyOtp(
 
     student.setDepartment(
             pending.getDepartment());
+    
 
     student.setMobileNumber(
             pending.getMobileNumber());

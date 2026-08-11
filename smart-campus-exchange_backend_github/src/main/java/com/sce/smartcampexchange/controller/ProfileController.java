@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
+import com.sce.smartcampexchange.dto.ChangePasswordRequest;
 import com.sce.smartcampexchange.dto.ProfileResponseDTO;
 import com.sce.smartcampexchange.dto.UpdateMobileDTO;
 import com.sce.smartcampexchange.service.ProfileService;
@@ -26,6 +27,10 @@ public class ProfileController {
                 profileService;
     }
 
+    // -----------------------------------------
+    // GET PROFILE
+    // -----------------------------------------
+
     @GetMapping("/me")
     public ProfileResponseDTO getProfile(
             Authentication authentication) {
@@ -36,7 +41,11 @@ public class ProfileController {
         return profileService
                 .getProfile(email);
     }
-    
+
+    // -----------------------------------------
+    // UPDATE MOBILE NUMBER
+    // -----------------------------------------
+
     @PutMapping("/mobile")
     public ProfileResponseDTO updateMobile(
             Authentication authentication,
@@ -49,7 +58,11 @@ public class ProfileController {
                 email,
                 request.getMobileNumber());
     }
-    
+
+    // -----------------------------------------
+    // UPDATE PROFILE IMAGE
+    // -----------------------------------------
+
     @PutMapping("/image")
     public ProfileResponseDTO updateImage(
             Authentication authentication,
@@ -64,5 +77,21 @@ public class ProfileController {
                         email,
                         file);
     }
-    
+
+    // -----------------------------------------
+    // CHANGE PASSWORD
+    // -----------------------------------------
+
+    @PutMapping("/change-password")
+    public String changePassword(
+            Authentication authentication,
+            @RequestBody ChangePasswordRequest request) {
+
+        String email =
+                authentication.getName();
+
+        return profileService.changePassword(
+                email,
+                request);
+    }
 }

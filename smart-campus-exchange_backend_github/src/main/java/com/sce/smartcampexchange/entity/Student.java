@@ -10,166 +10,171 @@ import jakarta.persistence.*;
 @Table(name = "students")
 public class Student {
 
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long studentId;
 
-@Id
-@GeneratedValue(strategy = GenerationType.IDENTITY)
-private Long studentId;
+    @Column(name = "profile_image")
+    private String profileImage;
 
-@Column(name = "profile_image")
-private String profileImage;
+    @Column(nullable = false)
+    private String fullName;
 
-@Column(nullable = false)
-private String fullName;
+    @Column(nullable = false, unique = true)
+    private String collegeEmail;
 
-@Column(nullable = false, unique = true)
-private String collegeEmail;
+    @Column(nullable = false, unique = true)
+    private String registerNumber;
 
-@Column(nullable = false, unique = true)
-private String registerNumber;
+    @Column(nullable = false)
+    private String department;
 
-@Column(nullable = false)
-private String department;
+    @Column(nullable = false, unique = true)
+    private String mobileNumber;
 
-@Column(nullable = false, unique = true)
-private String mobileNumber;
+    @Column(nullable = false)
+    private String password;
 
-@Column(nullable = false)
-private String password;
+    @Column(nullable = false)
+    private boolean emailVerified;
 
-@Column(nullable = false)
-private boolean emailVerified;
+    @Column(nullable = false)
+    private boolean accountEnabled;
 
-@Column(nullable = false)
-private boolean accountEnabled;
+    @Enumerated(EnumType.STRING)
+    private Role role;
 
-@Enumerated(EnumType.STRING)
-private Role role;
+    private LocalDateTime createdAt;
 
-private LocalDateTime createdAt;
+    public Student() {
+    }
 
-public Student() {
-}
+    public Student(
+            Long studentId,
+            String fullName,
+            String collegeEmail,
+            String registerNumber,
+            String department,
+            String mobileNumber,
+            String password,
+            boolean emailVerified,
+            boolean accountEnabled,
+            Role role,
+            LocalDateTime createdAt,
+            String profileImage) {
 
-public Student(Long studentId, String fullName, String collegeEmail,
-               String registerNumber, String department,
-               String mobileNumber, String password,
-               boolean emailVerified, boolean accountEnabled,
-               Role role, LocalDateTime createdAt,String profileImage) {
+        this.studentId = studentId;
+        this.fullName = fullName;
+        this.collegeEmail = collegeEmail;
+        this.registerNumber = registerNumber;
+        this.department = department;
+        this.mobileNumber = mobileNumber;
+        this.password = password;
+        this.emailVerified = emailVerified;
+        this.accountEnabled = accountEnabled;
+        this.role = role;
+        this.createdAt = createdAt;
+        this.profileImage = profileImage;
+    }
 
-    this.studentId = studentId;
-    this.fullName = fullName;
-    this.collegeEmail = collegeEmail;
-    this.registerNumber = registerNumber;
-    this.department = department;
-    this.mobileNumber = mobileNumber;
-    this.password = password;
-    this.emailVerified = emailVerified;
-    this.accountEnabled = accountEnabled;
-    this.role = role;
-    this.createdAt = createdAt;
-    this.profileImage = profileImage;
-}
+    @PrePersist
+    public void onCreate() {
+        this.createdAt = LocalDateTime.now();
+    }
 
-@PrePersist
-public void onCreate() {
-    this.createdAt = LocalDateTime.now();
-}
+    public Long getStudentId() {
+        return studentId;
+    }
 
-public Long getStudentId() {
-    return studentId;
-}
+    public void setStudentId(Long studentId) {
+        this.studentId = studentId;
+    }
 
-public void setStudentId(Long studentId) {
-    this.studentId = studentId;
-}
+    public String getProfileImage() {
+        return profileImage;
+    }
 
-public String getProfileImage() {
-    return profileImage;
-}
+    public void setProfileImage(String profileImage) {
+        this.profileImage = profileImage;
+    }
 
-public void setProfileImage(String profileImage) {
-    this.profileImage = profileImage;
-}
+    public String getFullName() {
+        return fullName;
+    }
 
-public String getFullName() {
-    return fullName;
-}
+    public void setFullName(String fullName) {
+        this.fullName = fullName;
+    }
 
-public void setFullName(String fullName) {
-    this.fullName = fullName;
-}
+    public String getCollegeEmail() {
+        return collegeEmail;
+    }
 
-public String getCollegeEmail() {
-    return collegeEmail;
-}
+    public void setCollegeEmail(String collegeEmail) {
+        this.collegeEmail = collegeEmail;
+    }
 
-public void setCollegeEmail(String collegeEmail) {
-    this.collegeEmail = collegeEmail;
-}
+    public String getRegisterNumber() {
+        return registerNumber;
+    }
 
-public String getRegisterNumber() {
-    return registerNumber;
-}
+    public void setRegisterNumber(String registerNumber) {
+        this.registerNumber = registerNumber;
+    }
 
-public void setRegisterNumber(String registerNumber) {
-    this.registerNumber = registerNumber;
-}
+    public String getDepartment() {
+        return department;
+    }
 
-public String getDepartment() {
-    return department;
-}
+    public void setDepartment(String department) {
+        this.department = department;
+    }
 
-public void setDepartment(String department) {
-    this.department = department;
-}
+    public String getMobileNumber() {
+        return mobileNumber;
+    }
 
-public String getMobileNumber() {
-    return mobileNumber;
-}
+    public void setMobileNumber(String mobileNumber) {
+        this.mobileNumber = mobileNumber;
+    }
 
-public void setMobileNumber(String mobileNumber) {
-    this.mobileNumber = mobileNumber;
-}
+    public String getPassword() {
+        return password;
+    }
 
-public String getPassword() {
-    return password;
-}
+    public void setPassword(String password) {
+        this.password = password;
+    }
 
-public void setPassword(String password) {
-    this.password = password;
-}
+    public boolean isEmailVerified() {
+        return emailVerified;
+    }
 
-public boolean isEmailVerified() {
-    return emailVerified;
-}
+    public void setEmailVerified(boolean emailVerified) {
+        this.emailVerified = emailVerified;
+    }
 
-public void setEmailVerified(boolean emailVerified) {
-    this.emailVerified = emailVerified;
-}
+    public boolean isAccountEnabled() {
+        return accountEnabled;
+    }
 
-public boolean isAccountEnabled() {
-    return accountEnabled;
-}
+    public void setAccountEnabled(boolean accountEnabled) {
+        this.accountEnabled = accountEnabled;
+    }
 
-public void setAccountEnabled(boolean accountEnabled) {
-    this.accountEnabled = accountEnabled;
-}
+    public Role getRole() {
+        return role;
+    }
 
-public Role getRole() {
-    return role;
-}
+    public void setRole(Role role) {
+        this.role = role;
+    }
 
-public void setRole(Role role) {
-    this.role = role;
-}
+    public LocalDateTime getCreatedAt() {
+        return createdAt;
+    }
 
-public LocalDateTime getCreatedAt() {
-    return createdAt;
-}
-
-public void setCreatedAt(LocalDateTime createdAt) {
-    this.createdAt = createdAt;
-}
-
-
+    public void setCreatedAt(LocalDateTime createdAt) {
+        this.createdAt = createdAt;
+    }
 }
