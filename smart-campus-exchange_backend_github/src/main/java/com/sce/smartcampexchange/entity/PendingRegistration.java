@@ -23,7 +23,8 @@ public class PendingRegistration {
 
     @Column(nullable = false)
     private String department;
-
+    
+   
     @Column(nullable = false)
     private String mobileNumber;
 
@@ -101,6 +102,9 @@ public class PendingRegistration {
     public void setDepartment(String department) {
         this.department = department;
     }
+    
+   
+    
 
     public String getMobileNumber() {
         return mobileNumber;

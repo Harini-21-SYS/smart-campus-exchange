@@ -10,6 +10,7 @@ public class ProfileResponseDTO {
     private String mobileNumber;
     private String profileImage;
     private boolean emailVerified;
+    private String year;
 
     public ProfileResponseDTO() {
     }
@@ -54,6 +55,14 @@ public class ProfileResponseDTO {
         this.department = department;
     }
 
+    public String getYear() {
+        return year;
+    }
+
+    public void setYear(String year) {
+        this.year = year;
+    }
+    
     public String getMobileNumber() {
         return mobileNumber;
     }

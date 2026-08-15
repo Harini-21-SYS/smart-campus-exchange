@@ -448,12 +448,17 @@ function Auth() {
 
       setTimeout(() => navigate("/products"), 900);
     } catch (error) {
-      console.error(error);
-      showToast(
-        error.response?.data?.message || "Login failed. Check your details and try again.",
-        "error"
-      );
-    }
+
+    console.log("LOGIN ERROR STATUS:", error.response?.status);
+    console.log("LOGIN ERROR DATA:", error.response?.data);
+    console.log("LOGIN ERROR MESSAGE:", error.response?.data?.message);
+
+    showToast(
+      error.response?.data?.message ||
+        "Login failed. Check your details and try again.",
+      "error"
+    );
+  }
   };
 
   const closeOtpModal = () => {
@@ -843,19 +848,19 @@ function Auth() {
           Select Degree
         </option>
 
-        {DEGREES.map((degree) => (
-          <option key={degree} value={degree}>
-            {degree}
-          </option>
-        ))}
-      </select>
+{DEGREES.map((degree) => (
+  <option key={degree} value={degree}>
+    {degree}
+  </option>
+))}
+</select>
 
-      {registerErrors.degree && (
-        <span className="field-error-msg">
-          {registerErrors.degree}
-        </span>
-      )}
-    </div>
+{registerErrors.degree && (
+  <span className="field-error-msg">
+    {registerErrors.degree}
+  </span>
+)}
+</div>
 
     {/* Department */}
     <div className="field-group">

@@ -19,6 +19,9 @@ private String registerNumber;
 @NotBlank(message = "Department is required")
 private String department;
 
+@NotBlank(message = "Year is required")
+private String year;
+
 @NotBlank(message = "Mobile Number is required")
 private String mobileNumber;
 
@@ -57,6 +60,14 @@ public void setRegisterNumber(String registerNumber) {
 
 public String getDepartment() {
     return department;
+}
+
+public String getYear() {
+    return year;
+}
+
+public void setYear(String year) {
+    this.year = year;
 }
 
 public void setDepartment(String department) {

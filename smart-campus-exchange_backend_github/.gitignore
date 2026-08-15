@@ -35,3 +35,5 @@ build/
 ### Eclipse Workspace ###
 .metadata/
 **/.metadata/
+
+uploads/
