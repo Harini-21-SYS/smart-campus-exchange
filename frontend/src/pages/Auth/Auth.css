@@ -757,3 +757,164 @@
         transition: none !important;
     }
 }
+.field-group {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 4px;
+}
+ 
+.input-error {
+  border: 1px solid #e04343 !important;
+  background-color: rgba(224, 67, 67, 0.05);
+}
+ 
+.field-error-msg {
+  color: #e04343;
+  font-size: 0.75rem;
+  margin-top: 4px;
+  margin-left: 2px;
+  line-height: 1.3;
+}
+ 
+.otp-error-msg {
+  display: block;
+  text-align: center;
+  margin-top: 8px;
+  margin-bottom: 4px;
+}
+ 
+/* Shake the field briefly when an error appears, for extra clarity */
+@keyframes fieldShake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-4px); }
+  75% { transform: translateX(4px); }
+}
+ 
+.input-error {
+  animation: fieldShake 0.25s ease-in-out;
+}
+ 
+/* ---------- 2. Responsive layout ---------- */
+ 
+/* Make sure the outer container never causes horizontal scroll */
+.auth-container {
+  width: 100%;
+  min-height: 100vh;
+  box-sizing: border-box;
+  background-size: cover;
+  background-position: center;
+}
+ 
+.auth-card,
+.otp-modal {
+  box-sizing: border-box;
+}
+ 
+/* Tablet and small laptop */
+@media (max-width: 900px) {
+  .auth-card {
+    width: 80%;
+    max-width: 420px;
+  }
+ 
+  .otp-modal {
+    width: 80%;
+    max-width: 380px;
+  }
+}
+ 
+/* Large phones / small tablets */
+@media (max-width: 600px) {
+  .auth-card {
+    width: 92%;
+    max-width: none;
+    padding: 24px 20px;
+    margin: 0 auto;
+  }
+ 
+  .auth-card h2 {
+    font-size: 1.25rem;
+  }
+ 
+  .auth-card p {
+    font-size: 0.85rem;
+  }
+ 
+  .tab-buttons button {
+    font-size: 0.9rem;
+    padding: 8px 0;
+  }
+ 
+  .auth-form input,
+  .auth-form select {
+    font-size: 0.9rem;
+    padding: 10px 12px;
+  }
+ 
+  .step-btn-row {
+    flex-direction: row;
+    gap: 8px;
+  }
+ 
+  .step-back-btn,
+  .step-next-btn,
+  .login-btn {
+    flex: 1;
+    padding: 10px 0;
+    font-size: 0.85rem;
+  }
+ 
+  .back-home {
+    top: 12px;
+    left: 12px;
+    font-size: 0.85rem;
+  }
+ 
+  .otp-modal {
+    width: 90%;
+    padding: 24px 16px;
+  }
+ 
+  .otp-inputs {
+    gap: 6px;
+  }
+ 
+  .otp-inputs input {
+    width: 36px;
+    height: 42px;
+    font-size: 1rem;
+  }
+ 
+  .modal-input-group input {
+    font-size: 0.85rem;
+  }
+ 
+  .toast-stack {
+    left: 12px;
+    right: 12px;
+    width: auto;
+  }
+ 
+  .toast-item {
+    font-size: 0.8rem;
+  }
+}
+ 
+/* Very small phones */
+@media (max-width: 380px) {
+  .auth-card {
+    padding: 18px 14px;
+  }
+ 
+  .otp-inputs input {
+    width: 30px;
+    height: 38px;
+    font-size: 0.9rem;
+  }
+ 
+  .step-tracker {
+    transform: scale(0.9);
+  }
+}
+ 

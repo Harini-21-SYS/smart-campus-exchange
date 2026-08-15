@@ -1,5 +1,5 @@
 .about{
-    padding:100px 0;
+    padding:60px 0;
     background:#EEF4EC;
 }
 .about p{
@@ -14,9 +14,9 @@
 }
 
 .about-title h2{
-    margin:15px 0;
+    margin:10px 0;
     color:#1F4D3A;
-    font-size:42px;
+    font-size:clamp(26px, 4vw, 38px);
     font-weight:700;
 }
 
@@ -24,65 +24,125 @@
     max-width:650px;
     margin:auto;
     color:#666;
-    font-size:19px;
-    line-height:30px;
+    font-size:17px;
+    line-height:26px;
 }
 
+/* ---------- Hover-reveal cards ---------- */
 .about-card{
+    position:relative;
     background:#fff;
     border-radius:20px;
-    padding:35px 25px;
+    padding:32px 22px;
     text-align:center;
     height:100%;
-    transition:.3s;
+    overflow:hidden;
+    transition:transform .3s ease, box-shadow .3s ease;
     box-shadow:0 10px 30px rgba(0,0,0,.05);
 }
 
 .about-card:hover{
     transform:translateY(-8px);
-    box-shadow:0 18px 35px rgba(31,77,58,.12);
+    box-shadow:0 18px 35px rgba(31,77,58,.14);
 }
 
 .about-icon{
-    width:70px;
-    height:70px;
+    width:64px;
+    height:64px;
     background:#E8F2EC;
     color:#1F4D3A;
     border-radius:50%;
-    padding:18px;
-    font-size:32px;
-    margin-bottom:20px;
+    padding:16px;
+    font-size:30px;
+    margin-bottom:16px;
+    transition:transform .35s cubic-bezier(.34,1.56,.64,1), background .3s ease, color .3s ease;
+}
+
+.about-card:hover .about-icon{
+    transform:translateY(-4px) scale(1.08) rotate(-6deg);
+    background:#1F4D3A;
+    color:#E8F2EC;
 }
 
 .about-card h4{
     color:#1F4D3A;
-    font-size:24px;
+    font-size:21px;
     font-weight:600;
-    margin-bottom:15px;
+    margin-bottom:0;
+    transition:margin .35s ease;
 }
 
+/* Description starts hidden (collapsed + faded), and only unfolds
+   when its card is hovered — this is what creates the "hover to
+   reveal text" effect, purely with CSS, no extra markup needed. */
 .about-card p{
+    max-height:0;
+    opacity:0;
+    overflow:hidden;
     color:#666;
-    line-height:28px;
-    font-size:19px;
+    line-height:24px;
+    font-size:15.5px;
+    transform:translateY(6px);
+    transition:max-height .4s ease, opacity .35s ease .05s, transform .35s ease .05s, margin-top .4s ease;
+}
+
+.about-card:hover p{
+    max-height:120px;
+    opacity:1;
+    margin-top:12px;
+    transform:translateY(0);
 }
 
 @media(max-width:768px){
 
 .about{
-    padding:70px 0;
+    padding:45px 0;
 }
 
 .about-title h2{
-    font-size:32px;
+    font-size:26px;
 }
 
 .about-title p{
-    font-size:18px;
+    font-size:16px;
+    line-height:24px;
 }
 
 .about-card{
-    padding:30px 20px;
+    padding:24px 18px;
 }
 
+.about-icon{
+    width:56px;
+    height:56px;
+    padding:14px;
+    font-size:26px;
+    margin-bottom:12px;
+}
+
+.about-card h4{
+    font-size:19px;
+}
+
+/* On touch devices hover can't be relied on the same way, so keep the
+   description visible instead of trapping it behind an unreachable
+   hover state — and it also helps the "less scrolling" goal since
+   these cards stack to one column here anyway. */
+.about-card p{
+    max-height:none;
+    opacity:1;
+    transform:none;
+    margin-top:8px;
+    font-size:15px;
+    line-height:22px;
+}
+
+}
+
+@media (prefers-reduced-motion: reduce){
+    .about-card,
+    .about-icon,
+    .about-card p{
+        transition:none !important;
+    }
 }

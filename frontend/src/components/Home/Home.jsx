@@ -28,9 +28,10 @@ function Home() {
               </p>
 
               <div className="hero-buttons">
-                <Link to="/auth" className="primary-btn">
-                  Get Started
-                </Link>
+                <a href="#contact" className="primary-btn">
+                  Contact Us
+                  </a>
+                
 
                 <a href="#about" className="secondary-btn">
                   Learn More
