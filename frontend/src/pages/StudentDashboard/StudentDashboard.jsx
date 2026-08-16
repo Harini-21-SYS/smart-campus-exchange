@@ -1,13 +1,12 @@
 import { useState, useRef, useEffect, useMemo, useCallback } from "react";
 import "./StudentDashboard.css";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
+import StudentNavbar, { STUDENT_NAV_TABS } from "./StudentNavbar";
+import { getProfile } from "../../services/profileService";
 import {
-  FaBars,
   FaTimes,
   FaSearch,
-  FaExchangeAlt,
   FaUser,
-  FaSignOutAlt,
   FaInbox,
   FaCheckCircle,
   FaBell,
@@ -20,11 +19,10 @@ import {
   FaCloudUploadAlt,
   FaPen,
   FaTrashAlt,
-  FaBoxOpen,
-  FaClipboardList,
-  FaExclamationTriangle,
   FaFire,
   FaHistory,
+  FaCheck,
+  FaBan,
 } from "react-icons/fa";
 
 /* ---------------------------------------------------------
@@ -70,17 +68,14 @@ const SAMPLE_PRODUCTS = [
   { id: 12, name: "Organic Chemistry Guide", price: 0, category: "Books & Stationery", type: "Exchange", condition: "Good", sellerName: "Meera Pillai", department: "Chemistry", description: "Looking to exchange for an Inorganic Chemistry reference.", images: [] },
 ];
 
-const NAV_TABS = [
-  { id: "products", label: "Products" },
-  { id: "requests", label: "Requests" },
-  { id: "complaints", label: "Complaints" },
+// Left sidebar — this student's own stuff.
+const SIDEBAR_ITEMS = [
+  { id: "myProducts", label: "My Products" },
+  { id: "myRequests", label: "My Requests" },
+  { id: "myComplaints", label: "My Complaints" },
 ];
 
-const SIDEBAR_ITEMS = [
-  { id: "myProducts", label: "My Products", icon: FaBoxOpen },
-  { id: "myRequests", label: "My Requests", icon: FaClipboardList },
-  { id: "myComplaints", label: "My Complaints", icon: FaExclamationTriangle },
-];
+const PROFILE_IMAGE_BASE_URL = "http://localhost:8081/uploads/profile-images/";
 
 /* ---------------------------------------------------------
    Personalized recommendations — scored from what the
@@ -142,6 +137,31 @@ function getRecommendations(products, browsingHistory, purchaseHistory, limit = 
 }
 
 /* ---------------------------------------------------------
+   Sample incoming requests — demo data standing in for
+   requests other students have sent for your listings.
+--------------------------------------------------------- */
+const SAMPLE_INCOMING_REQUESTS = [
+  {
+    id: "inc-1",
+    productName: "Graphing Calculator (TI-84 Plus)",
+    requesterName: "Ishaan Verma",
+    department: "Electronics & Comm.",
+    type: "Sell",
+    time: Date.now() - 1000 * 60 * 60 * 3,
+    status: "pending",
+  },
+  {
+    id: "inc-2",
+    productName: "Hostel Study Chair",
+    requesterName: "Fatima Sheikh",
+    department: "Business Administration",
+    type: "Donate",
+    time: Date.now() - 1000 * 60 * 60 * 26,
+    status: "pending",
+  },
+];
+
+/* ---------------------------------------------------------
    Empty state
 --------------------------------------------------------- */
 function EmptyState({ subtitle, action }) {
@@ -155,6 +175,20 @@ function EmptyState({ subtitle, action }) {
       {action}
     </div>
   );
+}
+
+/* ---------------------------------------------------------
+   Relative time helper (e.g. "3h ago")
+--------------------------------------------------------- */
+function timeAgo(ts) {
+  const diff = Math.max(0, Date.now() - ts);
+  const mins = Math.round(diff / 60000);
+  if (mins < 1) return "just now";
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.round(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  const days = Math.round(hrs / 24);
+  return `${days}d ago`;
 }
 
 /* ---------------------------------------------------------
@@ -295,13 +329,19 @@ function ConfirmDialog({ title, message, onCancel, onConfirm, confirmLabel = "Co
 }
 
 /* ---------------------------------------------------------
-   Product detail — its own full-width in-page SECTION,
-   not a popup. Amazon-style gallery + sticky info panel.
+   Product detail — its own full-width in-page SECTION, not a
+   popup. The main image is capped to a sensible size and, when
+   a listing has more than one photo, a carousel (arrows + dots,
+   plus a thumbnail strip) lets the buyer step through them.
 --------------------------------------------------------- */
 function ProductDetailSection({ product, isOwner, onBack, onRequest, onEdit, onDelete }) {
   const [activeImg, setActiveImg] = useState(product.primaryIndex ?? 0);
   const info = TYPE_INFO[product.type];
   const images = product.images || [];
+  const hasMultiple = images.length > 1;
+
+  const goPrev = () => setActiveImg((i) => (i - 1 + images.length) % images.length);
+  const goNext = () => setActiveImg((i) => (i + 1) % images.length);
 
   return (
     <div className="dash-section">
@@ -312,10 +352,49 @@ function ProductDetailSection({ product, isOwner, onBack, onRequest, onEdit, onD
       <div className="pdetail-grid">
         <div className="pdetail-gallery">
           <div className="pdetail-main-image">
-            {images[activeImg] ? <img src={images[activeImg].url} alt={product.name} /> : <ImagePlaceholder />}
+            {images[activeImg] ? (
+              <img src={images[activeImg].url} alt={product.name} />
+            ) : (
+              <ImagePlaceholder />
+            )}
+
+            {hasMultiple && (
+              <>
+                <button
+                  type="button"
+                  className="carousel-arrow carousel-arrow-left"
+                  onClick={goPrev}
+                  aria-label="Previous image"
+                >
+                  <FaChevronLeft />
+                </button>
+                <button
+                  type="button"
+                  className="carousel-arrow carousel-arrow-right"
+                  onClick={goNext}
+                  aria-label="Next image"
+                >
+                  <FaChevronRight />
+                </button>
+              </>
+            )}
           </div>
 
-          {images.length > 1 && (
+          {hasMultiple && (
+            <div className="carousel-dots">
+              {images.map((_, idx) => (
+                <button
+                  key={idx}
+                  type="button"
+                  className={`carousel-dot ${idx === activeImg ? "carousel-dot-active" : ""}`}
+                  onClick={() => setActiveImg(idx)}
+                  aria-label={`Go to image ${idx + 1}`}
+                />
+              ))}
+            </div>
+          )}
+
+          {hasMultiple && (
             <div className="pdetail-thumbs">
               {images.map((img, idx) => (
                 <button
@@ -661,7 +740,7 @@ function ProductFormPage({ initialData, onCancel, onSubmit }) {
 
 /* ---------------------------------------------------------
    Marketplace "Products" — browse everyone else's listings.
-   Search box now surfaces personalized suggestions driven by
+   Search box surfaces personalized suggestions driven by
    browsing + purchase history (see getRecommendations above).
 --------------------------------------------------------- */
 function BrowseProductsSection({ products, onOpen, recommendations }) {
@@ -905,24 +984,213 @@ function MyProductsSection({ products, onOpen, onAdd, onEdit, onDelete }) {
 }
 
 /* ---------------------------------------------------------
+   Sidebar "My Requests" — requests YOU sent for other
+   students' listings.
+--------------------------------------------------------- */
+function MyRequestsSection({ requests }) {
+  return (
+    <div className="dash-section">
+      <div className="section-header">
+        <h1>My Requests</h1>
+      </div>
+
+      {requests.length === 0 ? (
+        <EmptyState subtitle="You haven't requested anything yet." />
+      ) : (
+        <div className="request-list">
+          {requests
+            .slice()
+            .reverse()
+            .map((r) => {
+              const info = TYPE_INFO[r.type];
+              return (
+                <div key={r.id} className="request-card">
+                  <div className="request-card-main">
+                    <span className={`pcard-type-badge ${info.badgeClass}`}>{r.type}</span>
+                    <h4>{r.productName}</h4>
+                    <p>To {r.sellerName}</p>
+                  </div>
+                  <div className="request-card-side">
+                    <span className={`request-status request-status-${r.status}`}>{r.status}</span>
+                    <span className="request-time">{timeAgo(r.time)}</span>
+                  </div>
+                </div>
+              );
+            })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ---------------------------------------------------------
+   Sidebar "My Complaints" — complaints YOU raised.
+--------------------------------------------------------- */
+function MyComplaintsSection() {
+  return (
+    <div className="dash-section">
+      <div className="section-header">
+        <h1>My Complaints</h1>
+      </div>
+      <EmptyState subtitle="You haven't raised any complaints yet." />
+    </div>
+  );
+}
+
+/* ---------------------------------------------------------
+   Top nav "Incoming Requests" — requests other students
+   have sent for YOUR listings. Accept / Decline in place.
+--------------------------------------------------------- */
+function IncomingRequestsSection({ requests, onAccept, onDecline }) {
+  return (
+    <div className="dash-section">
+      <div className="section-header">
+        <h1>Incoming Requests</h1>
+      </div>
+
+      {requests.length === 0 ? (
+        <EmptyState subtitle="No one has requested your products yet." />
+      ) : (
+        <div className="request-list">
+          {requests.map((r) => {
+            const info = TYPE_INFO[r.type];
+            return (
+              <div key={r.id} className="request-card">
+                <div className="request-card-main">
+                  <span className={`pcard-type-badge ${info.badgeClass}`}>{r.type}</span>
+                  <h4>{r.productName}</h4>
+                  <p>
+                    From {r.requesterName} &middot; {r.department}
+                  </p>
+                </div>
+
+                <div className="request-card-side">
+                  {r.status === "pending" ? (
+                    <div className="request-actions">
+                      <button className="dash-btn dash-btn-primary dash-btn-sm" onClick={() => onAccept(r)}>
+                        <FaCheck /> Accept
+                      </button>
+                      <button className="dash-btn dash-btn-danger dash-btn-sm" onClick={() => onDecline(r)}>
+                        <FaBan /> Decline
+                      </button>
+                    </div>
+                  ) : (
+                    <span className={`request-status request-status-${r.status}`}>{r.status}</span>
+                  )}
+                  <span className="request-time">{timeAgo(r.time)}</span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ---------------------------------------------------------
+   Top nav "Notifications" — full notification center
+--------------------------------------------------------- */
+function NotificationsSection({ notifications }) {
+  return (
+    <div className="dash-section">
+      <div className="section-header">
+        <h1>Notifications</h1>
+      </div>
+
+      {notifications.length === 0 ? (
+        <EmptyState subtitle="You're all caught up — no notifications yet." />
+      ) : (
+        <div className="notif-list">
+          {notifications
+            .slice()
+            .reverse()
+            .map((n) => (
+              <div key={n.id} className={`notif-list-item ${n.read ? "" : "notif-list-item-unread"}`}>
+                <span className="notif-list-icon">
+                  <FaBell />
+                </span>
+                <div className="notif-list-text">
+                  <p>{n.message}</p>
+                  <span>{timeAgo(n.time)}</span>
+                </div>
+              </div>
+            ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ---------------------------------------------------------
+   Top nav "Raise Complaint"
+--------------------------------------------------------- */
+function ComplaintsSection() {
+  return (
+    <div className="dash-section">
+      <div className="section-header">
+        <h1>Raise Complaint</h1>
+      </div>
+      <EmptyState subtitle="You haven't raised any complaints." />
+    </div>
+  );
+}
+
+/* ---------------------------------------------------------
    Main dashboard page
 --------------------------------------------------------- */
 function StudentDashboard() {
-  const [mainSection, setMainSection] = useState("products");
+  const location = useLocation();
+
+  // A student can land here from the StudentNavbar rendered on the
+  // Landing page (see StudentNavbar.jsx) — it passes the intended
+  // section via router state so the right tab opens directly.
+  const [mainSection, setMainSection] = useState(
+    () => location.state?.section || "products"
+  );
   const [subView, setSubView] = useState(null); // null | "detail" | "add" | "edit"
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [editingProduct, setEditingProduct] = useState(null);
   const [returnSection, setReturnSection] = useState("products");
 
-  const [navOpen, setNavOpen] = useState(false);
-  const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [profileOpen, setProfileOpen] = useState(false);
-  const [notifOpen, setNotifOpen] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false); // mobile drawer only
   const [toast, setToast] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [requestTarget, setRequestTarget] = useState(null);
 
   const [products, setProducts] = useState(SAMPLE_PRODUCTS);
+  const [myRequests, setMyRequests] = useState([]);
+  const [incomingRequests, setIncomingRequests] = useState(SAMPLE_INCOMING_REQUESTS);
+  const [notifications, setNotifications] = useState(() => [
+    {
+      id: "n-seed-1",
+      message: "Ishaan Verma requested your Graphing Calculator (TI-84 Plus).",
+      time: Date.now() - 1000 * 60 * 60 * 3,
+      read: false,
+    },
+    {
+      id: "n-seed-2",
+      message: "Fatima Sheikh requested to donate-adopt your Hostel Study Chair.",
+      time: Date.now() - 1000 * 60 * 60 * 26,
+      read: false,
+    },
+  ]);
+
+  // ---------- Signed-in student's name + photo for the sidebar ----------
+  const [studentProfile, setStudentProfile] = useState(null);
+  useEffect(() => {
+    let cancelled = false;
+    getProfile()
+      .then((data) => {
+        if (!cancelled) setStudentProfile(data);
+      })
+      .catch(() => {
+        /* sidebar just falls back to a generic name/icon */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   // ---------- Personalization signals ----------
   const [browsingHistory, setBrowsingHistory] = useState(() => loadHistory(HISTORY_STORAGE_KEYS.browsing));
@@ -944,18 +1212,7 @@ function StudentDashboard() {
     }
   }, [purchaseHistory]);
 
-  const profileRef = useRef(null);
-  const notifRef = useRef(null);
   const navigate = useNavigate();
-
-  useEffect(() => {
-    const handleClickOutside = (e) => {
-      if (profileRef.current && !profileRef.current.contains(e.target)) setProfileOpen(false);
-      if (notifRef.current && !notifRef.current.contains(e.target)) setNotifOpen(false);
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
 
   const marketplaceProducts = useMemo(() => products.filter((p) => p.sellerName !== "You"), [products]);
   const myProducts = useMemo(() => products.filter((p) => p.sellerName === "You"), [products]);
@@ -965,22 +1222,54 @@ function StudentDashboard() {
     [marketplaceProducts, browsingHistory, purchaseHistory]
   );
 
+  const unreadNotifCount = useMemo(() => notifications.filter((n) => !n.read).length, [notifications]);
+  const incomingPendingCount = useMemo(
+    () => incomingRequests.filter((r) => r.status === "pending").length,
+    [incomingRequests]
+  );
+
+  const addNotification = useCallback((message) => {
+    setNotifications((prev) => [
+      ...prev,
+      { id: `n-${Date.now()}-${Math.random()}`, message, time: Date.now(), read: false },
+    ]);
+  }, []);
+
   const showToast = (message) => {
     setToast(message);
     setTimeout(() => setToast(null), 3500);
   };
 
-  const goToNavTab = (id) => {
+  // ---------- Navigation ----------
+  const goToSection = (id) => {
     setMainSection(id);
     setSubView(null);
-    setNavOpen(false);
+    setSidebarOpen(false); // close the mobile drawer after picking a section
   };
 
-  const goToSidebarItem = (id) => {
-    setMainSection(id);
-    setSubView(null);
-    if (window.innerWidth <= 900) setSidebarOpen(false);
+  const handleNavTabClick = (tab) => {
+    // These two leave the dashboard entirely — Home goes to the public
+    // landing page (with the student navbar still showing, see
+    // StudentNavbar/Landing), Profile goes to the account page.
+    if (tab.id === "home") {
+      navigate("/");
+      return;
+    }
+    if (tab.id === "profile") {
+      navigate("/profile");
+      return;
+    }
+
+    goToSection(tab.id);
+
+    // Visiting the Notifications tab marks everything read, same as
+    // opening any real notification center.
+    if (tab.id === "notifications") {
+      setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+    }
   };
+
+  const goToSidebarItem = (id) => goToSection(id);
 
   // Every time a student opens a marketplace listing, that's a browsing
   // signal — log it (deduped, most-recent last, capped) so future search
@@ -1012,12 +1301,7 @@ function StudentDashboard() {
     setMainSection(returnSection);
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("email");
-    localStorage.removeItem("role");
-    navigate("/auth");
-  };
+  const goToProfile = () => navigate("/profile");
 
   const handleConfirmRequest = () => {
     const info = TYPE_INFO[requestTarget.type];
@@ -1031,9 +1315,38 @@ function StudentDashboard() {
       ].slice(-50)
     );
 
-    showToast(`${info.actionLabel} sent to ${requestTarget.sellerName} ✅`);
+    setMyRequests((prev) => [
+      ...prev,
+      {
+        id: `req-${Date.now()}`,
+        productName: requestTarget.name,
+        sellerName: requestTarget.sellerName,
+        type: requestTarget.type,
+        status: "pending",
+        time: Date.now(),
+      },
+    ]);
+
+    addNotification(`${info.actionLabel} sent to ${requestTarget.sellerName} for "${requestTarget.name}".`);
+    showToast(`${info.actionLabel} sent to ${requestTarget.sellerName}.`);
     setRequestTarget(null);
     if (subView === "detail") closeDetail();
+  };
+
+  const handleAcceptIncoming = (request) => {
+    setIncomingRequests((prev) =>
+      prev.map((r) => (r.id === request.id ? { ...r, status: "accepted" } : r))
+    );
+    addNotification(`You accepted ${request.requesterName}'s request for "${request.productName}".`);
+    showToast(`Accepted ${request.requesterName}'s request.`);
+  };
+
+  const handleDeclineIncoming = (request) => {
+    setIncomingRequests((prev) =>
+      prev.map((r) => (r.id === request.id ? { ...r, status: "declined" } : r))
+    );
+    addNotification(`You declined ${request.requesterName}'s request for "${request.productName}".`);
+    showToast(`Declined ${request.requesterName}'s request.`);
   };
 
   const handleSaveProduct = (product) => {
@@ -1041,7 +1354,9 @@ function StudentDashboard() {
       const exists = prev.some((p) => p.id === product.id);
       return exists ? prev.map((p) => (p.id === product.id ? product : p)) : [product, ...prev];
     });
-    showToast(subView === "edit" ? "Product updated successfully ✅" : "Product listed successfully 🎉");
+    const isEdit = subView === "edit";
+    showToast(isEdit ? "Product updated successfully." : "Product listed successfully.");
+    if (!isEdit) addNotification(`Your listing "${product.name}" is now live.`);
     setSubView(null);
     setEditingProduct(null);
     setMainSection("myProducts");
@@ -1049,7 +1364,7 @@ function StudentDashboard() {
 
   const handleConfirmDelete = () => {
     setProducts((prev) => prev.filter((p) => p.id !== deleteTarget.id));
-    showToast("Product deleted 🗑️");
+    showToast("Product deleted.");
     setDeleteTarget(null);
     if (subView === "detail") closeDetail();
   };
@@ -1106,20 +1421,18 @@ function StudentDashboard() {
             recommendations={recommendations}
           />
         );
-      case "requests":
+      case "incomingRequests":
         return (
-          <div className="dash-section">
-            <div className="section-header"><h1>Requests</h1></div>
-            <EmptyState subtitle="No pending requests right now." />
-          </div>
+          <IncomingRequestsSection
+            requests={incomingRequests}
+            onAccept={handleAcceptIncoming}
+            onDecline={handleDeclineIncoming}
+          />
         );
       case "complaints":
-        return (
-          <div className="dash-section">
-            <div className="section-header"><h1>Complaints</h1></div>
-            <EmptyState subtitle="No complaints have been raised." />
-          </div>
-        );
+        return <ComplaintsSection />;
+      case "notifications":
+        return <NotificationsSection notifications={notifications} />;
       case "myProducts":
         return (
           <MyProductsSection
@@ -1134,115 +1447,61 @@ function StudentDashboard() {
           />
         );
       case "myRequests":
-        return (
-          <div className="dash-section">
-            <div className="section-header"><h1>My Requests</h1></div>
-            <EmptyState subtitle="You haven't requested anything yet." />
-          </div>
-        );
+        return <MyRequestsSection requests={myRequests} />;
       case "myComplaints":
-        return (
-          <div className="dash-section">
-            <div className="section-header"><h1>My Complaints</h1></div>
-            <EmptyState subtitle="You haven't raised any complaints." />
-          </div>
-        );
+        return <MyComplaintsSection />;
       default:
         return null;
     }
   };
 
-  const isNavTabActive = (id) => subView === null && mainSection === id;
+  // Only the tabs that also appear in the top nav can be "active" there.
+  const topNavActiveId =
+    subView === null && STUDENT_NAV_TABS.some((t) => t.id === mainSection) ? mainSection : null;
   const isSidebarItemActive = (id) => subView === null && mainSection === id;
+
+  const avatarUrl = studentProfile?.profileImage
+    ? `${PROFILE_IMAGE_BASE_URL}${studentProfile.profileImage}`
+    : null;
+  const studentName = studentProfile?.fullName || "Student";
 
   return (
     <div className="dash-page">
-      {/* ---------- Navbar ---------- */}
-      <nav className="dash-navbar">
-        <button className="dash-sidebar-toggle" onClick={() => setSidebarOpen((o) => !o)} aria-label="Toggle menu">
-          {sidebarOpen ? <FaTimes /> : <FaBars />}
-        </button>
-
-        <div className="dash-logo">
-          <span className="dash-logo-icon">
-            <FaExchangeAlt />
-          </span>
-          Campus <span>Xchange</span>
-        </div>
-
-        <button className="dash-nav-toggle" onClick={() => setNavOpen((o) => !o)}>
-          {navOpen ? <FaTimes /> : <FaBars />}
-        </button>
-
-        <div className={`dash-nav-links ${navOpen ? "dash-nav-open" : ""}`}>
-          {NAV_TABS.map((tab) => (
-            <button key={tab.id} className={isNavTabActive(tab.id) ? "active" : ""} onClick={() => goToNavTab(tab.id)}>
-              {tab.label}
-            </button>
-          ))}
-        </div>
-
-        <div className="dash-navbar-right">
-          <div className="notif-wrap" ref={notifRef}>
-            <button className="notif-bell" onClick={() => setNotifOpen((o) => !o)} aria-label="Notifications">
-              <FaBell />
-            </button>
-
-            {notifOpen && (
-              <div className="notif-dropdown">
-                <div className="notif-dropdown-header">Notifications</div>
-                <div className="notif-empty">
-                  <FaInbox />
-                  <p>No new notifications</p>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      </nav>
+      <StudentNavbar
+        activeId={topNavActiveId}
+        onTabClick={handleNavTabClick}
+        onSidebarToggle={() => setSidebarOpen((o) => !o)}
+        sidebarOpen={sidebarOpen}
+        unreadNotifCount={unreadNotifCount}
+        incomingPendingCount={incomingPendingCount}
+      />
 
       <div className="dash-body">
         {sidebarOpen && <div className="dash-sidebar-backdrop" onClick={() => setSidebarOpen(false)}></div>}
 
-        {/* ---------- Sidebar (personal, "My ...") ---------- */}
+        {/* ---------- Sidebar (personal, "My ...") — fixed in place,
+            never scrolls or moves with the page. ---------- */}
         <aside className={`dash-sidebar ${sidebarOpen ? "dash-sidebar-open" : "dash-sidebar-closed"}`}>
-          <div className="dash-sidebar-profile" ref={profileRef}>
-            <button className="dash-avatar-btn" onClick={() => setProfileOpen((o) => !o)} aria-label="Profile menu">
-              <span className="dash-avatar-fallback">
-                <FaUser />
-              </span>
-            </button>
-            {sidebarOpen && <span className="dash-sidebar-username">Student Name</span>}
-
-            {profileOpen && (
-              <div className="dash-profile-menu">
-                <button className="dash-profile-item" onClick={() => setProfileOpen(false)}>
-                  <FaUser /> View Profile
-                </button>
-                <button className="dash-profile-item dash-logout" onClick={handleLogout}>
-                  <FaSignOutAlt /> Logout
-                </button>
-              </div>
-            )}
-          </div>
+          <button className="dash-sidebar-profile" onClick={goToProfile} title="View profile">
+            <span className="dash-sidebar-avatar">
+              {avatarUrl ? <img src={avatarUrl} alt="" /> : <FaUser />}
+            </span>
+            <span className="dash-sidebar-username">{studentName}</span>
+          </button>
 
           <div className="dash-sidebar-divider"></div>
 
           <nav className="dash-sidebar-nav">
-            {SIDEBAR_ITEMS.map((item) => {
-              const Icon = item.icon;
-              return (
-                <button
-                  key={item.id}
-                  className={`dash-sidebar-link ${isSidebarItemActive(item.id) ? "active" : ""}`}
-                  onClick={() => goToSidebarItem(item.id)}
-                  title={item.label}
-                >
-                  <Icon />
-                  {sidebarOpen && <span>{item.label}</span>}
-                </button>
-              );
-            })}
+            {SIDEBAR_ITEMS.map((item) => (
+              <button
+                key={item.id}
+                className={`dash-sidebar-link ${isSidebarItemActive(item.id) ? "active" : ""}`}
+                onClick={() => goToSidebarItem(item.id)}
+                title={item.label}
+              >
+                <span>{item.label}</span>
+              </button>
+            ))}
           </nav>
         </aside>
 

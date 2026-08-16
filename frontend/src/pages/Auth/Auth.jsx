@@ -171,7 +171,7 @@ function Auth() {
   useEffect(() => {
     const token = localStorage.getItem("token");
     if (token) {
-      navigate("/products");
+      navigate("/StudentDashboard");
       return;
     }
 
@@ -446,7 +446,7 @@ function Auth() {
 
       showToast("Welcome back! Taking you to the marketplace 🎓", "success");
 
-      setTimeout(() => navigate("/products"), 900);
+      setTimeout(() => navigate("/StudentDashboard"), 900);
     } catch (error) {
 
     console.log("LOGIN ERROR STATUS:", error.response?.status);

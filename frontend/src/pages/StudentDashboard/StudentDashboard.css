@@ -19,7 +19,6 @@ html, body {
     --dash-red: #C0483D;
     --dash-navbar-h: 64px;
     --dash-sidebar-w: 230px;
-    --dash-sidebar-w-collapsed: 74px;
 }
 
 @media (max-width: 640px) {
@@ -42,8 +41,11 @@ html, body {
    Navbar
 ================================================ */
 .dash-navbar {
-    position: sticky;
+    position: fixed;
     top: 0;
+    left: 0;
+    right: 0;
+    width: 100%;
     z-index: 200;
     height: var(--dash-navbar-h);
 
@@ -56,14 +58,16 @@ html, body {
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
 }
 
+/* Mobile-only: toggles the personal sidebar drawer. Hidden on desktop,
+   where the sidebar is always visible and never needs toggling. */
 .dash-sidebar-toggle {
+    display: none;
     background: none;
     border: 1.5px solid var(--dash-green);
     color: var(--dash-green);
     width: 38px;
     height: 38px;
     border-radius: 10px;
-    display: flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
@@ -127,6 +131,7 @@ html, body {
     gap: 4px;
     overflow-x: auto;
     scrollbar-width: none;
+    margin-left: auto;
 }
 
 .dash-nav-links::-webkit-scrollbar {
@@ -134,6 +139,10 @@ html, body {
 }
 
 .dash-nav-links button {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
     background: transparent;
     border: none;
     font-family: inherit;
@@ -157,94 +166,44 @@ html, body {
     color: #fff;
 }
 
-.dash-navbar-right {
-    margin-left: auto;
-    display: flex;
-    align-items: center;
-    flex-shrink: 0;
-}
-
-/* ---------- Notifications ---------- */
-.notif-wrap {
-    position: relative;
-}
-
-.notif-bell {
-    position: relative;
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
-    border: 1.5px solid #e2e2e2;
-    background: #fff;
-    color: var(--dash-green);
-    cursor: pointer;
-    display: flex;
+.nav-badge {
+    display: inline-flex;
     align-items: center;
     justify-content: center;
-    font-size: 15px;
-    transition: background 0.2s ease, transform 0.2s ease;
-}
-
-.notif-bell:hover {
-    background: var(--dash-cream);
-    transform: scale(1.05);
-}
-
-.notif-dropdown {
-    position: absolute;
-    top: calc(100% + 10px);
-    right: 0;
-    width: 280px;
-    max-width: 88vw;
-    background: #fff;
-    border-radius: 14px;
-    box-shadow: 0 16px 36px rgba(0, 0, 0, 0.15);
-    overflow: hidden;
-    animation: dash-pop-in 0.18s ease both;
-    z-index: 260;
-}
-
-.notif-dropdown-header {
-    padding: 14px 16px;
+    min-width: 17px;
+    height: 17px;
+    padding: 0 4px;
+    border-radius: 999px;
+    background: var(--dash-red);
+    color: #fff;
+    font-size: 10px;
     font-weight: 700;
-    font-size: 14px;
+    margin-left: 2px;
+}
+
+.dash-nav-links button.active .nav-badge {
+    background: #fff;
     color: var(--dash-green);
-    border-bottom: 1px solid #f2f2ec;
-}
-
-.notif-empty {
-    padding: 26px 16px;
-    text-align: center;
-    color: #999;
-}
-
-.notif-empty svg {
-    font-size: 20px;
-    color: var(--dash-green);
-    margin-bottom: 8px;
-}
-
-.notif-empty p {
-    font-size: 13.5px;
-}
-
-@keyframes dash-pop-in {
-    from { opacity: 0; transform: translateY(-6px); }
-    to { opacity: 1; transform: translateY(0); }
 }
 
 /* ================================================
    Body layout (sidebar + content)
 ================================================ */
+/* The navbar is now position:fixed (out of normal flow), so this needs
+   its own top offset to sit below it instead of underneath it. */
 .dash-body {
     display: flex;
     flex: 1;
+    width: 100%;
+    margin-top: var(--dash-navbar-h);
     min-height: calc(100vh - var(--dash-navbar-h));
     min-height: calc(100dvh - var(--dash-navbar-h));
-    width: 100%;
 }
 
-/* ---------- Sidebar ---------- */
+/* ---------- Sidebar ----------
+   position: fixed (not sticky) so it is pinned to the viewport and
+   genuinely never scrolls or shifts as the page scrolls — it also
+   never resizes/collapses on desktop, it's just always there. */
 .dash-sidebar {
     background: #fff;
     border-right: 1px solid #eee;
@@ -252,65 +211,81 @@ html, body {
     display: flex;
     flex-direction: column;
     gap: 8px;
-    flex-shrink: 0;
-    transition: width 0.25s ease, padding 0.25s ease, transform 0.28s ease;
-    position: sticky;
+
+    position: fixed;
     top: var(--dash-navbar-h);
+    left: 0;
+    width: var(--dash-sidebar-w);
     height: calc(100vh - var(--dash-navbar-h));
     height: calc(100dvh - var(--dash-navbar-h));
-    overflow-y: auto;
+
+    transform: translateX(0);
+    transition: transform 0.28s ease;
     z-index: 150;
-}
-
-.dash-sidebar-open {
-    width: var(--dash-sidebar-w);
-}
-
-.dash-sidebar-closed {
-    width: var(--dash-sidebar-w-collapsed);
-    padding: 20px 8px;
 }
 
 .dash-sidebar-backdrop {
     display: none;
 }
 
+/* Reserve space for the fixed sidebar so content doesn't render under it */
+.dash-content {
+    margin-left: var(--dash-sidebar-w);
+}
+
+/* Used on the Landing page when StudentNavbar is shown there (logged-in
+   student) — the navbar is fixed/out-of-flow, so whatever comes after it
+   needs this top offset or it renders underneath the navbar. */
+.student-navbar-offset {
+    padding-top: var(--dash-navbar-h);
+}
+
+/* Clickable avatar + name — replaces the old dropdown menu.
+   "View Profile" and "Logout" now live on the actual Profile page
+   (reachable via the top nav's Profile tab, or by tapping here). */
 .dash-sidebar-profile {
-    position: relative;
     display: flex;
     align-items: center;
     gap: 10px;
-    padding: 4px 4px 14px;
+    width: 100%;
+    padding: 8px;
+    border: none;
+    background: transparent;
+    border-radius: 10px;
+    cursor: pointer;
+    text-align: left;
+    font-family: inherit;
+    transition: background 0.2s ease;
 }
 
-.dash-avatar-btn {
+.dash-sidebar-profile:hover {
+    background: #f2f2ec;
+}
+
+.dash-sidebar-avatar {
     width: 44px;
     height: 44px;
     min-width: 44px;
     border-radius: 50%;
     border: 2px solid var(--dash-green);
     background: var(--dash-green);
-    cursor: pointer;
+    color: var(--dash-gold);
     display: flex;
     align-items: center;
     justify-content: center;
     overflow: hidden;
-    padding: 0;
     flex-shrink: 0;
-    transition: transform 0.2s ease;
-}
-
-.dash-avatar-btn:hover {
-    transform: scale(1.06);
-}
-
-.dash-avatar-fallback {
-    color: var(--dash-gold);
     font-size: 16px;
 }
 
+.dash-sidebar-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
 .dash-sidebar-username {
-    font-size: 13.5px;
+    font-size: 14px;
     font-weight: 600;
     color: #333;
     white-space: nowrap;
@@ -318,60 +293,21 @@ html, body {
     text-overflow: ellipsis;
 }
 
-.dash-profile-menu {
-    position: absolute;
-    top: calc(100% + 4px);
-    left: 0;
-    background: #fff;
-    border-radius: 12px;
-    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.15);
-    padding: 8px;
-    min-width: 190px;
-    animation: dash-pop-in 0.18s ease both;
-    z-index: 260;
-}
-
-.dash-profile-item {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    width: 100%;
-    padding: 10px 12px;
-    border: none;
-    background: none;
-    border-radius: 8px;
-    font-family: inherit;
-    font-size: 14px;
-    font-weight: 500;
-    color: #333;
-    text-decoration: none;
-    cursor: pointer;
-    transition: background 0.2s ease;
-    white-space: nowrap;
-}
-
-.dash-profile-item:hover {
-    background: #f2f2ec;
-}
-
-.dash-profile-item.dash-logout {
-    color: var(--dash-red);
-}
-
-.dash-profile-item.dash-logout:hover {
-    background: rgba(192, 72, 61, 0.08);
-}
-
 .dash-sidebar-divider {
     height: 1px;
     background: #f0f0e8;
-    margin: 2px 0 8px;
+    margin: 10px 0 8px;
 }
 
+/* Only the nav list scrolls internally if it ever grows long — the
+   sidebar box itself (and the profile block above) never scrolls. */
 .dash-sidebar-nav {
     display: flex;
     flex-direction: column;
     gap: 4px;
+    overflow-y: auto;
+    flex: 1;
+    min-height: 0;
 }
 
 .dash-sidebar-link {
@@ -390,10 +326,6 @@ html, body {
     color: #444;
     transition: background 0.2s ease, color 0.2s ease;
     white-space: nowrap;
-}
-
-.dash-sidebar-link svg {
-    font-size: 15px;
     flex-shrink: 0;
 }
 
@@ -404,15 +336,6 @@ html, body {
 .dash-sidebar-link.active {
     background: var(--dash-green);
     color: #fff;
-}
-
-.dash-sidebar-closed .dash-sidebar-link {
-    justify-content: center;
-    padding: 11px 0;
-}
-
-.dash-sidebar-closed .dash-sidebar-profile {
-    justify-content: center;
 }
 
 /* ================================================
@@ -853,9 +776,14 @@ html, body {
     top: calc(var(--dash-navbar-h) + 20px);
 }
 
+/* Capped so a single large photo doesn't dominate the page —
+   centered within its column instead of stretching to fill it. */
 .pdetail-main-image {
+    position: relative;
     width: 100%;
-    aspect-ratio: 1 / 1;
+    max-width: 420px;
+    margin: 0 auto;
+    aspect-ratio: 4 / 3;
     border-radius: 18px;
     overflow: hidden;
     background: var(--dash-cream);
@@ -876,16 +804,82 @@ html, body {
     border-radius: 0;
 }
 
+/* ---------- Carousel controls (shown when a listing has >1 photo) ---------- */
+.carousel-arrow {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    border: none;
+    background: rgba(255, 255, 255, 0.9);
+    color: var(--dash-green);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 13px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.18);
+    transition: background 0.2s ease, transform 0.2s ease;
+    z-index: 5;
+}
+
+.carousel-arrow:hover {
+    background: #fff;
+    transform: translateY(-50%) scale(1.06);
+}
+
+.carousel-arrow-left {
+    left: 10px;
+}
+
+.carousel-arrow-right {
+    right: 10px;
+}
+
+.carousel-dots {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 6px;
+    margin-top: 12px;
+}
+
+.carousel-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 999px;
+    border: none;
+    background: #ddd;
+    padding: 0;
+    cursor: pointer;
+    transition: width 0.2s ease, background 0.2s ease;
+}
+
+.carousel-dot:hover {
+    background: #bbb;
+}
+
+.carousel-dot-active {
+    width: 20px;
+    background: var(--dash-green);
+}
+
 .pdetail-thumbs {
     display: flex;
     gap: 10px;
     margin-top: 12px;
+    max-width: 420px;
+    margin-left: auto;
+    margin-right: auto;
     flex-wrap: wrap;
+    justify-content: center;
 }
 
 .pdetail-thumb {
-    width: 64px;
-    height: 64px;
+    width: 56px;
+    height: 56px;
     border-radius: 10px;
     overflow: hidden;
     border: 2px solid transparent;
@@ -1394,6 +1388,320 @@ html, body {
     to { opacity: 1; transform: translate(-50%, 0); }
 }
 
+/* =========================================================
+   Search suggestions dropdown + "Recommended for You" strip
+   ========================================================= */
+.dash-search-box-wrap {
+  position: relative;
+}
+
+.search-suggest-dropdown {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  right: 0;
+  background: #fff;
+  border: 1px solid #eee;
+  border-radius: 12px;
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.14);
+  overflow: hidden;
+  z-index: 60;
+  max-height: 360px;
+  overflow-y: auto;
+  animation: dash-pop-in 0.16s ease both;
+}
+
+@keyframes dash-pop-in {
+    from { opacity: 0; transform: translateY(-6px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.search-suggest-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--dash-green);
+  background: var(--dash-cream);
+  border-bottom: 1px solid #f0efe8;
+}
+
+.search-suggest-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 10px 14px;
+  border: none;
+  background: none;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.search-suggest-item:hover {
+  background: var(--dash-cream);
+}
+
+.search-suggest-item + .search-suggest-item {
+  border-top: 1px solid #f5f4ee;
+}
+
+.search-suggest-thumb {
+  width: 42px;
+  height: 42px;
+  border-radius: 8px;
+  overflow: hidden;
+  flex-shrink: 0;
+  background: var(--dash-cream);
+}
+
+.search-suggest-thumb img,
+.search-suggest-thumb .pcard-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.search-suggest-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.search-suggest-name {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: #222;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.search-suggest-meta {
+  font-size: 11.5px;
+  color: #999;
+  margin-top: 2px;
+}
+
+.sugg-strip {
+  margin-bottom: 26px;
+}
+
+.sugg-strip-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+  color: var(--dash-green);
+}
+
+.sugg-strip-header h3 {
+  font-size: 15px;
+  font-weight: 700;
+  color: #1a1a1a;
+}
+
+.sugg-strip-row {
+  display: flex;
+  gap: 12px;
+  overflow-x: auto;
+  padding-bottom: 6px;
+  scroll-snap-type: x proximity;
+}
+
+.sugg-strip-row::-webkit-scrollbar {
+  height: 6px;
+}
+
+.sugg-strip-row::-webkit-scrollbar-thumb {
+  background: #e2e2e2;
+  border-radius: 999px;
+}
+
+.sugg-card {
+  flex: 0 0 auto;
+  width: 140px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px;
+  border: 1px solid #eee;
+  border-radius: 12px;
+  background: #fff;
+  cursor: pointer;
+  scroll-snap-align: start;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+  text-align: left;
+  font-family: inherit;
+}
+
+.sugg-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 10px 22px rgba(31, 77, 58, 0.12);
+  border-color: rgba(31, 77, 58, 0.15);
+}
+
+.sugg-card-image {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--dash-cream);
+}
+
+.sugg-card-image img,
+.sugg-card-image .pcard-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.sugg-card-name {
+  font-size: 12px;
+  font-weight: 600;
+  color: #222;
+  line-height: 1.3;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.sugg-card-price {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--dash-green);
+}
+
+/* =========================================================
+   Request list (My Requests / Incoming Requests)
+   ========================================================= */
+.request-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.request-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  background: #fff;
+  border: 1px solid #eee;
+  border-radius: 14px;
+  padding: 16px 18px;
+}
+
+.request-card-main h4 {
+  font-size: 14.5px;
+  color: #1a1a1a;
+  margin: 4px 0 2px;
+}
+
+.request-card-main p {
+  font-size: 12.5px;
+  color: #888;
+}
+
+.request-card-side {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+.request-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.request-status {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  padding: 4px 10px;
+  border-radius: 999px;
+}
+
+.request-status-pending {
+  background: rgba(227, 167, 43, 0.16);
+  color: #a4750f;
+}
+
+.request-status-accepted {
+  background: rgba(31, 77, 58, 0.1);
+  color: var(--dash-green);
+}
+
+.request-status-declined {
+  background: rgba(192, 72, 61, 0.1);
+  color: var(--dash-red);
+}
+
+.request-time {
+  font-size: 11.5px;
+  color: #aaa;
+}
+
+/* =========================================================
+   Notification list (Notifications page)
+   ========================================================= */
+.notif-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.notif-list-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 6px;
+  border-bottom: 1px solid #f2f2ec;
+}
+
+.notif-list-item:last-child {
+  border-bottom: none;
+}
+
+.notif-list-item-unread {
+  background: rgba(227, 167, 43, 0.06);
+  border-radius: 10px;
+}
+
+.notif-list-icon {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: var(--dash-cream);
+  color: var(--dash-green);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
+.notif-list-text p {
+  font-size: 13.5px;
+  color: #333;
+  line-height: 1.4;
+  margin-bottom: 2px;
+}
+
+.notif-list-text span {
+  font-size: 11.5px;
+  color: #999;
+}
+
 /* ==================================================================
    RESPONSIVE — large desktop down to the smallest phones
 ================================================================== */
@@ -1432,8 +1740,7 @@ html, body {
     }
 
     .pdetail-main-image {
-        max-width: 480px;
-        margin: 0 auto;
+        max-width: 380px;
     }
 
     .addp-layout {
@@ -1443,7 +1750,8 @@ html, body {
 
 /* ---------- Tablet: sidebar becomes an overlay drawer, nav collapses ---------- */
 @media (max-width: 900px) {
-    .dash-nav-toggle {
+    .dash-nav-toggle,
+    .dash-sidebar-toggle {
         display: flex;
     }
 
@@ -1469,7 +1777,7 @@ html, body {
     }
 
     .dash-nav-links.dash-nav-open {
-        max-height: 260px;
+        max-height: 340px;
         padding: 10px 5% 18px;
         overflow-y: auto;
     }
@@ -1477,36 +1785,26 @@ html, body {
     .dash-nav-links button {
         text-align: left;
         width: 100%;
+        justify-content: flex-start;
     }
 
-    /* Sidebar becomes an overlay drawer */
+    /* Sidebar becomes an off-canvas drawer that slides over the
+       content (content no longer needs to reserve space for it) */
+    .dash-content {
+        margin-left: 0;
+    }
+
     .dash-sidebar {
-        position: fixed;
-        top: var(--dash-navbar-h);
-        left: 0;
-        height: calc(100vh - var(--dash-navbar-h));
-        height: calc(100dvh - var(--dash-navbar-h));
+        width: min(78vw, 270px);
         box-shadow: 8px 0 24px rgba(0, 0, 0, 0.12);
     }
 
-    .dash-sidebar-open {
-        width: min(78vw, 270px);
-        transform: translateX(0);
-    }
-
     .dash-sidebar-closed {
-        width: min(78vw, 270px);
         transform: translateX(-100%);
-        padding: 20px 12px;
     }
 
-    .dash-sidebar-closed .dash-sidebar-link {
-        justify-content: flex-start;
-        padding: 11px 12px;
-    }
-
-    .dash-sidebar-closed .dash-sidebar-profile {
-        justify-content: flex-start;
+    .dash-sidebar-open {
+        transform: translateX(0);
     }
 
     .dash-sidebar-backdrop {
@@ -1535,6 +1833,14 @@ html, body {
 
     .pdetail-price {
         font-size: 1.55rem;
+    }
+
+    .pdetail-main-image {
+        max-width: 340px;
+    }
+
+    .pdetail-thumbs {
+        max-width: 340px;
     }
 
     .addp-card {
@@ -1568,11 +1874,6 @@ html, body {
         width: 34px;
         height: 34px;
         font-size: 13px;
-    }
-
-    .notif-bell {
-        width: 36px;
-        height: 36px;
     }
 
     .section-header {
@@ -1647,6 +1948,16 @@ html, body {
         border-radius: 14px;
     }
 
+    .pdetail-thumbs {
+        max-width: 100%;
+    }
+
+    .carousel-arrow {
+        width: 30px;
+        height: 30px;
+        font-size: 11px;
+    }
+
     .pdetail-name {
         font-size: 1.25rem;
     }
@@ -1710,6 +2021,26 @@ html, body {
         max-width: none;
     }
 
+    .request-card {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .request-card-side {
+        align-items: flex-start;
+        flex-direction: row;
+        justify-content: space-between;
+        width: 100%;
+    }
+
+    .request-actions {
+        width: 100%;
+    }
+
+    .request-actions .dash-btn {
+        flex: 1;
+    }
+
     @keyframes dash-toast-in {
         from { opacity: 0; transform: translateY(16px); }
         to { opacity: 1; transform: translateY(0); }
@@ -1718,8 +2049,7 @@ html, body {
 
 /* ---------- Small phones ---------- */
 @media (max-width: 420px) {
-    .dash-sidebar-open,
-    .dash-sidebar-closed {
+    .dash-sidebar {
         width: 86vw;
     }
 
@@ -1743,6 +2073,18 @@ html, body {
         height: 32px;
         font-size: 12.5px;
     }
+
+    .search-suggest-dropdown {
+        max-height: 300px;
+    }
+
+    .sugg-card {
+        width: 116px;
+    }
+
+    .sugg-strip-header h3 {
+        font-size: 14px;
+    }
 }
 
 /* ---------- Extra-small phones ---------- */
@@ -1764,225 +2106,18 @@ html, body {
 /* ---------- Respect reduced-motion preference ---------- */
 @media (prefers-reduced-motion: reduce) {
     .dash-section,
-    .dash-profile-menu,
-    .notif-dropdown,
     .dash-modal-overlay,
     .dash-modal,
     .dash-toast,
     .pcard,
     .dash-btn,
-    .dash-avatar-btn,
     .dash-sidebar,
-    .dash-nav-links {
+    .dash-sidebar-profile,
+    .dash-nav-links,
+    .sugg-card,
+    .carousel-arrow,
+    .carousel-dot {
         animation: none !important;
         transition: none !important;
     }
-}
-/* =========================================================
-   ADD-ON STYLES for StudentDashboard.css
-   Append these to your existing stylesheet. They only add
-   the personalized search-suggestions dropdown and the
-   "Recommended for You" strip — nothing here overrides your
-   existing tokens (--dash-green, --dash-gold, --dash-cream,
-   --dash-blue, --dash-red), it reuses them.
-   ========================================================= */
-
-/* ---------- Search box needs to anchor the dropdown ---------- */
-.dash-search-box-wrap {
-  position: relative;
-}
-
-/* ---------- Suggestions dropdown ---------- */
-.search-suggest-dropdown {
-  position: absolute;
-  top: calc(100% + 8px);
-  left: 0;
-  right: 0;
-  background: #fff;
-  border: 1px solid #eee;
-  border-radius: 12px;
-  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.14);
-  overflow: hidden;
-  z-index: 60;
-  max-height: 360px;
-  overflow-y: auto;
-  animation: dash-pop-in 0.16s ease both;
-}
-
-.search-suggest-header {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 14px;
-  font-size: 12px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
-  color: var(--dash-green, #1f4d3a);
-  background: var(--dash-cream, #f8f5ee);
-  border-bottom: 1px solid #f0efe8;
-}
-
-.search-suggest-item {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  width: 100%;
-  padding: 10px 14px;
-  border: none;
-  background: none;
-  text-align: left;
-  cursor: pointer;
-  transition: background 0.15s ease;
-}
-
-.search-suggest-item:hover {
-  background: var(--dash-cream, #f8f5ee);
-}
-
-.search-suggest-item + .search-suggest-item {
-  border-top: 1px solid #f5f4ee;
-}
-
-.search-suggest-thumb {
-  width: 42px;
-  height: 42px;
-  border-radius: 8px;
-  overflow: hidden;
-  flex-shrink: 0;
-  background: var(--dash-cream, #f8f5ee);
-}
-
-.search-suggest-thumb img,
-.search-suggest-thumb .pcard-image {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.search-suggest-text {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-}
-
-.search-suggest-name {
-  font-size: 13.5px;
-  font-weight: 600;
-  color: #222;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.search-suggest-meta {
-  font-size: 11.5px;
-  color: #999;
-  margin-top: 2px;
-}
-
-/* ---------- "Recommended for You" strip ---------- */
-.sugg-strip {
-  margin-bottom: 26px;
-}
-
-.sugg-strip-header {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 12px;
-  color: var(--dash-green, #1f4d3a);
-}
-
-.sugg-strip-header h3 {
-  font-size: 15px;
-  font-weight: 700;
-  color: #1a1a1a;
-}
-
-.sugg-strip-row {
-  display: flex;
-  gap: 12px;
-  overflow-x: auto;
-  padding-bottom: 6px;
-  scroll-snap-type: x proximity;
-}
-
-.sugg-strip-row::-webkit-scrollbar {
-  height: 6px;
-}
-
-.sugg-strip-row::-webkit-scrollbar-thumb {
-  background: #e2e2e2;
-  border-radius: 999px;
-}
-
-.sugg-card {
-  flex: 0 0 auto;
-  width: 140px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  padding: 10px;
-  border: 1px solid #eee;
-  border-radius: 12px;
-  background: #fff;
-  cursor: pointer;
-  scroll-snap-align: start;
-  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
-  text-align: left;
-  font-family: inherit;
-}
-
-.sugg-card:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 10px 22px rgba(31, 77, 58, 0.12);
-  border-color: rgba(31, 77, 58, 0.15);
-}
-
-.sugg-card-image {
-  width: 100%;
-  aspect-ratio: 4 / 3;
-  border-radius: 8px;
-  overflow: hidden;
-  background: var(--dash-cream, #f8f5ee);
-}
-
-.sugg-card-image img,
-.sugg-card-image .pcard-image {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.sugg-card-name {
-  font-size: 12px;
-  font-weight: 600;
-  color: #222;
-  line-height: 1.3;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
-.sugg-card-price {
-  font-size: 12px;
-  font-weight: 700;
-  color: var(--dash-green, #1f4d3a);
-}
-
-/* ---------- Responsive ---------- */
-@media (max-width: 640px) {
-  .search-suggest-dropdown {
-    max-height: 300px;
-  }
-
-  .sugg-card {
-    width: 116px;
-  }
-
-  .sugg-strip-header h3 {
-    font-size: 14px;
-  }
 }

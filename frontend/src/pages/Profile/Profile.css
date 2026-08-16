@@ -9,21 +9,37 @@ html, body {
   height: 100%;
 }
 
+:root {
+  --profile-green: #1F4D3A;
+  --profile-green-light: #2F6B54;
+  --profile-gold: #D4A017;
+  --profile-red: #C0483D;
+}
+
 /* ---------- Page shell ----------
-   Desktop/tablet: the page is locked to the viewport and content is
-   sized to fit inside it — no page scrollbar. The layout is now
-   information-dense enough that this happens naturally, instead of
-   individual cards being stretched to fill unused height (that
-   stretching was the source of the original empty-space problem).
-   Below 768px the constraint is lifted and the page scrolls normally. */
+   Fixed: the page used to be locked to exactly 100vh with
+   overflow:hidden, which clipped the bottom of the page (the
+   account card / password modal) on shorter desktop/laptop
+   viewports. It now uses min-height instead, so the page grows
+   and scrolls naturally whenever the content is taller than the
+   viewport, on any screen size — nothing gets cut off. */
+.profile-bg {
+  min-height: 100vh;
+  min-height: 100dvh;
+  width: 100%;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  overflow-x: hidden;
+}
+
 .profile-page {
-  height: 100vh;
-  overflow: hidden;
-  /* background: #F8F5EE; */
+  min-height: 100vh;
+  min-height: 100dvh;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 20px 4%;
+  padding: 84px 4% 40px;
 }
 
 .profile-shell {
@@ -35,8 +51,107 @@ html, body {
   width: 100%;
   display: grid;
   grid-template-columns: 260px 1fr;
-  align-items: start; /* columns size to their own content, no forced stretch */
+  align-items: start;
   gap: 18px;
+}
+
+/* ---------- Back to Products ---------- */
+.profile-back-link {
+  position: fixed;
+  top: 20px;
+  left: 20px;
+  z-index: 300;
+
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+
+  background: var(--profile-green);
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+
+  padding: 10px 18px;
+  border-radius: 999px;
+  font-family: inherit;
+  font-weight: 500;
+  font-size: 14px;
+  cursor: pointer;
+
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.18);
+  transition: transform 0.2s ease, background 0.2s ease;
+}
+
+.profile-back-link:hover {
+  transform: translateY(-2px);
+  background: var(--profile-green-light);
+}
+
+/* ---------- Loading state ---------- */
+.profile-loading {
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  color: var(--profile-green);
+  font-weight: 500;
+}
+
+.profile-loading-spinner {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 3px solid #e2e2e2;
+  border-top-color: var(--profile-green);
+  animation: profile-spin 0.8s linear infinite;
+}
+
+@keyframes profile-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ---------- Toast ---------- */
+.profile-toast {
+  position: fixed;
+  bottom: 28px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 400;
+
+  background: #fff;
+  color: #222;
+  padding: 14px 22px;
+  border-radius: 999px;
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.2);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+  font-weight: 500;
+  max-width: calc(100vw - 32px);
+  animation: profile-toast-in 0.3s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+.profile-toast span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.profile-toast svg {
+  color: var(--profile-green);
+  flex-shrink: 0;
+}
+
+.profile-toast-error svg {
+  color: var(--profile-red);
+}
+
+@keyframes profile-toast-in {
+  from { opacity: 0; transform: translate(-50%, 16px); }
+  to { opacity: 1; transform: translate(-50%, 0); }
 }
 
 /* ================= Profile Card ================= */
@@ -70,7 +185,7 @@ html, body {
   height: 100%;
   object-fit: cover;
   border-radius: 50%;
-  border: 4px solid #1F4D3A;
+  border: 4px solid var(--profile-green);
 }
 
 .camera-btn {
@@ -84,7 +199,7 @@ html, body {
   border: none;
   border-radius: 50%;
 
-  background: #D4A017;
+  background: var(--profile-gold);
   color: #fff;
 
   display: flex;
@@ -104,9 +219,10 @@ html, body {
 
 .profile-card h3 {
   font-size: 20px;
-  color: #1F4D3A;
+  color: var(--profile-green);
   font-weight: 600;
   margin-bottom: 6px;
+  word-break: break-word;
 }
 
 .verified {
@@ -115,7 +231,7 @@ html, body {
   gap: 6px;
 
   background: #EAF7F0;
-  color: #1F4D3A;
+  color: var(--profile-green);
 
   padding: 6px 14px;
   border-radius: 30px;
@@ -126,7 +242,7 @@ html, body {
 }
 
 .verified svg {
-  color: #1F4D3A;
+  color: var(--profile-green);
   font-size: 12px;
 }
 
@@ -140,7 +256,7 @@ html, body {
 
 .trust-box h5 {
   margin-bottom: 8px;
-  font-size: 20px;
+  font-size: 18px;
   font-weight: 600;
   color: #333;
 }
@@ -156,10 +272,21 @@ html, body {
 
 .trust-bar-fill {
   height: 100%;
-  width: 22%;
   border-radius: 999px;
-  background: linear-gradient(90deg, #D4A017, #f0c464);
-  transition: width 0.4s ease;
+  transition: width 0.4s ease, background 0.4s ease;
+}
+
+/* Trust bar color reflects the current score — rises/falls with reviews */
+.trust-bar-fill.trust-high {
+  background: linear-gradient(90deg, var(--profile-green), var(--profile-green-light));
+}
+
+.trust-bar-fill.trust-mid {
+  background: linear-gradient(90deg, var(--profile-gold), #f0c464);
+}
+
+.trust-bar-fill.trust-low {
+  background: linear-gradient(90deg, var(--profile-red), #e0776c);
 }
 
 .trust-box span {
@@ -196,41 +323,11 @@ html, body {
 }
 
 .card-header-custom h3 {
-  color: #1F4D3A;
-  font-size: 24px;
+  color: var(--profile-green);
+  font-size: 22px;
   font-weight: 700;
 }
 
-.edit-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-
-  background: #1F4D3A;
-  color: #fff;
-
-  border: none;
-  padding: 8px 16px;
-  border-radius: 8px;
-  font-weight: 500;
-  font-size: 18px;
-  cursor: pointer;
-
-  transition: .25s;
-}
-
-.edit-btn:hover {
-  background: #2F6B54;
-  transform: translateY(-2px);
-}
-
-/* ---------- Grouped field list ----------
-   Instead of one bordered, icon-boxed card per field (the pattern
-   the faculty flagged), fields are grouped by meaning and rendered
-   as plain label/value pairs. Only a thin rule separates each group
-   from the next — no per-field borders, backgrounds, or padding-heavy
-   boxes — so 8 fields take roughly the vertical space 3 of the old
-   cards used to. */
 .info-groups {
   display: flex;
   flex-direction: column;
@@ -248,11 +345,11 @@ html, body {
 }
 
 .info-group-title {
-  font-size: 20px;
+  font-size: 13px;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: .07em;
-  color: #1F4D3A;
+  color: var(--profile-green);
   opacity: .75;
   margin-bottom: 10px;
 }
@@ -271,7 +368,7 @@ html, body {
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 15px;
+  font-size: 13px;
   color: #8a8a8a;
   margin-bottom: 3px;
   white-space: nowrap;
@@ -279,12 +376,12 @@ html, body {
 
 .field-label svg {
   font-size: 11px;
-  color: #D4A017;
+  color: var(--profile-gold);
   flex-shrink: 0;
 }
 
 .field-value {
-  font-size: 18px;
+  font-size: 16px;
   font-weight: 600;
   color: #222;
   white-space: nowrap;
@@ -295,7 +392,108 @@ html, body {
 .field-value--status {
   display: inline-flex;
   align-items: center;
-  color: #1F4D3A;
+  color: var(--profile-green);
+}
+
+/* ---------- Editable field (mobile number) ---------- */
+.field-value--editable {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  white-space: normal;
+}
+
+.field-inline-edit {
+  border: none;
+  background: none;
+  color: var(--profile-gold);
+  cursor: pointer;
+  font-size: 13px;
+  padding: 2px;
+  flex-shrink: 0;
+  transition: transform 0.2s ease;
+}
+
+.field-inline-edit:hover {
+  transform: scale(1.1);
+}
+
+.mobile-edit {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+}
+
+.mobile-edit-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.mobile-edit input {
+  flex: 1 1 140px;
+  min-width: 0;
+  padding: 9px 12px;
+  border: 1.5px solid #ddd;
+  border-radius: 8px;
+  font-family: inherit;
+  font-size: 14px;
+  outline: none;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.mobile-edit input:focus {
+  border-color: var(--profile-gold);
+  box-shadow: 0 0 0 3px rgba(212, 160, 23, 0.18);
+}
+
+.mobile-edit input.input-error {
+  border-color: var(--profile-red);
+  background-color: rgba(192, 72, 61, 0.05);
+}
+
+.mobile-save-btn,
+.mobile-cancel-btn {
+  padding: 9px 14px;
+  border-radius: 8px;
+  font-family: inherit;
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
+  border: none;
+  white-space: nowrap;
+  transition: background 0.2s ease, opacity 0.2s ease;
+}
+
+.mobile-save-btn {
+  background: var(--profile-green);
+  color: #fff;
+}
+
+.mobile-save-btn:hover {
+  background: var(--profile-green-light);
+}
+
+.mobile-save-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.mobile-cancel-btn {
+  background: #f2f2ec;
+  color: #555;
+}
+
+.mobile-cancel-btn:hover {
+  background: #e6e6de;
+}
+
+.field-error-msg {
+  display: block;
+  color: var(--profile-red);
+  font-size: 12px;
+  margin-top: 2px;
 }
 
 /* ================= Account ================= */
@@ -314,8 +512,8 @@ html, body {
 }
 
 .account-card h3 {
-  color: #1F4D3A;
-  font-size: 24px;
+  color: var(--profile-green);
+  font-size: 20px;
   font-weight: 600;
   flex-shrink: 0;
 }
@@ -325,6 +523,7 @@ html, body {
   gap: 10px;
   flex: 1;
   justify-content: flex-end;
+  flex-wrap: wrap;
 }
 
 .account-btn,
@@ -334,7 +533,7 @@ html, body {
   gap: 7px;
 
   padding: 9px 16px;
-  font-size: 18px;
+  font-size: 14px;
   border: none;
   border-radius: 8px;
   font-weight: 500;
@@ -344,12 +543,12 @@ html, body {
 }
 
 .account-btn {
-  background: #1F4D3A;
+  background: var(--profile-green);
   color: white;
 }
 
 .account-btn:hover {
-  background: #2F6B54;
+  background: var(--profile-green-light);
   transform: translateY(-2px);
 }
 
@@ -360,6 +559,194 @@ html, body {
 
 .logout-btn:hover {
   background: #bb2d3b;
+  transform: translateY(-2px);
+}
+
+/* ================= Change Password Modal ================= */
+
+.password-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 500;
+  padding: 20px;
+  animation: password-fade-in 0.25s ease;
+}
+
+@keyframes password-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.password-modal {
+  width: 420px;
+  max-width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+  background: #fff;
+  border-radius: 20px;
+  padding: 36px 32px;
+  position: relative;
+  text-align: center;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, .3);
+  animation: password-popup 0.3s ease;
+}
+
+@keyframes password-popup {
+  from { opacity: 0; transform: scale(.92) translateY(10px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+.password-close {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  width: 34px;
+  height: 34px;
+  border: none;
+  border-radius: 50%;
+  background: #f5f5f5;
+  color: #555;
+  cursor: pointer;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s ease, transform 0.2s ease;
+}
+
+.password-close:hover {
+  background: #eee;
+  transform: rotate(90deg);
+}
+
+.password-icon {
+  width: 54px;
+  height: 54px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--profile-green), var(--profile-green-light));
+  color: #fff;
+  font-size: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 14px;
+  box-shadow: 0 8px 20px rgba(31, 77, 58, 0.3);
+}
+
+.password-steps {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-bottom: 18px;
+}
+
+.password-step-dot {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: #eee;
+  color: #999;
+  font-size: 12px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.25s ease, color 0.25s ease;
+}
+
+.password-step-dot.active {
+  background: var(--profile-green);
+  color: #fff;
+}
+
+.password-step-line {
+  width: 30px;
+  height: 2px;
+  background: #eee;
+}
+
+.password-modal h2 {
+  color: #1a1a1a;
+  margin-bottom: 6px;
+  font-size: 1.3rem;
+}
+
+.password-modal p {
+  color: #777;
+  margin-bottom: 20px;
+  font-size: 14px;
+}
+
+.password-input-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border: 1.5px solid #e2e2e2;
+  border-radius: 10px;
+  padding: 12px 14px;
+  margin-bottom: 6px;
+  text-align: left;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.password-input-group:focus-within {
+  border-color: var(--profile-gold);
+  box-shadow: 0 0 0 4px rgba(212, 160, 23, 0.16);
+}
+
+.password-input-group svg {
+  color: #999;
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
+.password-input-group input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  outline: none;
+  font-family: inherit;
+  font-size: 14px;
+  color: #222;
+  background: transparent;
+}
+
+.password-input-group input[readOnly] {
+  color: #999;
+}
+
+.password-modal .field-error-msg {
+  text-align: left;
+  margin-bottom: 12px;
+}
+
+.password-form-error {
+  display: block;
+  margin: 4px 0 12px;
+}
+
+.change-password-btn {
+  width: 100%;
+  border: none;
+  background: var(--profile-green);
+  color: white;
+  padding: 14px;
+  border-radius: 12px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  margin-top: 6px;
+  transition: background 0.25s ease, transform 0.2s ease;
+}
+
+.change-password-btn:hover {
+  background: var(--profile-green-light);
   transform: translateY(-2px);
 }
 
@@ -376,16 +763,17 @@ html, body {
   }
 }
 
-/* Phone: the no-scroll constraint is dropped on purpose — layout
-   stacks vertically and the page scrolls normally, at comfortable,
-   legible sizes rather than compressing further. */
+@media (max-width: 900px) {
+  .profile-page {
+    padding-top: 76px;
+  }
+}
+
+/* Tablets and phones: stack the two columns, allow normal scroll */
 @media (max-width: 768px) {
   .profile-page {
-    height: auto;
-    min-height: 100vh;
-    overflow: visible;
     align-items: flex-start;
-    padding: 18px 5%;
+    padding: 76px 5% 30px;
   }
 
   .profile-grid {
@@ -406,16 +794,6 @@ html, body {
     white-space: normal;
   }
 
-  .card-header-custom {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-
-  .edit-btn {
-    width: 100%;
-    justify-content: center;
-  }
-
   .account-card {
     flex-direction: column;
     align-items: stretch;
@@ -430,11 +808,24 @@ html, body {
     flex: 1;
     justify-content: center;
   }
+
+  .profile-back-link {
+    top: 14px;
+    left: 14px;
+    padding: 8px 14px;
+    font-size: 13px;
+  }
+}
+
+@media (max-width: 640px) {
+  .password-modal {
+    padding: 28px 22px;
+  }
 }
 
 @media (max-width: 480px) {
   .profile-page {
-    padding: 14px 5%;
+    padding: 70px 5% 24px;
   }
 
   .profile-image {
@@ -454,15 +845,72 @@ html, body {
   .account-actions {
     flex-direction: column;
   }
+
+  /* Inputs at 16px prevent iOS Safari from auto-zooming on focus */
+  .mobile-edit input,
+  .password-input-group input {
+    font-size: 16px;
+  }
+
+  .mobile-edit-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .mobile-save-btn,
+  .mobile-cancel-btn {
+    width: 100%;
+  }
+
+  .password-modal {
+    padding: 24px 18px;
+    border-radius: 16px;
+  }
+
+  .profile-toast {
+    left: 12px;
+    right: 12px;
+    transform: none;
+    bottom: 14px;
+    max-width: none;
+  }
+
+  @keyframes profile-toast-in {
+    from { opacity: 0; transform: translateY(16px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+}
+
+@media (max-width: 360px) {
+  .profile-back-link span {
+    display: none;
+  }
+
+  .profile-card h3 {
+    font-size: 18px;
+  }
+
+  .card-header-custom h3 {
+    font-size: 19px;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .profile-card,
-  .edit-btn,
   .account-btn,
   .logout-btn,
   .camera-btn,
-  .trust-bar-fill {
+  .trust-bar-fill,
+  .profile-back-link,
+  .password-overlay,
+  .password-modal,
+  .password-close,
+  .profile-toast,
+  .mobile-save-btn,
+  .mobile-cancel-btn,
+  .field-inline-edit,
+  .profile-loading-spinner {
+    animation: none !important;
     transition: none !important;
   }
 }
