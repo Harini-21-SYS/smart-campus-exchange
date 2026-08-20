@@ -3,6 +3,7 @@ import "./StudentDashboard.css";
 import { useNavigate, useLocation } from "react-router-dom";
 import StudentNavbar, { STUDENT_NAV_TABS } from "./StudentNavbar";
 import { getProfile } from "../../services/profileService";
+import { getAllProducts } from "../../services/productService";
 import {
   FaTimes,
   FaSearch,
@@ -458,8 +459,12 @@ function ProductDetailSection({ product, isOwner, onBack, onRequest, onEdit, onD
    preview on the left, form on the right) so it fills the
    page instead of leaving a lot of empty space.
 --------------------------------------------------------- */
-function ProductFormPage({ initialData, onCancel, onSubmit }) {
-  const isEdit = Boolean(initialData);
+function ProductFormPage({
+  initialData,
+  studentId,
+  onCancel,
+  onSubmit,
+}) {  const isEdit = Boolean(initialData);
 
   const [form, setForm] = useState(
     initialData
@@ -538,19 +543,24 @@ function ProductFormPage({ initialData, onCancel, onSubmit }) {
   };
 
   const handleConfirm = () => {
-    onSubmit({
-      ...(initialData || {}),
-      ...form,
-      price: form.type === "Sell" ? Number(form.price) : 0,
-      images,
-      primaryIndex,
-      id: initialData?.id ?? Date.now(),
-      sellerName: "You",
-      department: initialData?.department || "Your Department",
-    });
-    setShowConfirm(false);
+  const productData = {
+    owner: {
+      studentId: studentId,
+    },
+
+    title: form.name,
+    description: form.description,
+    category: form.category,
+    type: form.type,
+    price: form.type === "Sell" ? Number(form.price) : 0,
+    condition: form.condition,
+    status: "PENDING",
   };
 
+  onSubmit(productData);
+
+  setShowConfirm(false);
+};
   const previewProduct = {
     name: form.name || "Your product name",
     category: form.category || "Category",
@@ -1136,6 +1146,34 @@ function ComplaintsSection() {
   );
 }
 
+function mapBackendProduct(product) {
+  return {
+    id: product.id,
+    name: product.title,
+    description: product.description,
+    category: product.category,
+    type: product.type,
+    price: product.price ? Number(product.price) : 0,
+    condition: product.condition,
+    status: product.status,
+
+    sellerName: product.owner?.fullName || "Unknown Student",
+    department: product.owner?.department || "",
+
+    studentId: product.owner?.studentId,
+
+    images: (product.images || []).map((img) => ({
+      id: img.id,
+      url: img.imageUrl,
+      isPrimary: img.primary,
+    })),
+
+    primaryIndex: Math.max(
+      0,
+      (product.images || []).findIndex((img) => img.primary)
+    ),
+  };
+}
 /* ---------------------------------------------------------
    Main dashboard page
 --------------------------------------------------------- */
@@ -1158,9 +1196,9 @@ function StudentDashboard() {
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [requestTarget, setRequestTarget] = useState(null);
 
-  const [products, setProducts] = useState(SAMPLE_PRODUCTS);
-  const [myRequests, setMyRequests] = useState([]);
-  const [incomingRequests, setIncomingRequests] = useState(SAMPLE_INCOMING_REQUESTS);
+  const [products, setProducts] = useState([]);
+const [myRequests, setMyRequests] = useState([]);
+const [incomingRequests, setIncomingRequests] = useState(SAMPLE_INCOMING_REQUESTS);
   const [notifications, setNotifications] = useState(() => [
     {
       id: "n-seed-1",
@@ -1192,6 +1230,39 @@ function StudentDashboard() {
     };
   }, []);
 
+  useEffect(() => {
+  let cancelled = false;
+
+  getAllProducts()
+    .then((data) => {
+      if (cancelled) return;
+
+      const mappedProducts = data.map((product) => ({
+        id: product.id,
+        name: product.title,
+        price: product.price ? Number(product.price) : 0,
+        category: product.category,
+        type: product.type,
+        condition: product.condition,
+        sellerName: product.owner?.fullName || "Student",
+        department: product.owner?.department || "Department",
+        description: product.description || "",
+        images: [],
+        primaryIndex: 0,
+        status: product.status,
+      }));
+
+      setProducts(mappedProducts);
+    })
+    .catch((error) => {
+      console.error("Failed to load products:", error);
+    });
+
+  return () => {
+    cancelled = true;
+  };
+}, []);
+
   // ---------- Personalization signals ----------
   const [browsingHistory, setBrowsingHistory] = useState(() => loadHistory(HISTORY_STORAGE_KEYS.browsing));
   const [purchaseHistory, setPurchaseHistory] = useState(() => loadHistory(HISTORY_STORAGE_KEYS.purchase));
@@ -1214,9 +1285,21 @@ function StudentDashboard() {
 
   const navigate = useNavigate();
 
-  const marketplaceProducts = useMemo(() => products.filter((p) => p.sellerName !== "You"), [products]);
-  const myProducts = useMemo(() => products.filter((p) => p.sellerName === "You"), [products]);
+  const marketplaceProducts = useMemo(
+  () =>
+    products.filter(
+      (p) => p.ownerId !== studentProfile?.studentId
+    ),
+  [products, studentProfile]
+);
 
+const myProducts = useMemo(
+  () =>
+    products.filter(
+      (p) => p.ownerId === studentProfile?.studentId
+    ),
+  [products, studentProfile]
+);
   const recommendations = useMemo(
     () => getRecommendations(marketplaceProducts, browsingHistory, purchaseHistory, 6),
     [marketplaceProducts, browsingHistory, purchaseHistory]
@@ -1349,18 +1432,51 @@ function StudentDashboard() {
     showToast(`Declined ${request.requesterName}'s request.`);
   };
 
-  const handleSaveProduct = (product) => {
-    setProducts((prev) => {
-      const exists = prev.some((p) => p.id === product.id);
-      return exists ? prev.map((p) => (p.id === product.id ? product : p)) : [product, ...prev];
-    });
-    const isEdit = subView === "edit";
-    showToast(isEdit ? "Product updated successfully." : "Product listed successfully.");
-    if (!isEdit) addNotification(`Your listing "${product.name}" is now live.`);
+ const handleSaveProduct = async (product) => {
+  try {
+    const savedProduct = await addProduct(product);
+
+    const mappedProduct = {
+      id: savedProduct.id,
+      ownerId: savedProduct.owner?.studentId,
+
+      name: savedProduct.title,
+      price: savedProduct.price ? Number(savedProduct.price) : 0,
+      category: savedProduct.category,
+      type: savedProduct.type,
+      condition: savedProduct.condition,
+
+      sellerName: savedProduct.owner?.fullName || studentProfile?.fullName || "Student",
+      department: savedProduct.owner?.department || "Department",
+
+      description: savedProduct.description || "",
+      status: savedProduct.status,
+
+      images: [],
+      primaryIndex: 0,
+    };
+
+    setProducts((prev) => [mappedProduct, ...prev]);
+
+    showToast("Product listed successfully.");
+
+    addNotification(
+      `Your listing "${mappedProduct.name}" has been submitted.`
+    );
+
     setSubView(null);
     setEditingProduct(null);
     setMainSection("myProducts");
-  };
+
+  } catch (error) {
+    console.error("Failed to add product:", error);
+
+    showToast(
+      error.response?.data?.message ||
+      "Failed to list product."
+    );
+  }
+};
 
   const handleConfirmDelete = () => {
     setProducts((prev) => prev.filter((p) => p.id !== deleteTarget.id));
@@ -1390,12 +1506,13 @@ function StudentDashboard() {
     if (subView === "add") {
       return (
         <ProductFormPage
-          onCancel={() => {
-            setSubView(null);
-            setMainSection("myProducts");
-          }}
-          onSubmit={handleSaveProduct}
-        />
+  studentId={studentProfile?.studentId}
+  onCancel={() => {
+    setSubView(null);
+    setMainSection("myProducts");
+  }}
+  onSubmit={handleSaveProduct}
+/>
       );
     }
 
