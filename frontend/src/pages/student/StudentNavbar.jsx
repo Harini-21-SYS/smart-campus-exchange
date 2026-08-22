@@ -9,11 +9,13 @@ import "./StudentDashboard.css";
 // "Back to Products" link). Update this in one place if that route changes.
 export const STUDENT_DASHBOARD_PATH = "/StudentDashboard";
 
+// "Raise Complaint" now lives in the sidebar's Complaints group only
+// (alongside My Complaints / Complaints Raised on Me), so it's been
+// removed from here.
 export const STUDENT_NAV_TABS = [
   { id: "home", label: "Home" },
   { id: "products", label: "Products" },
   { id: "incomingRequests", label: "Incoming Requests" },
-  { id: "complaints", label: "Raise Complaint" },
   { id: "notifications", label: "Notifications" },
   { id: "profile", label: "Profile" },
 ];
@@ -21,9 +23,9 @@ export const STUDENT_NAV_TABS = [
 /**
  * Shared top navbar for logged-in students.
  *
- * - Inside the dashboard: pass `onTabClick` (the dashboard's own handler)
+ * - Inside the dashboard: pass onTabClick (the dashboard's own handler)
  *   so tab clicks just switch the internal section, and pass
- *   `onSidebarToggle` / `sidebarOpen` to control the personal sidebar.
+ *   onSidebarToggle / sidebarOpen to control the personal sidebar.
  * - On the Landing page (student logged in, viewing "Home"): omit those
  *   props — tab clicks fall back to real navigation instead (Home/Profile
  *   go to their own routes, every other tab sends the student into the
@@ -82,6 +84,11 @@ function StudentNavbar({
         {navOpen ? <FaTimes /> : <FaBars />}
       </button>
 
+      {/* NOTE: this was previously missing its backticks
+          (`dash-nav-links ${...}` without the surrounding backtick
+          characters), which is invalid JS — `dash`, `nav`, `links`
+          would be parsed as bare identifiers and throw a
+          ReferenceError as soon as this rendered. Fixed below. */}
       <div className={`dash-nav-links ${navOpen ? "dash-nav-open" : ""}`}>
         {STUDENT_NAV_TABS.map((tab) => (
           <button

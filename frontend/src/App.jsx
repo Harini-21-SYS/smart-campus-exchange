@@ -4,7 +4,7 @@ import Landing from "./pages/Landing/Landing";
 import Auth from "./pages/Auth/Auth";
 import ProtectedRoute from "./components/ProtectedRoute/ProtectedRoute";
 import Profile from "./pages/Profile/Profile";
-import StudentDashboard from "./pages/StudentDashboard/StudentDashboard";
+import StudentDashboard from "./pages/student/StudentDashboard";
 
 function App() {
   return (

@@ -1,0 +1,135 @@
+/* =========================================================
+   Complaint list (My Complaints / Complaints Raised on Me)
+   ========================================================= */
+.complaint-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.complaint-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  background: #fff;
+  border: 1px solid #eee;
+  border-radius: 14px;
+  padding: 16px 18px;
+}
+
+.complaint-card-thumb {
+  width: 48px;
+  height: 48px;
+  border-radius: 10px;
+  overflow: hidden;
+  flex-shrink: 0;
+  background: var(--dash-cream);
+}
+
+.complaint-card-thumb img,
+.complaint-card-thumb .pcard-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.complaint-card-main {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 200px;
+}
+
+.complaint-card-main h4 {
+  font-size: 14.5px;
+  color: #1a1a1a;
+}
+
+.complaint-card-type {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--dash-blue);
+}
+
+.complaint-card-desc {
+  font-size: 12.5px;
+  color: #777;
+  line-height: 1.5;
+  margin-top: 2px;
+}
+
+.complaint-card-side {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+.complaint-status {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  padding: 4px 10px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.complaint-status-PENDING {
+  background: rgba(227, 167, 43, 0.16);
+  color: #a4750f;
+}
+
+.complaint-status-UNDER_REVIEW {
+  background: rgba(59, 110, 143, 0.12);
+  color: var(--dash-blue);
+}
+
+.complaint-status-RESOLVED {
+  background: rgba(31, 77, 58, 0.1);
+  color: var(--dash-green);
+}
+
+.complaint-status-REJECTED {
+  background: rgba(192, 72, 61, 0.1);
+  color: var(--dash-red);
+}
+
+.complaint-status-ESCALATED {
+  background: rgba(192, 72, 61, 0.16);
+  color: var(--dash-red);
+}
+
+.complaint-time {
+  font-size: 11.5px;
+  color: #aaa;
+}
+
+/* A quiet note used on "Complaints Raised on Me" to make the privacy
+   behavior visible rather than just silently omitting fields. */
+.complaint-privacy-note {
+  font-size: 12px;
+  color: #999;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* ---------- Responsive ---------- */
+@media (max-width: 640px) {
+  .complaint-card {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .complaint-card-side {
+    align-items: flex-start;
+    flex-direction: row;
+    justify-content: space-between;
+    width: 100%;
+  }
+}

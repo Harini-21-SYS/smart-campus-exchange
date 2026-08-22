@@ -1,0 +1,141 @@
+/* =========================================================
+   Request list (My Requests / Incoming Requests)
+   ========================================================= */
+.request-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.request-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  background: #fff;
+  border: 1px solid #eee;
+  border-radius: 14px;
+  padding: 16px 18px;
+}
+
+.request-card-main h4 {
+  font-size: 14.5px;
+  color: #1a1a1a;
+  margin: 4px 0 2px;
+}
+
+.request-card-main p {
+  font-size: 12.5px;
+  color: #888;
+}
+
+.request-card-side {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+.request-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.request-status {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  padding: 4px 10px;
+  border-radius: 999px;
+}
+
+.request-status-pending {
+  background: rgba(227, 167, 43, 0.16);
+  color: #a4750f;
+}
+
+.request-status-awaiting_confirmation {
+  background: rgba(59, 110, 143, 0.12);
+  color: var(--dash-blue);
+}
+
+.request-status-confirmed {
+  background: rgba(31, 77, 58, 0.1);
+  color: var(--dash-green);
+}
+
+.request-status-rejected {
+  background: rgba(192, 72, 61, 0.1);
+  color: var(--dash-red);
+}
+
+.request-time {
+  font-size: 11.5px;
+  color: #aaa;
+}
+
+.request-message {
+  font-size: 12.5px;
+  color: #666;
+  font-style: italic;
+  margin-top: 4px;
+}
+
+.request-pickup-info {
+  font-size: 12px;
+  color: #666;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: 6px;
+}
+
+.request-offered-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+  font-size: 12.5px;
+  color: #555;
+}
+
+.request-offered-item-thumb {
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  overflow: hidden;
+  flex-shrink: 0;
+  background: var(--dash-cream);
+}
+
+.request-offered-item-thumb img,
+.request-offered-item-thumb .pcard-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* ---------- Responsive ---------- */
+@media (max-width: 640px) {
+    .request-card {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .request-card-side {
+        align-items: flex-start;
+        flex-direction: row;
+        justify-content: space-between;
+        width: 100%;
+    }
+
+    .request-actions {
+        width: 100%;
+    }
+
+    .request-actions .dash-btn {
+        flex: 1;
+    }
+}

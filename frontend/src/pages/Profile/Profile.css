@@ -726,6 +726,14 @@ html, body {
   margin-bottom: 12px;
 }
 
+.field-hint {
+  display: block;
+  text-align: left;
+  color: #999;
+  font-size: 12px;
+  margin: -2px 0 10px 2px;
+}
+
 .password-form-error {
   display: block;
   margin: 4px 0 12px;
@@ -748,6 +756,12 @@ html, body {
 .change-password-btn:hover {
   background: var(--profile-green-light);
   transform: translateY(-2px);
+}
+
+.change-password-btn:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+  transform: none;
 }
 
 /* ================= Responsive ================= */

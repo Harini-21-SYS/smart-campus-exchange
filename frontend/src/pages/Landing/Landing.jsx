@@ -3,7 +3,7 @@ import Navbar from "../../components/NavBar/NavBar";
 // lives — this assumes it's colocated with StudentDashboard.jsx, e.g.
 // src/pages/StudentDashboard/StudentNavbar.jsx, with Landing.jsx as a
 // sibling under src/pages/Landing/Landing.jsx.
-import StudentNavbar from "../StudentDashboard/StudentNavbar";
+import StudentNavbar from "../student/StudentNavbar";
 import Home from "../../components/Home/Home"
 import About from "../../components/About/About"
 import Features from "../../components/Features/Features"

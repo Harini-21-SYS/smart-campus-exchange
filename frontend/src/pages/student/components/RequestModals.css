@@ -1,0 +1,188 @@
+.request-modal {
+  text-align: left;
+}
+
+.request-modal h2 {
+  text-align: center;
+}
+
+.request-modal-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin: 18px 0 22px;
+}
+
+.request-modal-fields .dash-field-group label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #444;
+}
+
+.request-modal-fields input {
+  width: 100%;
+  padding: 11px 13px;
+  border: 1.5px solid #ddd;
+  border-radius: 10px;
+  outline: none;
+  font-size: 14px;
+  font-family: inherit;
+  background: #fff;
+  color: #222;
+}
+
+.request-modal-fields input:focus {
+  border-color: var(--dash-gold);
+  box-shadow: 0 0 0 4px rgba(227, 167, 43, 0.18);
+}
+
+.request-modal-message {
+  background: var(--dash-cream);
+  border-radius: 10px;
+  padding: 10px 14px;
+  font-size: 13.5px;
+  color: #555;
+  font-style: italic;
+  margin-bottom: 14px;
+}
+
+.request-modal-cancel {
+  display: block;
+  margin: 14px auto 0;
+  background: none;
+  border: none;
+  color: #999;
+  font-family: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.request-modal-cancel:hover {
+  text-decoration: underline;
+}
+
+/* ---------- Offered item (Exchange) preview ---------- */
+.offered-item-card {
+  background: var(--dash-cream);
+  border-radius: 12px;
+  padding: 14px;
+  margin-bottom: 14px;
+}
+
+.offered-item-label {
+  font-size: 11.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--dash-green);
+}
+
+.offered-item-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.offered-item-thumb {
+  width: 48px;
+  height: 48px;
+  border-radius: 8px;
+  overflow: hidden;
+  flex-shrink: 0;
+  background: #fff;
+}
+
+.offered-item-thumb img,
+.offered-item-thumb .pcard-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.offered-item-row div {
+  display: flex;
+  flex-direction: column;
+  font-size: 13px;
+  color: #444;
+}
+
+/* ---------- Pickup details (buyer confirm view) ---------- */
+.pickup-details-card {
+  background: var(--dash-cream);
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.pickup-details-card p {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: #333;
+}
+
+/* ---------- Exchange item picker ---------- */
+.exchange-picker-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 280px;
+  overflow-y: auto;
+  margin-bottom: 18px;
+}
+
+.exchange-picker-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px;
+  border: 1.5px solid #eee;
+  border-radius: 10px;
+  background: #fff;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 13.5px;
+  color: #333;
+  text-align: left;
+  transition: border-color 0.2s ease, background 0.2s ease;
+}
+
+.exchange-picker-item:hover {
+  background: var(--dash-cream);
+}
+
+.exchange-picker-item.selected {
+  border-color: var(--dash-gold);
+  background: rgba(227, 167, 43, 0.08);
+}
+
+.exchange-picker-thumb {
+  width: 44px;
+  height: 44px;
+  border-radius: 8px;
+  overflow: hidden;
+  flex-shrink: 0;
+  background: var(--dash-cream);
+}
+
+.exchange-picker-thumb img,
+.exchange-picker-thumb .pcard-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+@media (max-width: 640px) {
+  .offered-item-row,
+  .exchange-picker-item {
+    flex-wrap: wrap;
+  }
+}

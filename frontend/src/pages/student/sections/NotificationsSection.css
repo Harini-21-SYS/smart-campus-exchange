@@ -1,0 +1,50 @@
+/* =========================================================
+   Notification list (Notifications page)
+   ========================================================= */
+.notif-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.notif-list-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 6px;
+  border-bottom: 1px solid #f2f2ec;
+}
+
+.notif-list-item:last-child {
+  border-bottom: none;
+}
+
+.notif-list-item-unread {
+  background: rgba(227, 167, 43, 0.06);
+  border-radius: 10px;
+}
+
+.notif-list-icon {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: var(--dash-cream);
+  color: var(--dash-green);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
+.notif-list-text p {
+  font-size: 13.5px;
+  color: #333;
+  line-height: 1.4;
+  margin-bottom: 2px;
+}
+
+.notif-list-text span {
+  font-size: 11.5px;
+  color: #999;
+}

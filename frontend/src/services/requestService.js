@@ -1,87 +1,42 @@
 import axios from "axios";
 
-const BASE_URL = "http://localhost:8081/api/requests";
+// Adjust this to wherever your backend actually mounts the requests
+// controller — this assumes the same host as the product/profile image
+// APIs (see PROFILE_IMAGE_BASE_URL in constants.js).
+const API_BASE_URL = "http://localhost:8081/api/requests";
 
-// ADD REQUEST
-export const addRequest = async (request) => {
+function authHeaders() {
   const token = localStorage.getItem("token");
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
 
-  const response = await axios.post(
-    BASE_URL,
-    request,
-    {
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
-      },
-    }
-  );
+/* ---------------------------------------------------------
+   Incoming — requests other students sent for MY listings
+--------------------------------------------------------- */
+export async function getIncomingRequests() {
+  const res = await axios.get(`${API_BASE_URL}/incoming`, { headers: authHeaders() });
+  return res.data;
+}
 
-  return response.data;
-};
+export async function acceptRequest(requestId) {
+  const res = await axios.put(`${API_BASE_URL}/${requestId}/accept`, {}, { headers: authHeaders() });
+  return res.data;
+}
 
-// GET ALL REQUESTS
-export const getAllRequests = async () => {
-  const token = localStorage.getItem("token");
+export async function rejectRequest(requestId) {
+  const res = await axios.put(`${API_BASE_URL}/${requestId}/reject`, {}, { headers: authHeaders() });
+  return res.data;
+}
 
-  const response = await axios.get(
-    BASE_URL,
-    {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    }
-  );
+/* ---------------------------------------------------------
+   Mine — requests I sent for OTHER students' listings
+--------------------------------------------------------- */
+export async function getMyRequests() {
+  const res = await axios.get(`${API_BASE_URL}/mine`, { headers: authHeaders() });
+  return res.data;
+}
 
-  return response.data;
-};
-
-// GET REQUEST BY ID
-export const getRequestById = async (id) => {
-  const token = localStorage.getItem("token");
-
-  const response = await axios.get(
-    `${BASE_URL}/${id}`,
-    {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    }
-  );
-
-  return response.data;
-};
-
-// UPDATE REQUEST
-export const updateRequest = async (id, request) => {
-  const token = localStorage.getItem("token");
-
-  const response = await axios.put(
-    `${BASE_URL}/${id}`,
-    request,
-    {
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
-      },
-    }
-  );
-
-  return response.data;
-};
-
-// DELETE REQUEST
-export const deleteRequest = async (id) => {
-  const token = localStorage.getItem("token");
-
-  const response = await axios.delete(
-    `${BASE_URL}/${id}`,
-    {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    }
-  );
-
-  return response.data;
-};
+export async function cancelRequest(requestId) {
+  const res = await axios.delete(`${API_BASE_URL}/${requestId}`, { headers: authHeaders() });
+  return res.data;
+}

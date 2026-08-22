@@ -1,0 +1,308 @@
+/* ================================================
+   Add / Edit Product — two-column, fills the page
+================================================ */
+.addp-title {
+    font-size: 1.5rem;
+    color: #1a1a1a;
+    margin-bottom: 20px;
+}
+
+.addp-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr);
+    gap: 24px;
+    align-items: start;
+}
+
+.addp-left {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    min-width: 0;
+}
+
+.addp-card {
+    background: #fff;
+    border-radius: 18px;
+    padding: 24px;
+    border: 1px solid #eee;
+    min-width: 0;
+}
+
+.addp-right {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    min-width: 0;
+}
+
+.addp-label {
+    display: block;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--dash-green);
+    margin-bottom: 12px;
+}
+
+.addp-hint {
+    color: #999;
+    font-weight: 400;
+    font-size: 12px;
+}
+
+.addp-dropzone {
+    width: 100%;
+    min-height: 260px;
+    border: 2px dashed #ddd;
+    border-radius: 14px;
+    background: var(--dash-cream);
+    color: var(--dash-green);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    font-family: inherit;
+    cursor: pointer;
+    transition: background 0.2s ease, border-color 0.2s ease;
+    text-align: center;
+    padding: 20px;
+}
+
+.addp-dropzone:hover {
+    background: #efe9d8;
+    border-color: var(--dash-gold);
+}
+
+.addp-dropzone svg {
+    font-size: 40px;
+}
+
+.addp-dropzone strong {
+    font-size: 15px;
+}
+
+.addp-dropzone span {
+    font-size: 12.5px;
+    color: #999;
+}
+
+.addp-image-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+}
+
+.addp-image-slot {
+    position: relative;
+    aspect-ratio: 1 / 1;
+    border-radius: 14px;
+    overflow: hidden;
+    border: 2px solid transparent;
+}
+
+.addp-image-slot.primary {
+    border-color: var(--dash-gold);
+}
+
+.addp-image-slot img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    cursor: pointer;
+    display: block;
+}
+
+.addp-image-star,
+.addp-image-remove {
+    position: absolute;
+    top: 8px;
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    border: none;
+    background: rgba(255, 255, 255, 0.92);
+    font-size: 12px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.addp-image-star {
+    left: 8px;
+    color: var(--dash-gold);
+}
+
+.addp-image-remove {
+    right: 8px;
+    color: var(--dash-red);
+}
+
+.addp-primary-tag {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: var(--dash-gold);
+    color: #1a1a1a;
+    font-size: 10px;
+    font-weight: 700;
+    text-align: center;
+    padding: 4px 0;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+
+.addp-image-add {
+    aspect-ratio: 1 / 1;
+    border: 2px dashed #ddd;
+    border-radius: 14px;
+    background: var(--dash-cream);
+    color: var(--dash-green);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    font-family: inherit;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.addp-image-add svg {
+    font-size: 22px;
+}
+
+.addp-image-add:hover {
+    background: #efe9d8;
+    border-color: var(--dash-gold);
+}
+
+/* ---------- Live preview card ---------- */
+.addp-preview-card {
+    padding-bottom: 20px;
+}
+
+.addp-preview {
+    display: flex;
+    flex-direction: column;
+}
+
+.addp-preview .pcard-image {
+    margin-bottom: 10px;
+}
+
+.addp-preview .pcard-footer {
+    padding-top: 8px;
+}
+
+/* ================================================
+   Form fields (used only within the form page)
+================================================ */
+.dash-field-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 0;
+}
+
+.dash-field-group label {
+    font-size: 13px;
+    font-weight: 600;
+    color: #444;
+}
+
+.dash-field-group input,
+.dash-field-group select,
+.dash-field-group textarea {
+    width: 100%;
+    padding: 11px 13px;
+    border: 1.5px solid #ddd;
+    border-radius: 10px;
+    outline: none;
+    font-size: 14px;
+    font-family: inherit;
+    background: #fff;
+    color: #222;
+    transition: border-color 0.25s ease, box-shadow 0.25s ease;
+    resize: vertical;
+}
+
+.dash-field-group input:focus,
+.dash-field-group select:focus,
+.dash-field-group textarea:focus {
+    border-color: var(--dash-gold);
+    box-shadow: 0 0 0 4px rgba(227, 167, 43, 0.18);
+}
+
+.dash-field-group input:disabled {
+    background: #f5f5f0;
+    color: #999;
+    cursor: not-allowed;
+}
+
+.dash-form-row {
+    display: flex;
+    gap: 14px;
+}
+
+.dash-form-row .dash-field-group {
+    flex: 1;
+    min-width: 0;
+}
+
+.input-error {
+    border-color: #e04343 !important;
+    background-color: rgba(224, 67, 67, 0.05);
+}
+
+.field-error-msg {
+    color: #e04343;
+    font-size: 12px;
+}
+
+/* ---------- Responsive ---------- */
+@media (max-width: 1100px) {
+    .addp-layout {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 768px) {
+    .addp-card {
+        padding: 20px;
+    }
+}
+
+@media (max-width: 640px) {
+    .addp-title {
+        font-size: 1.25rem;
+    }
+
+    .addp-card {
+        padding: 16px;
+        border-radius: 14px;
+    }
+
+    .addp-dropzone {
+        min-height: 170px;
+    }
+
+    .addp-image-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 8px;
+    }
+
+    .dash-form-row {
+        flex-direction: column;
+        gap: 16px;
+    }
+
+    .dash-field-group input,
+    .dash-field-group select,
+    .dash-field-group textarea {
+        font-size: 16px; /* prevents iOS auto-zoom on focus */
+    }
+}

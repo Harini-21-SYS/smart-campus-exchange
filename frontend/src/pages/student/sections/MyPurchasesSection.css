@@ -1,0 +1,80 @@
+/* =========================================================
+   Purchase list (My Purchases)
+   ========================================================= */
+.purchase-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.purchase-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  background: #fff;
+  border: 1px solid #eee;
+  border-radius: 14px;
+  padding: 16px 18px;
+}
+
+.purchase-card-thumb {
+  width: 52px;
+  height: 52px;
+  border-radius: 10px;
+  overflow: hidden;
+  flex-shrink: 0;
+  background: var(--dash-cream);
+}
+
+.purchase-card-thumb img,
+.purchase-card-thumb .pcard-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.purchase-card-main h4 {
+  font-size: 14.5px;
+  color: #1a1a1a;
+  margin: 4px 0 2px;
+}
+
+.purchase-card-main p {
+  font-size: 12.5px;
+  color: #888;
+}
+
+.purchase-card-side {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+}
+
+.purchase-price {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--dash-green);
+}
+
+.purchase-time {
+  font-size: 11.5px;
+  color: #aaa;
+}
+
+/* ---------- Responsive ---------- */
+@media (max-width: 640px) {
+    .purchase-card {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .purchase-card-side {
+        align-items: flex-start;
+        flex-direction: row;
+        justify-content: space-between;
+        width: 100%;
+    }
+}

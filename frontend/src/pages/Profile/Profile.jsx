@@ -93,13 +93,14 @@ function Profile() {
   // PASSWORD MODAL STATE
   // -----------------------------------------
   const [showPasswordModal, setShowPasswordModal] = useState(false);
-  const [passwordStep, setPasswordStep] = useState(1);
   const [passwordData, setPasswordData] = useState({
     currentPassword: "",
     newPassword: "",
     confirmPassword: "",
   });
   const [passwordErrors, setPasswordErrors] = useState({});
+  const [verifyingPassword, setVerifyingPassword] = useState(false);
+  const [changingPassword, setChangingPassword] = useState(false);
 
   // -----------------------------------------
   // FILE INPUT
@@ -200,71 +201,82 @@ function Profile() {
   // PASSWORD MODAL HELPERS
   // -----------------------------------------
   const openPasswordModal = () => {
-    setPasswordStep(1);
-    setPasswordData({ currentPassword: "", newPassword: "", confirmPassword: "" });
-    setPasswordErrors({});
-    setShowPasswordModal(true);
-  };
+  setPasswordData({
+    currentPassword: "",
+    newPassword: "",
+    confirmPassword: "",
+  });
 
-  const closePasswordModal = () => {
-    setShowPasswordModal(false);
-    setPasswordStep(1);
-    setPasswordData({ currentPassword: "", newPassword: "", confirmPassword: "" });
-    setPasswordErrors({});
-  };
+  setPasswordErrors({});
+  setShowPasswordModal(true);
+};
+const closePasswordModal = () => {
+  setShowPasswordModal(false);
+
+  setPasswordData({
+    currentPassword: "",
+    newPassword: "",
+    confirmPassword: "",
+  });
+
+  setPasswordErrors({});
+};
 
   const handlePasswordFieldChange = (field, value) => {
     setPasswordData((d) => ({ ...d, [field]: value }));
     setPasswordErrors((errs) => (errs[field] ? { ...errs, [field]: "" } : errs));
   };
 
-  // ---------- Step 1: verify current password ----------
-  const handleVerifyPassword = () => {
-    if (!passwordData.currentPassword) {
-      setPasswordErrors({ currentPassword: "Please enter your current password." });
-      return;
-    }
-    setPasswordErrors({});
-    setPasswordStep(2);
-  };
-
+ 
   // ---------- Step 2: set + confirm the new password ----------
   const handleChangePassword = async () => {
-    const errs = {};
+  const errors = {};
 
-    if (!passwordData.newPassword) {
-      errs.newPassword = "Please enter a new password.";
-    } else if (passwordData.newPassword.length < PASSWORD_MIN_LENGTH) {
-      errs.newPassword = `Password must be at least ${PASSWORD_MIN_LENGTH} characters.`;
-    }
+  if (!passwordData.currentPassword) {
+    errors.currentPassword = "Please enter your current password.";
+  }
 
-    if (!passwordData.confirmPassword) {
-      errs.confirmPassword = "Please confirm your new password.";
-    } else if (passwordData.confirmPassword !== passwordData.newPassword) {
-      errs.confirmPassword = "Passwords do not match.";
-    }
+  if (!passwordData.newPassword) {
+    errors.newPassword = "Please enter a new password.";
+  } else if (passwordData.newPassword.length < PASSWORD_MIN_LENGTH) {
+    errors.newPassword = `Password must be at least ${PASSWORD_MIN_LENGTH} characters.`;
+  }
 
-    setPasswordErrors(errs);
-    if (Object.keys(errs).length > 0) return;
+  if (!passwordData.confirmPassword) {
+    errors.confirmPassword = "Please confirm your new password.";
+  } else if (
+    passwordData.newPassword !== passwordData.confirmPassword
+  ) {
+    errors.confirmPassword = "Passwords do not match.";
+  }
 
-    try {
-      const response = await changePassword(
-        passwordData.currentPassword,
-        passwordData.newPassword,
-        passwordData.confirmPassword
-      );
-      console.log("CHANGE PASSWORD RESPONSE:", response);
+  setPasswordErrors(errors);
 
-      closePasswordModal();
-      showToast("Password changed successfully 🔒", "success");
-    } catch (error) {
-      console.error("CHANGE PASSWORD ERROR:", error);
-      const msg =
-        error.response?.data?.message || error.response?.data || "Failed to change password.";
-      setPasswordErrors({ form: msg });
-      showToast(msg, "error");
-    }
-  };
+  if (Object.keys(errors).length > 0) return;
+
+  try {
+    await changePassword(
+      passwordData.currentPassword,
+      passwordData.newPassword,
+      passwordData.confirmPassword
+    );
+
+    closePasswordModal();
+
+    showToast("Password changed successfully 🔒", "success");
+  } catch (error) {
+    const msg =
+      error.response?.data?.message ||
+      error.response?.data ||
+      "Current password is incorrect.";
+
+    setPasswordErrors({
+      form: msg,
+    });
+
+    showToast(msg, "error");
+  }
+};
 
   // -----------------------------------------
   // LOGOUT
@@ -515,111 +527,138 @@ function Profile() {
                 </div>
               </div>
 
-              {/* =========================================
-                  CHANGE PASSWORD MODAL (verify → change)
-              ========================================= */}
+              
+                  
               {showPasswordModal && (
-                <div className="password-overlay" onClick={closePasswordModal}>
-                  <div className="password-modal" onClick={(e) => e.stopPropagation()}>
-                    <button className="password-close" onClick={closePasswordModal} aria-label="Close">
-                      <FaTimes />
-                    </button>
+  <div
+    className="password-overlay"
+    onClick={closePasswordModal}
+  >
+    <div
+      className="password-modal"
+      onClick={(e) => e.stopPropagation()}
+    >
+      <button
+        className="password-close"
+        onClick={closePasswordModal}
+      >
+        <FaTimes />
+      </button>
 
-                    <div className="password-icon">
-                      <FaLock />
-                    </div>
+      <div className="password-icon">
+        <FaLock />
+      </div>
 
-                    {/* Step indicator */}
-                    <div className="password-steps">
-                      <span className={`password-step-dot ${passwordStep >= 1 ? "active" : ""}`}>1</span>
-                      <span className="password-step-line"></span>
-                      <span className={`password-step-dot ${passwordStep >= 2 ? "active" : ""}`}>2</span>
-                    </div>
+      <h2>Change Password</h2>
 
-                    {/* STEP 1 - VERIFY CURRENT PASSWORD */}
-                    {passwordStep === 1 && (
-                      <>
-                        <h2>Verify Your Password</h2>
-                        <p>Verify your identity before changing your password.</p>
+      <p>
+        Enter your current password and choose a new one.
+      </p>
 
-                        <div className="password-input-group">
-                          <FaEnvelope />
-                          <input type="email" value={profile.collegeEmail} readOnly />
-                        </div>
+      <div className="password-input-group">
+        <FaEnvelope />
+        <input
+          type="email"
+          value={profile.collegeEmail}
+          readOnly
+        />
+      </div>
 
-                        <div className="password-input-group">
-                          <FaLock />
-                          <input
-                            type="password"
-                            placeholder="Current Password"
-                            value={passwordData.currentPassword}
-                            onChange={(e) => handlePasswordFieldChange("currentPassword", e.target.value)}
-                            className={passwordErrors.currentPassword ? "input-error" : ""}
-                            autoFocus
-                          />
-                        </div>
-                        {passwordErrors.currentPassword && (
-                          <span className="field-error-msg">{passwordErrors.currentPassword}</span>
-                        )}
+      <div className="password-input-group">
+        <FaLock />
+        <input
+          type="password"
+          placeholder="Current Password"
+          value={passwordData.currentPassword}
+          onChange={(e) =>
+            handlePasswordFieldChange(
+              "currentPassword",
+              e.target.value
+            )
+          }
+          className={
+            passwordErrors.currentPassword
+              ? "input-error"
+              : ""
+          }
+        />
+      </div>
 
-                        <button className="change-password-btn" onClick={handleVerifyPassword}>
-                          Verify Password
-                        </button>
-                      </>
-                    )}
+      {passwordErrors.currentPassword && (
+        <span className="field-error-msg">
+          {passwordErrors.currentPassword}
+        </span>
+      )}
 
-                    {/* STEP 2 - NEW PASSWORD */}
-                    {passwordStep === 2 && (
-                      <>
-                        <h2>Set New Password</h2>
-                        <p>Your password has been verified. Enter your new password.</p>
+      <div className="password-input-group">
+        <FaLock />
+        <input
+          type="password"
+          placeholder="New Password"
+          value={passwordData.newPassword}
+          onChange={(e) =>
+            handlePasswordFieldChange(
+              "newPassword",
+              e.target.value
+            )
+          }
+          className={
+            passwordErrors.newPassword
+              ? "input-error"
+              : ""
+          }
+        />
+      </div>
 
-                        <div className="password-input-group">
-                          <FaEnvelope />
-                          <input type="email" value={profile.collegeEmail} readOnly />
-                        </div>
+      {passwordErrors.newPassword && (
+        <span className="field-error-msg">
+          {passwordErrors.newPassword}
+        </span>
+      )}
 
-                        <div className="password-input-group">
-                          <FaLock />
-                          <input
-                            type="password"
-                            placeholder="New Password"
-                            value={passwordData.newPassword}
-                            onChange={(e) => handlePasswordFieldChange("newPassword", e.target.value)}
-                            className={passwordErrors.newPassword ? "input-error" : ""}
-                            autoFocus
-                          />
-                        </div>
-                        {passwordErrors.newPassword && (
-                          <span className="field-error-msg">{passwordErrors.newPassword}</span>
-                        )}
+      <div className="password-input-group">
+        <FaLock />
+        <input
+          type="password"
+          placeholder="Confirm Password"
+          value={passwordData.confirmPassword}
+          onChange={(e) =>
+            handlePasswordFieldChange(
+              "confirmPassword",
+              e.target.value
+            )
+          }
+          className={
+            passwordErrors.confirmPassword
+              ? "input-error"
+              : ""
+          }
+        />
+      </div>
 
-                        <div className="password-input-group">
-                          <FaLock />
-                          <input
-                            type="password"
-                            placeholder="Confirm New Password"
-                            value={passwordData.confirmPassword}
-                            onChange={(e) => handlePasswordFieldChange("confirmPassword", e.target.value)}
-                            className={passwordErrors.confirmPassword ? "input-error" : ""}
-                          />
-                        </div>
-                        {passwordErrors.confirmPassword && (
-                          <span className="field-error-msg">{passwordErrors.confirmPassword}</span>
-                        )}
+      {passwordErrors.confirmPassword && (
+        <span className="field-error-msg">
+          {passwordErrors.confirmPassword}
+        </span>
+      )}
 
-                        {passwordErrors.form && (
-                          <span className="field-error-msg password-form-error">{passwordErrors.form}</span>
-                        )}
+      {passwordErrors.form && (
+        <span className="field-error-msg password-form-error">
+          {passwordErrors.form}
+        </span>
+      )}
 
-                        <button className="change-password-btn" onClick={handleChangePassword}>
-                          Change Password
-                        </button>
-                      </>
-                    )}
-                  </div>
-                </div>
-              )}
+      <button
+        className="change-password-btn"
+        onClick={handleChangePassword}
+      >
+        Change Password
+      </button>
+    </div>
+  </div>
+)}
+              
+                        
             </div>
           </div>
         </div>
