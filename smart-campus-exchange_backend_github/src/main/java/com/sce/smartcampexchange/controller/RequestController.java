@@ -1,5 +1,6 @@
 package com.sce.smartcampexchange.controller;
 
+import com.sce.smartcampexchange.dto.RequestResponse;
 import com.sce.smartcampexchange.entity.Request;
 import com.sce.smartcampexchange.service.RequestService;
 
@@ -21,10 +22,10 @@ public class RequestController {
 
     // Add Request
     @PostMapping
-    public ResponseEntity<Request> addRequest(
+    public ResponseEntity<RequestResponse> addRequest(
             @RequestBody Request request) {
 
-        Request savedRequest =
+        RequestResponse savedRequest =
                 requestService.addRequest(request);
 
         return new ResponseEntity<>(
@@ -34,7 +35,7 @@ public class RequestController {
 
     // Get All Requests
     @GetMapping
-    public ResponseEntity<List<Request>> getAllRequests() {
+    public ResponseEntity<List<RequestResponse>> getAllRequests() {
 
         return ResponseEntity.ok(
                 requestService.getAllRequests());
@@ -42,7 +43,7 @@ public class RequestController {
 
     // Get Request By ID
     @GetMapping("/{id}")
-    public ResponseEntity<Request> getRequestById(
+    public ResponseEntity<RequestResponse> getRequestById(
             @PathVariable Long id) {
 
         return ResponseEntity.ok(
@@ -51,7 +52,7 @@ public class RequestController {
 
     // Update Request
     @PutMapping("/{id}")
-    public ResponseEntity<Request> updateRequest(
+    public ResponseEntity<RequestResponse> updateRequest(
             @PathVariable Long id,
             @RequestBody Request request) {
 

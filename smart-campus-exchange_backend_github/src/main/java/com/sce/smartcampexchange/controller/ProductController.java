@@ -7,6 +7,7 @@ import com.sce.smartcampexchange.service.ProductService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -20,21 +21,36 @@ public class ProductController {
         this.productService = productService;
     }
 
+    // =========================
     // Add Product
-    @PostMapping
-    public ResponseEntity<ProductResponse> addProduct(
-            @RequestBody ProductRequest request) {
+    // =========================
+// =========================================================
+// Upload Product Images
+// =========================================================
 
-        ProductResponse response =
-                productService.addProduct(request);
+@PostMapping("/{id}/images")
+public ResponseEntity<ProductResponse> uploadProductImages(
 
-        return new ResponseEntity<>(
-                response,
-                HttpStatus.CREATED
-        );
-    }
+        @PathVariable Long id,
 
+        @RequestParam("images")
+        MultipartFile[] images,
+
+        @RequestParam("primaryImageIndex")
+        int primaryImageIndex) {
+
+    return ResponseEntity.ok(
+            productService.uploadProductImages(
+                    id,
+                    images,
+                    primaryImageIndex
+            )
+    );
+}
+
+    // =========================
     // Get All Products
+    // =========================
     @GetMapping
     public ResponseEntity<List<ProductResponse>> getAllProducts() {
 
@@ -43,7 +59,9 @@ public class ProductController {
         );
     }
 
+    // =========================
     // Get Product By ID
+    // =========================
     @GetMapping("/{id}")
     public ResponseEntity<ProductResponse> getProductById(
             @PathVariable Long id) {
@@ -53,18 +71,25 @@ public class ProductController {
         );
     }
 
+    // =========================
     // Update Product
-    @PutMapping("/{id}")
+    // =========================
+    @PutMapping(
+            value = "/{id}",
+            consumes = "application/json"
+    )
     public ResponseEntity<ProductResponse> updateProduct(
             @PathVariable Long id,
             @RequestBody ProductRequest request) {
 
         return ResponseEntity.ok(
-                productService.updateProduct(id, request)
+                productService.updateProduct(id, request, null)
         );
     }
 
+    // =========================
     // Delete Product
+    // =========================
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteProduct(
             @PathVariable Long id) {
@@ -73,4 +98,7 @@ public class ProductController {
 
         return ResponseEntity.noContent().build();
     }
+ 
+
+
 }

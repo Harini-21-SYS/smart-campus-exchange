@@ -3,16 +3,17 @@ package com.sce.smartcampexchange.service;
 import com.sce.smartcampexchange.entity.Request;
 
 import java.util.List;
+import com.sce.smartcampexchange.dto.RequestResponse;
 
 public interface RequestService {
 
-    Request addRequest(Request request);
+	RequestResponse addRequest(Request request);
 
-    List<Request> getAllRequests();
+	List<RequestResponse> getAllRequests();
 
-    Request getRequestById(Long id);
+	RequestResponse getRequestById(Long id);
 
-    Request updateRequest(Long id, Request request);
+	RequestResponse updateRequest(Long id, Request request);
 
     void deleteRequest(Long id);
 }

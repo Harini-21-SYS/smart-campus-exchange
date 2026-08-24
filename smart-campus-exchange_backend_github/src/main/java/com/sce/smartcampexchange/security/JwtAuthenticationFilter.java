@@ -36,46 +36,191 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             FilterChain filterChain)
             throws ServletException, IOException {
 
-        String authHeader = request.getHeader("Authorization");
+    	// =========================================
+    	// ALLOW CORS PREFLIGHT REQUEST
+    	// =========================================
+
+    	if ("OPTIONS".equalsIgnoreCase(request.getMethod())) {
+
+    	    System.out.println("CORS PREFLIGHT REQUEST - OPTIONS");
+
+    	    filterChain.doFilter(request, response);
+
+    	    return;
+    	}
+    	
+        // =========================================
+        // 1. GET AUTHORIZATION HEADER
+        // =========================================
+
+        String authHeader =
+                request.getHeader("Authorization");
+
+        System.out.println("=================================");
+        System.out.println("JWT FILTER");
+        System.out.println(
+                "Request URI: "
+                        + request.getRequestURI());
+
+        System.out.println(
+                "Authorization Header: "
+                        + authHeader);
+
 
         String token = null;
         String email = null;
 
-        if (authHeader != null && authHeader.startsWith("Bearer ")) {
+
+        // =========================================
+        // 2. CHECK BEARER TOKEN
+        // =========================================
+
+        if (authHeader != null
+                && authHeader.startsWith("Bearer ")) {
 
             token = authHeader.substring(7);
 
+            System.out.println(
+                    "Token received: YES");
+
+
+            // =========================================
+            // 3. EXTRACT EMAIL FROM JWT
+            // =========================================
+
             try {
-                email = jwtUtil.extractEmail(token);
+
+                email =
+                        jwtUtil.extractEmail(token);
+
+                System.out.println(
+                        "Extracted email: "
+                                + email);
+
             } catch (Exception e) {
-                filterChain.doFilter(request, response);
+
+                System.out.println(
+                        "JWT EXTRACT ERROR: "
+                                + e.getClass()
+                                        .getSimpleName());
+
+                System.out.println(
+                        "JWT EXTRACT MESSAGE: "
+                                + e.getMessage());
+
+                filterChain.doFilter(
+                        request,
+                        response);
+
                 return;
             }
+
+        } else {
+
+            System.out.println(
+                    "Authorization header missing or invalid");
         }
 
+
+        // =========================================
+        // 4. LOAD USER
+        // =========================================
+
         if (email != null
-                && SecurityContextHolder.getContext().getAuthentication() == null) {
+                && SecurityContextHolder
+                        .getContext()
+                        .getAuthentication() == null) {
 
-            UserDetails userDetails =
-                    userDetailsService.loadUserByUsername(email);
+            try {
 
-            if (jwtUtil.validateToken(token)) {
+                UserDetails userDetails =
+                        userDetailsService
+                                .loadUserByUsername(email);
 
-                UsernamePasswordAuthenticationToken authenticationToken =
-                        new UsernamePasswordAuthenticationToken(
-                                userDetails,
-                                null,
-                                userDetails.getAuthorities());
+                System.out.println(
+                        "User found: "
+                                + userDetails.getUsername());
 
-                authenticationToken.setDetails(
-                        new WebAuthenticationDetailsSource()
-                                .buildDetails(request));
+                System.out.println(
+                        "Authorities: "
+                                + userDetails
+                                        .getAuthorities());
 
-                SecurityContextHolder.getContext()
-                        .setAuthentication(authenticationToken);
+
+                // =========================================
+                // 5. VALIDATE JWT
+                // =========================================
+
+                boolean valid =
+                        jwtUtil.validateToken(token);
+
+                System.out.println(
+                        "JWT Valid: "
+                                + valid);
+
+
+                // =========================================
+                // 6. SET AUTHENTICATION
+                // =========================================
+
+                if (valid) {
+
+                    UsernamePasswordAuthenticationToken
+                            authenticationToken =
+                            new UsernamePasswordAuthenticationToken(
+                                    userDetails,
+                                    null,
+                                    userDetails
+                                            .getAuthorities());
+
+                    authenticationToken.setDetails(
+                            new WebAuthenticationDetailsSource()
+                                    .buildDetails(request));
+
+
+                    SecurityContextHolder
+                            .getContext()
+                            .setAuthentication(
+                                    authenticationToken);
+
+
+                    System.out.println(
+                            "AUTHENTICATION SUCCESS");
+                }
+
+            } catch (Exception e) {
+
+                System.out.println(
+                        "USER AUTHENTICATION ERROR: "
+                                + e.getClass()
+                                        .getSimpleName());
+
+                System.out.println(
+                        "USER AUTHENTICATION MESSAGE: "
+                                + e.getMessage());
             }
         }
 
-        filterChain.doFilter(request, response);
+
+        // =========================================
+        // 7. CHECK SECURITY CONTEXT
+        // =========================================
+
+        System.out.println(
+                "Authenticated user: "
+                        + SecurityContextHolder
+                                .getContext()
+                                .getAuthentication());
+
+        System.out.println("=================================");
+
+
+        // =========================================
+        // 8. CONTINUE REQUEST
+        // =========================================
+
+        filterChain.doFilter(
+                request,
+                response);
     }
 }
