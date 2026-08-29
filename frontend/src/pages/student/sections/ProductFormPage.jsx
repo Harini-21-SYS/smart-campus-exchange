@@ -25,6 +25,7 @@ function ProductFormPage({ initialData, studentId, onCancel, onSubmit }) {
   );
   const [images, setImages] = useState(initialData?.images || []);
   const [primaryIndex, setPrimaryIndex] = useState(initialData?.primaryIndex ?? 0);
+  const [deletedImageIds, setDeletedImageIds] = useState([]);
   const [errors, setErrors] = useState({});
   const [showConfirm, setShowConfirm] = useState(false);
   const fileInputRef = useRef(null);
@@ -57,15 +58,56 @@ function ProductFormPage({ initialData, studentId, onCancel, onSubmit }) {
     e.target.value = "";
   };
 
-  const removeImage = (id) => {
-    setImages((prev) => {
-      const idx = prev.findIndex((img) => img.id === id);
-      if (idx > -1) URL.revokeObjectURL(prev[idx].url);
-      const next = prev.filter((img) => img.id !== id);
-      return next;
+ const removeImage = (id) => {
+  const indexToRemove = images.findIndex(
+    (img) => img.id === id
+  );
+
+  if (indexToRemove === -1) {
+    return;
+  }
+
+  const image = images[indexToRemove];
+
+  // Existing database image
+  if (image.imageId) {
+    setDeletedImageIds((prev) => {
+      if (prev.includes(image.imageId)) {
+        return prev;
+      }
+
+      return [...prev, image.imageId];
     });
-    setPrimaryIndex((p) => (p >= images.length - 1 ? 0 : p));
-  };
+  }
+
+  // Newly selected local image
+  if (image.file && image.url) {
+    URL.revokeObjectURL(image.url);
+  }
+
+  setImages((prev) =>
+    prev.filter((img) => img.id !== id)
+  );
+
+  setPrimaryIndex((currentIndex) => {
+    if (images.length <= 1) {
+      return 0;
+    }
+
+    if (indexToRemove < currentIndex) {
+      return currentIndex - 1;
+    }
+
+    if (indexToRemove === currentIndex) {
+      return Math.min(
+        currentIndex,
+        images.length - 2
+      );
+    }
+
+    return currentIndex;
+  });
+};
 
   const validate = () => {
     const errs = {};
@@ -89,16 +131,14 @@ function ProductFormPage({ initialData, studentId, onCancel, onSubmit }) {
 
   const handleConfirm = () => {
     const productData = {
-      owner: {
-        studentId: studentId,
-      },
+      
       title: form.name,
       description: form.description,
       category: form.category,
       type: form.type,
       price: form.type === "Sell" ? Number(form.price) : 0,
       condition: form.condition,
-      status: "PENDING",
+    
     };
 
     // Only newly-added images carry a raw File object — images already
@@ -106,7 +146,23 @@ function ProductFormPage({ initialData, studentId, onCancel, onSubmit }) {
     // sends just the new ones.
     const imageFiles = images.map((img) => img.file).filter(Boolean);
 
-    onSubmit(productData, imageFiles);
+const primaryImage = images[primaryIndex];
+
+const primaryImageId =
+  primaryImage?.imageId || null;
+
+const newPrimaryIndex =
+  primaryImage?.file
+    ? imageFiles.indexOf(primaryImage.file)
+    : null;
+
+onSubmit(
+  productData,
+  imageFiles,
+  newPrimaryIndex,
+  deletedImageIds,
+  primaryImageId
+);
     setShowConfirm(false);
   };
 
@@ -119,6 +175,10 @@ function ProductFormPage({ initialData, studentId, onCancel, onSubmit }) {
     primaryIndex,
   };
   const previewInfo = TYPE_INFO[previewProduct.type] || TYPE_INFO.Sell;
+
+ 
+
+
 
   return (
     <div className="dash-section">

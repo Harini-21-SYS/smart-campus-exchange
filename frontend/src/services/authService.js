@@ -35,7 +35,7 @@ export const loginUser = async (loginData) => {
 export const resendOtp = async (email) => {
 
     const response = await axios.post(
-        `http://localhost:8081/api/auth/resend-otp?email=${email}`
+         `${BASE_URL}/resend-otp?email=${encodeURIComponent(email)}`
     );
 
     return response.data;

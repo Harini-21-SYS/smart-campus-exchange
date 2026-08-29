@@ -5,9 +5,13 @@
   font-family: "Poppins", sans-serif;
 }
 
-html, body {
-  height: 100%;
-}
+/* Deliberately NOT touching html/body here. This stylesheet is a
+   plain global import — it isn't unloaded when the user navigates to
+   a different route — so an `html, body { overflow: hidden }` rule
+   here would silently break scrolling on every other page (Home,
+   etc.) for the rest of the session, not just this one. Locking the
+   viewport is done entirely on .profile-bg below instead, which is
+   scoped to this page's own markup. */
 
 :root {
   --profile-green: #1F4D3A;
@@ -17,34 +21,40 @@ html, body {
 }
 
 /* ---------- Page shell ----------
-   Fixed: the page used to be locked to exactly 100vh with
-   overflow:hidden, which clipped the bottom of the page (the
-   account card / password modal) on shorter desktop/laptop
-   viewports. It now uses min-height instead, so the page grows
-   and scrolls naturally whenever the content is taller than the
-   viewport, on any screen size — nothing gets cut off. */
+   The whole page is locked to exactly one viewport (100dvh, which
+   correctly accounts for mobile browser chrome, with a 100vh
+   fallback for older browsers). Nothing here scrolls at this level
+   — .profile-page below is the one scrollable region, so on short
+   viewports (small laptops, landscape tablets/phones) the content
+   scrolls *inside* the frame instead of the whole page growing past
+   the screen. */
 .profile-bg {
-  min-height: 100vh;
-  min-height: 100dvh;
+  height: 100vh;
+  height: 100dvh;
   width: 100%;
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
-  overflow-x: hidden;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
 .profile-page {
-  min-height: 100vh;
-  min-height: 100dvh;
+  flex: 1;
+  min-height: 0; /* required so flex children can actually shrink & scroll */
+  width: 100%;
+  overflow-y: auto;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 84px 4% 40px;
+  padding: clamp(56px, 9vh, 84px) 4% clamp(16px, 4vh, 40px);
 }
 
 .profile-shell {
   width: 100%;
   max-width: 1140px;
+  margin: auto 0; /* keeps it centered when it fits, top-aligned when it scrolls */
 }
 
 .profile-grid {
@@ -52,7 +62,7 @@ html, body {
   display: grid;
   grid-template-columns: 260px 1fr;
   align-items: start;
-  gap: 18px;
+  gap: clamp(12px, 1.6vw, 18px);
 }
 
 /* ---------- Back to Products ---------- */
@@ -88,8 +98,8 @@ html, body {
 
 /* ---------- Loading state ---------- */
 .profile-loading {
-  min-height: 100vh;
-  min-height: 100dvh;
+  height: 100vh;
+  height: 100dvh;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -159,7 +169,7 @@ html, body {
 .profile-card {
   background: #fff;
   border-radius: 16px;
-  padding: 22px 18px;
+  padding: clamp(16px, 2.2vh, 22px) 18px;
   text-align: center;
   box-shadow: 0 6px 20px rgba(0, 0, 0, .07);
   display: flex;
@@ -175,8 +185,8 @@ html, body {
 
 .profile-image {
   position: relative;
-  width: 108px;
-  height: 108px;
+  width: clamp(80px, 9vw, 108px);
+  height: clamp(80px, 9vw, 108px);
   margin: 0 auto 12px;
 }
 
@@ -218,7 +228,7 @@ html, body {
 }
 
 .profile-card h3 {
-  font-size: 20px;
+  font-size: clamp(17px, 2vw, 20px);
   color: var(--profile-green);
   font-weight: 600;
   margin-bottom: 6px;
@@ -300,7 +310,7 @@ html, body {
 .profile-right {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: clamp(8px, 1.4vh, 12px);
   min-height: 0;
 }
 
@@ -309,7 +319,7 @@ html, body {
 .info-card {
   background: #fff;
   border-radius: 16px;
-  padding: 20px 24px;
+  padding: clamp(14px, 2vh, 20px) clamp(16px, 2vw, 24px);
   box-shadow: 0 6px 20px rgba(0, 0, 0, .07);
 }
 
@@ -331,11 +341,11 @@ html, body {
 .info-groups {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: clamp(10px, 1.6vh, 14px);
 }
 
 .info-group {
-  padding-bottom: 14px;
+  padding-bottom: clamp(10px, 1.6vh, 14px);
   border-bottom: 1px solid #eee;
 }
 
@@ -501,7 +511,7 @@ html, body {
 .account-card {
   background: #fff;
   border-radius: 16px;
-  padding: 14px 22px;
+  padding: clamp(10px, 1.8vh, 14px) 22px;
   box-shadow: 0 6px 20px rgba(0, 0, 0, .07);
 
   display: flex;
@@ -586,6 +596,7 @@ html, body {
   width: 420px;
   max-width: 100%;
   max-height: 90vh;
+  max-height: 90dvh;
   overflow-y: auto;
   background: #fff;
   border-radius: 20px;
@@ -766,6 +777,16 @@ html, body {
 
 /* ================= Responsive ================= */
 
+/* Small-laptop / short-viewport safety net: once real estate gets
+   tight, stop centering vertically (which can push the top of the
+   card above the visible frame) and instead align to the top of the
+   scroll container, like a normal page. */
+@media (max-height: 700px) {
+  .profile-page {
+    align-items: flex-start;
+  }
+}
+
 @media (max-width: 991px) {
   .profile-grid {
     grid-template-columns: 220px 1fr;
@@ -779,15 +800,15 @@ html, body {
 
 @media (max-width: 900px) {
   .profile-page {
-    padding-top: 76px;
+    padding-top: clamp(56px, 9vh, 76px);
   }
 }
 
-/* Tablets and phones: stack the two columns, allow normal scroll */
+/* Tablets and phones: stack the two columns */
 @media (max-width: 768px) {
   .profile-page {
     align-items: flex-start;
-    padding: 76px 5% 30px;
+    padding: clamp(56px, 9vh, 76px) 5% 24px;
   }
 
   .profile-grid {
@@ -796,7 +817,7 @@ html, body {
   }
 
   .profile-card {
-    padding: 20px 18px;
+    padding: 18px;
   }
 
   .info-group-grid {
@@ -839,12 +860,7 @@ html, body {
 
 @media (max-width: 480px) {
   .profile-page {
-    padding: 70px 5% 24px;
-  }
-
-  .profile-image {
-    width: 96px;
-    height: 96px;
+    padding: 66px 5% 20px;
   }
 
   .info-group-grid {

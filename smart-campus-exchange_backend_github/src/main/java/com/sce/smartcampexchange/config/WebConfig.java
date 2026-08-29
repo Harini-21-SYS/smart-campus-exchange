@@ -12,8 +12,10 @@ public class WebConfig implements WebMvcConfigurer {
             ResourceHandlerRegistry registry) {
 
         registry.addResourceHandler(
-                "/uploads/**")
-                .addResourceLocations(
-                        "file:uploads/");
+                "/uploads/**"
+        )
+        .addResourceLocations(
+                "file:uploads/"
+        );
     }
 }

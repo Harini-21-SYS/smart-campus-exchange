@@ -60,4 +60,5 @@ public class ProductImageController {
 
         return ResponseEntity.noContent().build();
     }
+    
 }

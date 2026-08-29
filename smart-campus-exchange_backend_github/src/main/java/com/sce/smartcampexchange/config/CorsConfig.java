@@ -20,10 +20,19 @@ public class CorsConfig {
                 new CorsConfiguration();
 
         configuration.setAllowedOrigins(
+<<<<<<< HEAD
                 List.of(
                     "http://localhost:5173",
                     "http://localhost:5174"
                 ));
+=======
+                List.of("http://localhost:5173",
+                		"http://localhost:5174",
+                        "http://localhost:5175",
+                        "http://localhost:5176",
+                        "http://localhost:5177"));
+        
+>>>>>>> f8b079a (Product backend)
 
         configuration.setAllowedMethods(
                 List.of(

@@ -20,6 +20,8 @@ import com.sce.smartcampexchange.security.JwtUtil;
 import com.sce.smartcampexchange.dto.ForgotPasswordRequest;
 import com.sce.smartcampexchange.dto.VerifyForgotOtpRequest;
 import com.sce.smartcampexchange.dto.ResetPasswordRequest;
+import com.sce.smartcampexchange.entity.TrustScore;
+import com.sce.smartcampexchange.repository.TrustScoreRepository;
 
 @Service
 public class AuthService {
@@ -37,13 +39,16 @@ private final BCryptPasswordEncoder
 
 private final JwtUtil jwtUtil;
 
+private final TrustScoreRepository trustScoreRepository;
 
 public AuthService(
         StudentRepository studentRepository,
         PendingRegistrationRepository pendingRegistrationRepository,
         OtpService otpService,
         BCryptPasswordEncoder passwordEncoder,
-        JwtUtil jwtUtil) {
+        JwtUtil jwtUtil,TrustScoreRepository trustScoreRepository) {
+	
+	
 
     this.studentRepository =
             studentRepository;
@@ -59,6 +64,10 @@ public AuthService(
 
     this.jwtUtil =
             jwtUtil;
+    
+    this.trustScoreRepository =
+            trustScoreRepository;
+    
 }
 public String register(
         RegisterRequest request) {
@@ -180,6 +189,14 @@ public String verifyOtp(
 
     studentRepository.save(student);
 
+    TrustScore trustScore =
+            new TrustScore();
+
+    trustScore.setStudent(student);
+    trustScore.setScore(50.0);
+
+    trustScoreRepository.save(trustScore);
+    
     pendingRegistrationRepository
             .delete(pending);
 

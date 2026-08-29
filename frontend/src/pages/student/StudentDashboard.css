@@ -5,10 +5,13 @@
     font-family: 'Poppins', sans-serif;
 }
 
-html, body {
-    overflow-x: hidden;
-    width: 100%;
-}
+/* Deliberately NOT touching html/body here. This stylesheet is a
+   plain global import — it isn't unloaded when the user navigates to
+   a different route — so an `html, body { overflow: hidden }` rule
+   here would silently break scrolling on every other page (Home,
+   etc.) for the rest of the session, not just this one. Locking the
+   viewport is done entirely on .dash-page below instead, which is
+   scoped to this page's own markup. */
 
 :root {
     --dash-green: #1F4D3A;
@@ -27,14 +30,27 @@ html, body {
     }
 }
 
+@media (max-height: 600px) {
+    :root {
+        --dash-navbar-h: 52px;
+    }
+}
+
+/* The whole app is locked to exactly one viewport (100dvh, which
+   correctly accounts for mobile browser chrome, with a 100vh
+   fallback for older browsers). The navbar and sidebar never move
+   or get clipped — only .dash-content (and the sidebar's own link
+   list) scroll internally when their content is taller than the
+   space available. That's what keeps the whole shell "on screen"
+   at every device size instead of the page growing past it. */
 .dash-page {
-    min-height: 100vh;
-    min-height: 100dvh;
+    height: 100vh;
+    height: 100dvh;
     background: var(--dash-cream);
     display: flex;
     flex-direction: column;
     width: 100%;
-    overflow-x: hidden;
+    overflow: hidden;
 }
 
 /* ================================================
@@ -48,6 +64,7 @@ html, body {
     width: 100%;
     z-index: 200;
     height: var(--dash-navbar-h);
+    flex-shrink: 0;
 
     display: flex;
     align-items: center;
@@ -192,20 +209,24 @@ html, body {
 .dash-body {
     display: flex;
     flex: 1;
+    min-height: 0; /* required so flex children can shrink & scroll */
     width: 100%;
     margin-top: var(--dash-navbar-h);
-    min-height: calc(100vh - var(--dash-navbar-h));
-    min-height: calc(100dvh - var(--dash-navbar-h));
+    overflow: hidden;
 }
 
-/* ---------- Sidebar ---------- */
+/* ---------- Sidebar ----------
+   Every size in here is a clamp() tied to viewport height, so as the
+   screen gets shorter the whole nav list compresses (less padding,
+   smaller gaps, smaller text/avatar) to keep fitting inside
+   `height` below — instead of overflowing and needing to scroll. */
 .dash-sidebar {
     background: #fff;
     border-right: 1px solid #eee;
-    padding: 20px 12px;
+    padding: clamp(8px, 2vh, 20px) 12px;
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: clamp(2px, 0.8vh, 8px);
 
     position: fixed;
     top: var(--dash-navbar-h);
@@ -223,10 +244,6 @@ html, body {
     display: none;
 }
 
-.dash-content {
-    margin-left: var(--dash-sidebar-w);
-}
-
 .student-navbar-offset {
     padding-top: var(--dash-navbar-h);
 }
@@ -236,7 +253,7 @@ html, body {
     align-items: center;
     gap: 10px;
     width: 100%;
-    padding: 8px;
+    padding: clamp(2px, 0.8vh, 8px);
     border: none;
     background: transparent;
     border-radius: 10px;
@@ -244,6 +261,7 @@ html, body {
     text-align: left;
     font-family: inherit;
     transition: background 0.2s ease;
+    flex-shrink: 0;
 }
 
 .dash-sidebar-profile:hover {
@@ -251,9 +269,9 @@ html, body {
 }
 
 .dash-sidebar-avatar {
-    width: 44px;
-    height: 44px;
-    min-width: 44px;
+    width: clamp(30px, 5.5vh, 44px);
+    height: clamp(30px, 5.5vh, 44px);
+    min-width: clamp(30px, 5.5vh, 44px);
     border-radius: 50%;
     border: 2px solid var(--dash-green);
     background: var(--dash-green);
@@ -263,7 +281,7 @@ html, body {
     justify-content: center;
     overflow: hidden;
     flex-shrink: 0;
-    font-size: 16px;
+    font-size: clamp(12px, 2vh, 16px);
 }
 
 .dash-sidebar-avatar img {
@@ -284,13 +302,18 @@ html, body {
 .dash-sidebar-divider {
     height: 1px;
     background: #f0f0e8;
-    margin: 10px 0 8px;
+    margin: clamp(4px, 1vh, 10px) 0 clamp(3px, 0.8vh, 8px);
+    flex-shrink: 0;
 }
 
+/* `overflow-y: auto` stays only as a last-resort safety net for
+   pathological cases (a huge item list on a tiny screen) — in
+   practice the clamp()s above and below keep the whole list inside
+   `height` below without ever needing to scroll. */
 .dash-sidebar-nav {
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    gap: clamp(1px, 0.4vh, 4px);
     overflow-y: auto;
     flex: 1;
     min-height: 0;
@@ -301,13 +324,13 @@ html, body {
     align-items: center;
     gap: 12px;
     width: 100%;
-    padding: 11px 12px;
+    padding: clamp(5px, 1.4vh, 11px) 12px;
     border: none;
     background: transparent;
     border-radius: 10px;
     cursor: pointer;
     font-family: inherit;
-    font-size: 14px;
+    font-size: clamp(12px, 1.7vh, 14px);
     font-weight: 500;
     color: #444;
     transition: background 0.2s ease, color 0.2s ease;
@@ -330,7 +353,7 @@ html, body {
     text-transform: uppercase;
     letter-spacing: 0.04em;
     color: #aaa;
-    padding: 14px 12px 4px;
+    padding: clamp(6px, 1.4vh, 14px) 12px clamp(2px, 0.4vh, 4px);
 }
 
 .dash-sidebar-link-nested {
@@ -338,13 +361,16 @@ html, body {
 }
 
 /* ================================================
-   Content shell
+   Content shell — the main scrollable region
 ================================================ */
 .dash-content {
     flex: 1;
     min-width: 0;
-    width: 100%;
-    padding: 26px 28px 60px;
+    margin-left: var(--dash-sidebar-w);
+    width: calc(100% - var(--dash-sidebar-w));
+    height: 100%;
+    overflow-y: auto;
+    padding: clamp(16px, 2.5vh, 26px) clamp(16px, 2.5vw, 28px) clamp(30px, 5vh, 60px);
 }
 
 .dash-section {
@@ -516,6 +542,7 @@ html, body {
     width: 420px;
     max-width: 100%;
     max-height: 88vh;
+    max-height: 88dvh;
     overflow-y: auto;
     position: relative;
     text-align: center;
@@ -635,7 +662,7 @@ html, body {
     }
 
     .dash-nav-links.dash-nav-open {
-        max-height: 340px;
+        max-height: min(340px, calc(100vh - var(--dash-navbar-h) - 12px));
         padding: 10px 5% 18px;
         overflow-y: auto;
     }
@@ -648,6 +675,8 @@ html, body {
 
     .dash-content {
         margin-left: 0;
+        width: 100%;
+        padding: 20px 5% 50px;
     }
 
     .dash-sidebar {
@@ -669,10 +698,6 @@ html, body {
         inset: var(--dash-navbar-h) 0 0 0;
         background: rgba(0, 0, 0, 0.35);
         z-index: 140;
-    }
-
-    .dash-content {
-        padding: 20px 5% 50px;
     }
 }
 

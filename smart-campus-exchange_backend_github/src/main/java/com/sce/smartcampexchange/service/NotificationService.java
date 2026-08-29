@@ -1,18 +1,18 @@
 package com.sce.smartcampexchange.service;
 
-import com.sce.smartcampexchange.entity.Notification;
+import com.sce.smartcampexchange.dto.NotificationRequest;
+import com.sce.smartcampexchange.dto.NotificationResponse;
 
 import java.util.List;
 
 public interface NotificationService {
 
-    Notification addNotification(Notification notification);
+    NotificationResponse addNotification(
+            NotificationRequest request);
 
-    List<Notification> getAllNotifications();
+    List<NotificationResponse> getAllNotifications();
 
-    Notification getNotificationById(Long id);
-
-    Notification updateNotification(Long id, Notification notification);
+    NotificationResponse getNotificationById(Long id);
 
     void deleteNotification(Long id);
 }

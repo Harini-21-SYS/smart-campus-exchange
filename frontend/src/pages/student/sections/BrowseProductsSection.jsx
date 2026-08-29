@@ -8,10 +8,36 @@ import SuggestionCard from "../components/SuggestionCard";
 import { CATEGORIES, TYPE_INFO, PAGE_SIZE } from "../constants";
 import "./BrowseProductsSection.css";
 
+
+// Same fallback used in ProductCard.jsx — needed here too because this
+// file builds its own TYPE_INFO lookup for the `actions` button it
+// passes down. TYPE_INFO[product.type] can miss if `type` is ever an
+// unnormalized/unexpected value, and reading `.badgeClass` off
+// `undefined` throws with no error boundary to catch it — same crash
+// as before, just from a second unguarded lookup site.
+const UNKNOWN_TYPE_INFO = { badgeClass: "pcard-type-badge--unknown", actionLabel: "View" };
+
 /* Marketplace "Products" — browse everyone else's listings. Search
    box surfaces personalized suggestions driven by browsing +
    purchase history (see getRecommendations in utils/dashboardUtils). */
 function BrowseProductsSection({ products, onOpen, recommendations }) {
+  // Defensive defaults: `products` and `recommendations` are computed
+  // upstream in StudentDashboard (via useMemo / getRecommendations).
+  // If that ever comes back undefined or with a missing `items` array —
+  // e.g. an edge case with no history yet, or before studentProfile has
+  // resolved on first mount — reading `recommendations.items` directly
+  // throws during render. With no error boundary in this app, that
+  // uncaught render error unmounts the whole section, which is exactly
+  // the "Products page itself not coming" symptom (and it repeats every
+  // time the component remounts, e.g. navigating back from Profile).
+  // Falling back to safe empty values here means a bad/missing prop just
+  // means "no personalized suggestions shown" instead of a blank page.
+  const safeProducts = products ?? [];
+  const safeRecommendations = {
+    items: recommendations?.items ?? [],
+    personalized: !!recommendations?.personalized,
+  };
+
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState("All Categories");
   const [page, setPage] = useState(1);
@@ -19,12 +45,12 @@ function BrowseProductsSection({ products, onOpen, recommendations }) {
   const searchWrapRef = useRef(null);
 
   const filtered = useMemo(() => {
-    return products.filter((p) => {
+    return safeProducts.filter((p) => {
       const matchesQuery = p.name.toLowerCase().includes(query.toLowerCase());
       const matchesCategory = category === "All Categories" || p.category === category;
       return matchesQuery && matchesCategory;
     });
-  }, [products, query, category]);
+  }, [safeProducts, query, category]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
 
@@ -53,19 +79,19 @@ function BrowseProductsSection({ products, onOpen, recommendations }) {
     const trimmed = query.trim().toLowerCase();
 
     if (!trimmed) {
-      return recommendations.items.slice(0, 5);
+      return safeRecommendations.items.slice(0, 5);
     }
 
-    const recommendedIds = new Set(recommendations.items.map((p) => p.id));
-    return products
+    const recommendedIds = new Set(safeRecommendations.items.map((p) => p.id));
+    return safeProducts
       .filter((p) => p.name.toLowerCase().includes(trimmed))
       .sort((a, b) => Number(recommendedIds.has(b.id)) - Number(recommendedIds.has(a.id)))
       .slice(0, 6);
-  }, [query, products, recommendations]);
+  }, [query, safeProducts, safeRecommendations]);
 
   const dropdownLabel = query.trim()
     ? "Matching products"
-    : recommendations.personalized
+    : safeRecommendations.personalized
     ? "Based on your activity"
     : "Popular right now";
 
@@ -99,7 +125,7 @@ function BrowseProductsSection({ products, onOpen, recommendations }) {
               <div className="search-suggest-header">
                 {query.trim() ? (
                   <FaSearch />
-                ) : recommendations.personalized ? (
+                ) : safeRecommendations.personalized ? (
                   <FaHistory />
                 ) : (
                   <FaFire />
@@ -144,14 +170,14 @@ function BrowseProductsSection({ products, onOpen, recommendations }) {
 
       {/* Personalized strip — only shown while browsing (no active search text)
           so it doesn't compete with search results. */}
-      {!query.trim() && category === "All Categories" && recommendations.items.length > 0 && (
+      {!query.trim() && category === "All Categories" && safeRecommendations.items.length > 0 && (
         <div className="sugg-strip">
           <div className="sugg-strip-header">
-            {recommendations.personalized ? <FaHistory /> : <FaFire />}
-            <h3>{recommendations.personalized ? "Recommended for You" : "Popular Picks"}</h3>
+            {safeRecommendations.personalized ? <FaHistory /> : <FaFire />}
+            <h3>{safeRecommendations.personalized ? "Recommended for You" : "Popular Picks"}</h3>
           </div>
           <div className="sugg-strip-row">
-            {recommendations.items.map((p) => (
+            {safeRecommendations.items.map((p) => (
               <SuggestionCard key={p.id} product={p} onOpen={onOpen} />
             ))}
           </div>
@@ -169,7 +195,7 @@ function BrowseProductsSection({ products, onOpen, recommendations }) {
                 product={p}
                 onOpen={onOpen}
                 actions={(product) => {
-                  const info = TYPE_INFO[product.type];
+                  const info = TYPE_INFO[product.type] ?? UNKNOWN_TYPE_INFO;
                   return (
                     <button
                       className={`pcard-action-btn ${info.badgeClass}`}

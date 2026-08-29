@@ -8,6 +8,7 @@ import { PAGE_SIZE } from "../constants";
 // defined in BrowseProductsSection.css — no need to redeclare them.
 import "./BrowseProductsSection.css";
 
+
 function MyProductsSection({ products, onOpen, onAdd, onEdit, onDelete }) {
   const [page, setPage] = useState(1);
   const totalPages = Math.max(1, Math.ceil(products.length / PAGE_SIZE));

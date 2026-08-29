@@ -10,6 +10,9 @@ public class ProductResponse {
     private Long ownerId;
     private String ownerName;
 
+    private String ownerProfileImage;
+    private Double trustScore;
+    
     private String title;
     private String description;
     private String category;
@@ -30,6 +33,8 @@ public class ProductResponse {
             Long productId,
             Long ownerId,
             String ownerName,
+            String ownerProfileImage, 
+            Double trustScore,
             String title,
             String description,
             String category,
@@ -44,6 +49,8 @@ public class ProductResponse {
         this.productId = productId;
         this.ownerId = ownerId;
         this.ownerName = ownerName;
+        this.ownerProfileImage = ownerProfileImage; 
+        this.trustScore = trustScore;
         this.title = title;
         this.description = description;
         this.category = category;
@@ -80,6 +87,22 @@ public class ProductResponse {
         this.ownerName = ownerName;
     }
 
+    public String getOwnerProfileImage() { 
+    	return ownerProfileImage; 
+    } 
+    
+    public void setOwnerProfileImage( String ownerProfileImage) { 
+    	this.ownerProfileImage = ownerProfileImage;
+    }
+    
+    public Double getTrustScore() {
+    	return trustScore;
+    }
+    
+    public void setTrustScore(Double trustScore) {
+    	this.trustScore = trustScore; 
+    }
+    
     public String getTitle() {
         return title;
     }

@@ -1,6 +1,7 @@
 package com.sce.smartcampexchange.controller;
 
-import com.sce.smartcampexchange.entity.Notification;
+import com.sce.smartcampexchange.dto.NotificationRequest;
+import com.sce.smartcampexchange.dto.NotificationResponse;
 import com.sce.smartcampexchange.service.NotificationService;
 
 import org.springframework.http.HttpStatus;
@@ -21,37 +22,52 @@ public class NotificationController {
         this.notificationService = notificationService;
     }
 
+    // =========================
     // Add Notification
-    @PostMapping
-    public ResponseEntity<Notification> addNotification(
-            @RequestBody Notification notification) {
+    // =========================
 
-        Notification savedNotification =
-                notificationService.addNotification(notification);
+    @PostMapping
+    public ResponseEntity<NotificationResponse> addNotification(
+            @RequestBody NotificationRequest request) {
+
+        NotificationResponse response =
+                notificationService.addNotification(request);
 
         return new ResponseEntity<>(
-                savedNotification,
-                HttpStatus.CREATED);
+                response,
+                HttpStatus.CREATED
+        );
     }
 
+    // =========================
     // Get All Notifications
+    // =========================
+
     @GetMapping
-    public ResponseEntity<List<Notification>> getAllNotifications() {
+    public ResponseEntity<List<NotificationResponse>> getAllNotifications() {
 
         return ResponseEntity.ok(
-                notificationService.getAllNotifications());
+                notificationService.getAllNotifications()
+        );
     }
 
+    // =========================
     // Get Notification By ID
+    // =========================
+
     @GetMapping("/{id}")
-    public ResponseEntity<Notification> getNotificationById(
+    public ResponseEntity<NotificationResponse> getNotificationById(
             @PathVariable Long id) {
 
         return ResponseEntity.ok(
-                notificationService.getNotificationById(id));
+                notificationService.getNotificationById(id)
+        );
     }
 
+    // =========================
     // Delete Notification
+    // =========================
+
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteNotification(
             @PathVariable Long id) {

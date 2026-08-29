@@ -3,7 +3,16 @@ import "./StudentDashboard.css";
 import { useNavigate, useLocation } from "react-router-dom";
 import StudentNavbar, { STUDENT_NAV_TABS } from "./StudentNavbar";
 import { getProfile } from "../../services/profileService";
-import { getAllProducts, addProduct } from "../../services/productService";
+import {
+  getBrowseProducts,
+  getMyProducts,
+  addProduct,
+  updateProduct,
+  deleteProduct,
+  uploadProductImages,
+  deleteProductImage,
+  setPrimaryImage,
+} from "../../services/productService";
 import { FaUser, FaCheckCircle } from "react-icons/fa";
 
 import {
@@ -56,12 +65,34 @@ import ProductFormPage from "./sections/ProductFormPage";
    reject / confirm) for real API calls when the backend is
    ready; the UI already expects exactly this shape.
 --------------------------------------------------------- */
+
+// Every id that renderMain()'s switch actually knows how to render.
+// Anything else (stale location.state, a renamed sidebar id, a typo
+// in a caller passing navigate(..., { state: { section } })) must
+// NOT be trusted blindly — otherwise mainSection can end up holding
+// a value with no matching case, renderMain() falls through to
+// `default`, and the whole content area silently goes blank while
+// the navbar/sidebar still render fine. That's the "dashboard
+// sometimes doesn't show up" bug.
+const VALID_SECTIONS = [
+  "products",
+  "incomingRequests",
+  "notifications",
+  "myProducts",
+  "myRequests",
+  "myPurchases",
+  "myComplaints",
+  "raiseComplaint",
+  "complaintsAgainstMe",
+];
+
 function StudentDashboard() {
   const location = useLocation();
 
-  const [mainSection, setMainSection] = useState(
-    () => location.state?.section || "products"
-  );
+  const [mainSection, setMainSection] = useState(() => {
+    const requested = location.state?.section;
+    return VALID_SECTIONS.includes(requested) ? requested : "products";
+  });
   const [subView, setSubView] = useState(null); // null | "detail" | "add" | "edit"
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [editingProduct, setEditingProduct] = useState(null);
@@ -77,6 +108,7 @@ function StudentDashboard() {
   const [exchangeTarget, setExchangeTarget] = useState(null);
 
   const [products, setProducts] = useState([]);
+const [myProducts, setMyProducts] = useState([]);
   const [myRequests, setMyRequests] = useState([]);
   const [incomingRequests, setIncomingRequests] = useState(SAMPLE_INCOMING_REQUESTS);
   const [complaints, setComplaints] = useState([]); // complaints YOU raised
@@ -113,25 +145,43 @@ function StudentDashboard() {
   }, []);
 
   // ---------- Product catalog ----------
-  useEffect(() => {
-    let cancelled = false;
+  // ---------- Browse Products ----------
+useEffect(() => {
+  let cancelled = false;
 
-    getAllProducts()
-      .then((data) => {
-        if (cancelled) return;
-        // mapBackendProduct correctly reads product.images (previously
-        // this was hardcoded to [] here, which is why images picked in
-        // the Add Product form never showed up in the Products list).
-        setProducts((data || []).map(mapBackendProduct));
-      })
-      .catch((error) => {
-        console.error("Failed to load products:", error);
-      });
+  getBrowseProducts()
+    .then((data) => {
+      if (cancelled) return;
 
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+      setProducts((data || []).map(mapBackendProduct));
+    })
+    .catch((error) => {
+      console.error("Failed to load browse products:", error);
+    });
+
+  return () => {
+    cancelled = true;
+  };
+}, []);
+
+// ---------- My Products ----------
+useEffect(() => {
+  let cancelled = false;
+
+  getMyProducts()
+    .then((data) => {
+      if (cancelled) return;
+
+      setMyProducts((data || []).map(mapBackendProduct));
+    })
+    .catch((error) => {
+      console.error("Failed to load my products:", error);
+    });
+
+  return () => {
+    cancelled = true;
+  };
+}, []);
 
   // ---------- Personalization signals ----------
   const [browsingHistory, setBrowsingHistory] = useState(() => loadHistory(HISTORY_STORAGE_KEYS.browsing));
@@ -155,15 +205,7 @@ function StudentDashboard() {
 
   const navigate = useNavigate();
 
-  const marketplaceProducts = useMemo(
-    () => products.filter((p) => p.ownerId !== studentProfile?.studentId),
-    [products, studentProfile]
-  );
-
-  const myProducts = useMemo(
-    () => products.filter((p) => p.ownerId === studentProfile?.studentId),
-    [products, studentProfile]
-  );
+  const marketplaceProducts = products;
 
   const recommendations = useMemo(
     () => getRecommendations(marketplaceProducts, browsingHistory, purchaseHistory, 6),
@@ -198,7 +240,9 @@ function StudentDashboard() {
 
   // ---------- Navigation ----------
   const goToSection = (id) => {
-    setMainSection(id);
+    // Guard here too: any caller of goToSection/goToSidebarItem with a
+    // bad id falls back to "products" instead of blanking the page.
+    setMainSection(VALID_SECTIONS.includes(id) ? id : "products");
     setSubView(null);
     setSidebarOpen(false);
   };
@@ -378,32 +422,146 @@ function StudentDashboard() {
     addNotification(`Your complaint about "${payload.productName}" has been submitted.`);
     showToast("Complaint submitted.");
   };
+  
+const handleProductSubmit = async (
+  productData,
+  imageFiles = [],
+  primaryImageIndex = null,
+  deletedImageIds = [],
+  primaryImageId = null
+) => {
+  try {
+    // ==========================================
+    // EDIT PRODUCT
+    // ==========================================
+    if (editingProduct) {
+      const productId = editingProduct.id;
 
-  const handleSaveProduct = async (product, imageFiles = []) => {
-    try {
-      const savedProduct = await addProduct(product, imageFiles);
-      const mappedProduct = mapBackendProduct(savedProduct);
+      // 1. Update product details
+      await updateProduct(
+        productId,
+        productData
+      );
 
-      setProducts((prev) => [mappedProduct, ...prev]);
+      // 2. Delete removed old images
+      for (const imageId of deletedImageIds) {
+        await deleteProductImage(
+          productId,
+          imageId
+        );
+      }
+
+      // 3. Upload newly selected images
+      if (imageFiles.length > 0) {
+  await uploadProductImages(
+    productId,
+    imageFiles,
+     primaryImageIndex
+  );
+}
+
+      // 4. Set existing image as primary
+      if (primaryImageId) {
+        await setPrimaryImage(
+          productId,
+          primaryImageId
+        );
+      }
+
+      // 5. Reload My Products
+      const updatedProducts =
+        await getMyProducts();
+
+      setMyProducts(
+        (updatedProducts || []).map(
+          mapBackendProduct
+        )
+      );
+
+      showToast("Product updated successfully.");
+
+    } else {
+      // ==========================================
+      // ADD NEW PRODUCT
+      // ==========================================
+
+      const savedProduct = await addProduct(
+        productData,
+        imageFiles,
+        primaryImageIndex
+      );
+
+      const mappedProduct =
+        mapBackendProduct(savedProduct);
+
+      setMyProducts((prev) => [
+        mappedProduct,
+        ...prev,
+      ]);
 
       showToast("Product listed successfully.");
-      addNotification(`Your listing "${mappedProduct.name}" has been submitted.`);
 
-      setSubView(null);
-      setEditingProduct(null);
-      setMainSection("myProducts");
-    } catch (error) {
-      console.error("Failed to add product:", error);
-      showToast(error.response?.data?.message || "Failed to list product.");
+      addNotification(
+        `Your listing "${mappedProduct.name}" has been submitted.`
+      );
     }
-  };
 
-  const handleConfirmDelete = () => {
-    setProducts((prev) => prev.filter((p) => p.id !== deleteTarget.id));
+    // ==========================================
+    // CLOSE FORM
+    // ==========================================
+
+    setEditingProduct(null);
+    setSubView(null);
+    setMainSection("myProducts");
+
+  } catch (error) {
+    console.error(
+      "Product save failed:",
+      error
+    );
+
+    showToast(
+      error.response?.data?.message ||
+      "Failed to save product."
+    );
+  }
+};
+
+  const handleConfirmDelete = async () => {
+  if (!deleteTarget) {
+    return;
+  }
+
+  try {
+    await deleteProduct(
+      deleteTarget.id
+    );
+
+    setMyProducts((prev) =>
+      prev.filter(
+        (p) => p.id !== deleteTarget.id
+      )
+    );
+
     showToast("Product deleted.");
     setDeleteTarget(null);
-    if (subView === "detail") closeDetail();
-  };
+
+    if (subView === "detail") {
+      closeDetail();
+    }
+
+  } catch (error) {
+    console.error(
+      "Failed to delete product:",
+      error
+    );
+
+    showToast(
+      error.response?.data?.message ||
+      "Failed to delete product."
+    );
+  }
+};
 
   const renderMain = () => {
     if (subView === "detail" && selectedProduct) {
@@ -425,28 +583,28 @@ function StudentDashboard() {
 
     if (subView === "add") {
       return (
-        <ProductFormPage
-          studentId={studentProfile?.studentId}
-          onCancel={() => {
-            setSubView(null);
-            setMainSection("myProducts");
-          }}
-          onSubmit={handleSaveProduct}
-        />
+       <ProductFormPage
+  studentId={studentProfile?.studentId}
+  onCancel={() => {
+    setSubView(null);
+    setMainSection("myProducts");
+  }}
+  onSubmit={handleProductSubmit}
+/>
       );
     }
 
     if (subView === "edit" && editingProduct) {
       return (
-        <ProductFormPage
-          initialData={editingProduct}
-          studentId={studentProfile?.studentId}
-          onCancel={() => {
-            setSubView(null);
-            setEditingProduct(null);
-          }}
-          onSubmit={handleSaveProduct}
-        />
+       <ProductFormPage
+  initialData={editingProduct}
+  studentId={studentProfile?.studentId}
+  onCancel={() => {
+    setSubView(null);
+    setEditingProduct(null);
+  }}
+  onSubmit={handleProductSubmit}
+/>
       );
     }
 
@@ -504,7 +662,18 @@ function StudentDashboard() {
       case "complaintsAgainstMe":
         return <ComplaintsAgainstMeSection complaints={complaintsAgainstMe} />;
       default:
-        return null;
+        // mainSection should always be one of VALID_SECTIONS (enforced at
+        // every entry point above), so this should be unreachable. But if
+        // it's ever hit anyway, fall back to Browse Products instead of
+        // returning null — an empty content area with no error is the
+        // exact "dashboard doesn't show up" symptom we're fixing.
+        return (
+          <BrowseProductsSection
+            products={marketplaceProducts}
+            onOpen={openDetail}
+            recommendations={recommendations}
+          />
+        );
     }
   };
 

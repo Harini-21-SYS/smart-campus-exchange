@@ -70,6 +70,14 @@ function Profile() {
   // PROFILE STATE
   // -----------------------------------------
   const [profile, setProfile] = useState(null);
+  // Tracks a failed fetch so the UI can show a retry option instead of
+  // hanging on the spinner forever. Previously, if getProfile() ever
+  // rejected (e.g. the auth token wasn't in localStorage yet right after
+  // login, or a one-off network blip), the catch block only fired a toast
+  // — profile stayed null and the component was stuck returning the
+  // "Loading your profile..." spinner permanently. That's the
+  // "Profile sometimes not displaying" bug: it wasn't gone, it was stuck.
+  const [profileError, setProfileError] = useState(false);
 
   // -----------------------------------------
   // TOAST
@@ -115,6 +123,7 @@ function Profile() {
   }, []);
 
   const fetchProfile = async () => {
+    setProfileError(false);
     try {
       const data = await getProfile();
       console.log("PROFILE DATA:", data);
@@ -122,6 +131,7 @@ function Profile() {
       setMobileNumber(data.mobileNumber || "");
     } catch (error) {
       console.error("PROFILE FETCH ERROR:", error);
+      setProfileError(true);
       showToast("Couldn't load your profile. Please try again.", "error");
     }
   };
@@ -287,6 +297,22 @@ const closePasswordModal = () => {
     localStorage.removeItem("role");
     window.location.href = "/auth";
   };
+
+  // -----------------------------------------
+  // ERROR (fetch failed — give the user a way out instead of an
+  // infinite spinner)
+  // -----------------------------------------
+  if (profileError) {
+    return (
+      <div className="profile-loading">
+        <FaExclamationCircle />
+        <p>Couldn't load your profile.</p>
+        <button className="account-btn" onClick={fetchProfile}>
+          Retry
+        </button>
+      </div>
+    );
+  }
 
   // -----------------------------------------
   // LOADING

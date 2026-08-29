@@ -10,7 +10,9 @@ import "./ProductDetailSection.css";
    buyer step through them. */
 function ProductDetailSection({ product, isOwner, onBack, onRequest, onEdit, onDelete }) {
   const [activeImg, setActiveImg] = useState(product.primaryIndex ?? 0);
-  const info = TYPE_INFO[product.type];
+  const info =
+  TYPE_INFO[product.type] ||
+  TYPE_INFO.Sell;
   const images = product.images || [];
   const hasMultiple = images.length > 1;
 
@@ -100,7 +102,7 @@ function ProductDetailSection({ product, isOwner, onBack, onRequest, onEdit, onD
               <FaUser />
             </div>
             <div>
-              <strong>{product.sellerName}</strong>
+              <strong>{product.ownerName}</strong>
               <span>{product.department}</span>
             </div>
           </div>
