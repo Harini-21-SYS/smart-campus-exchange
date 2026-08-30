@@ -3,6 +3,7 @@ import "./StudentDashboard.css";
 import { useNavigate, useLocation } from "react-router-dom";
 import StudentNavbar, { STUDENT_NAV_TABS } from "./StudentNavbar";
 import { getProfile } from "../../services/profileService";
+import SellerProfileSection from "./sections/SellerProfileSection";
 import {
   getBrowseProducts,
   getMyProducts,
@@ -26,7 +27,7 @@ import {
   REQUEST_STATUS,
   COMPLAINT_STATUS,
 } from "./constants";
-import { loadHistory, getRecommendations, mapBackendProduct } from "./utils/dashboardUtils";
+import { loadHistory, getRecommendations, mapBackendProduct } from "./utils/DashboardUtils";
 
 import ConfirmDialog from "./components/ConfirmDialog";
 import SelectExchangeItemModal from "./components/SelectExchangeItemModal";
@@ -93,8 +94,18 @@ function StudentDashboard() {
     const requested = location.state?.section;
     return VALID_SECTIONS.includes(requested) ? requested : "products";
   });
-  const [subView, setSubView] = useState(null); // null | "detail" | "add" | "edit"
+  const [subView, setSubView] = useState(null); // null | "detail" | "add" | "edit" | "sellerProfile"
   const [selectedProduct, setSelectedProduct] = useState(null);
+
+  // FIX: replaced viewingSellerId (a bare id that then needed a second
+  // network lookup via getSellerProfile — which filtered on a `sellerId`
+  // field that doesn't actually exist on product objects, so it always
+  // came back empty) with viewedSeller: a small object built directly
+  // from the product that was clicked. That product already carries
+  // sellerName/department/sellerProfileImage/sellerTrustScore, so no
+  // extra fetch is needed for the profile header at all.
+  const [viewedSeller, setViewedSeller] = useState(null); // { id, name, department, avatarUrl, trustScore }
+
   const [editingProduct, setEditingProduct] = useState(null);
   const [returnSection, setReturnSection] = useState("products");
 
@@ -108,7 +119,7 @@ function StudentDashboard() {
   const [exchangeTarget, setExchangeTarget] = useState(null);
 
   const [products, setProducts] = useState([]);
-const [myProducts, setMyProducts] = useState([]);
+  const [myProducts, setMyProducts] = useState([]);
   const [myRequests, setMyRequests] = useState([]);
   const [incomingRequests, setIncomingRequests] = useState(SAMPLE_INCOMING_REQUESTS);
   const [complaints, setComplaints] = useState([]); // complaints YOU raised
@@ -146,42 +157,42 @@ const [myProducts, setMyProducts] = useState([]);
 
   // ---------- Product catalog ----------
   // ---------- Browse Products ----------
-useEffect(() => {
-  let cancelled = false;
+  useEffect(() => {
+    let cancelled = false;
 
-  getBrowseProducts()
-    .then((data) => {
-      if (cancelled) return;
+    getBrowseProducts()
+      .then((data) => {
+        if (cancelled) return;
 
-      setProducts((data || []).map(mapBackendProduct));
-    })
-    .catch((error) => {
-      console.error("Failed to load browse products:", error);
-    });
+        setProducts((data || []).map(mapBackendProduct));
+      })
+      .catch((error) => {
+        console.error("Failed to load browse products:", error);
+      });
 
-  return () => {
-    cancelled = true;
-  };
-}, []);
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
-// ---------- My Products ----------
-useEffect(() => {
-  let cancelled = false;
+  // ---------- My Products ----------
+  useEffect(() => {
+    let cancelled = false;
 
-  getMyProducts()
-    .then((data) => {
-      if (cancelled) return;
+    getMyProducts()
+      .then((data) => {
+        if (cancelled) return;
 
-      setMyProducts((data || []).map(mapBackendProduct));
-    })
-    .catch((error) => {
-      console.error("Failed to load my products:", error);
-    });
+        setMyProducts((data || []).map(mapBackendProduct));
+      })
+      .catch((error) => {
+        console.error("Failed to load my products:", error);
+      });
 
-  return () => {
-    cancelled = true;
-  };
-}, []);
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   // ---------- Personalization signals ----------
   const [browsingHistory, setBrowsingHistory] = useState(() => loadHistory(HISTORY_STORAGE_KEYS.browsing));
@@ -211,6 +222,24 @@ useEffect(() => {
     () => getRecommendations(marketplaceProducts, browsingHistory, purchaseHistory, 6),
     [marketplaceProducts, browsingHistory, purchaseHistory]
   );
+
+  // FIX (new): every product this seller has listed, drawn from data
+  // already fetched — browse products plus your own products (in case
+  // you ever land on your own profile via this flow). Deduplicated by
+  // id since a product could theoretically appear in both lists. No
+  // network call needed here at all, since the seller's info and their
+  // listings are already sitting in state.
+  const sellerProducts = useMemo(() => {
+    if (!viewedSeller) return [];
+    const combined = [...products, ...myProducts];
+    const seen = new Set();
+    return combined.filter((p) => {
+      if (p.ownerId !== viewedSeller.id) return false;
+      if (seen.has(p.id)) return false;
+      seen.add(p.id);
+      return true;
+    });
+  }, [products, myProducts, viewedSeller]);
 
   // "Purchases" = requests you sent where the seller accepted AND you
   // confirmed the pickup. This is also the pool Exchange offers are
@@ -291,6 +320,28 @@ useEffect(() => {
     setSubView(null);
     setSelectedProduct(null);
     setMainSection(returnSection);
+  };
+
+  // FIX: builds the seller's profile header directly from the clicked
+  // product (name/department/avatar/trust score are already on it), so
+  // no separate fetch is needed. sellerProducts (above) handles the
+  // listing grid.
+  const openSellerProfile = (product) => {
+    setViewedSeller({
+      id: product.ownerId,
+      name: product.sellerName,
+      department: product.department,
+      avatarUrl: product.sellerProfileImage,
+      trustScore: product.sellerTrustScore,
+    });
+    setSubView("sellerProfile");
+  };
+
+  // Goes back to the product detail page you came from — selectedProduct
+  // is still set in state, so switching subView back to "detail" is
+  // enough; no need to also reset mainSection here.
+  const closeSellerProfile = () => {
+    setSubView("detail");
   };
 
   const goToProfile = () => navigate("/profile");
@@ -422,146 +473,97 @@ useEffect(() => {
     addNotification(`Your complaint about "${payload.productName}" has been submitted.`);
     showToast("Complaint submitted.");
   };
-  
-const handleProductSubmit = async (
-  productData,
-  imageFiles = [],
-  primaryImageIndex = null,
-  deletedImageIds = [],
-  primaryImageId = null
-) => {
-  try {
-    // ==========================================
-    // EDIT PRODUCT
-    // ==========================================
-    if (editingProduct) {
-      const productId = editingProduct.id;
 
-      // 1. Update product details
-      await updateProduct(
-        productId,
-        productData
-      );
+  const handleProductSubmit = async (
+    productData,
+    imageFiles = [],
+    primaryImageIndex = null,
+    deletedImageIds = [],
+    primaryImageId = null
+  ) => {
+    try {
+      // ==========================================
+      // EDIT PRODUCT
+      // ==========================================
+      if (editingProduct) {
+        const productId = editingProduct.id;
 
-      // 2. Delete removed old images
-      for (const imageId of deletedImageIds) {
-        await deleteProductImage(
-          productId,
-          imageId
-        );
+        // 1. Update product details
+        await updateProduct(productId, productData);
+
+        // 2. Delete removed old images
+        for (const imageId of deletedImageIds) {
+          await deleteProductImage(productId, imageId);
+        }
+
+        // 3. Upload newly selected images
+        if (imageFiles.length > 0) {
+          await uploadProductImages(productId, imageFiles, primaryImageIndex);
+        }
+
+        // 4. Set existing image as primary
+        if (primaryImageId) {
+          await setPrimaryImage(productId, primaryImageId);
+        }
+
+        // 5. Reload My Products
+        const updatedProducts = await getMyProducts();
+
+        setMyProducts((updatedProducts || []).map(mapBackendProduct));
+
+        showToast("Product updated successfully.");
+      } else {
+        // ==========================================
+        // ADD NEW PRODUCT
+        // ==========================================
+
+        const savedProduct = await addProduct(productData, imageFiles, primaryImageIndex);
+
+        const mappedProduct = mapBackendProduct(savedProduct);
+
+        setMyProducts((prev) => [mappedProduct, ...prev]);
+
+        showToast("Product listed successfully.");
+
+        addNotification(`Your listing "${mappedProduct.name}" has been submitted.`);
       }
 
-      // 3. Upload newly selected images
-      if (imageFiles.length > 0) {
-  await uploadProductImages(
-    productId,
-    imageFiles,
-     primaryImageIndex
-  );
-}
-
-      // 4. Set existing image as primary
-      if (primaryImageId) {
-        await setPrimaryImage(
-          productId,
-          primaryImageId
-        );
-      }
-
-      // 5. Reload My Products
-      const updatedProducts =
-        await getMyProducts();
-
-      setMyProducts(
-        (updatedProducts || []).map(
-          mapBackendProduct
-        )
-      );
-
-      showToast("Product updated successfully.");
-
-    } else {
       // ==========================================
-      // ADD NEW PRODUCT
+      // CLOSE FORM
       // ==========================================
 
-      const savedProduct = await addProduct(
-        productData,
-        imageFiles,
-        primaryImageIndex
-      );
+      setEditingProduct(null);
+      setSubView(null);
+      setMainSection("myProducts");
+    } catch (error) {
+      console.error("Product save failed:", error);
 
-      const mappedProduct =
-        mapBackendProduct(savedProduct);
-
-      setMyProducts((prev) => [
-        mappedProduct,
-        ...prev,
-      ]);
-
-      showToast("Product listed successfully.");
-
-      addNotification(
-        `Your listing "${mappedProduct.name}" has been submitted.`
-      );
+      showToast(error.response?.data?.message || "Failed to save product.");
     }
-
-    // ==========================================
-    // CLOSE FORM
-    // ==========================================
-
-    setEditingProduct(null);
-    setSubView(null);
-    setMainSection("myProducts");
-
-  } catch (error) {
-    console.error(
-      "Product save failed:",
-      error
-    );
-
-    showToast(
-      error.response?.data?.message ||
-      "Failed to save product."
-    );
-  }
-};
+  };
 
   const handleConfirmDelete = async () => {
-  if (!deleteTarget) {
-    return;
-  }
-
-  try {
-    await deleteProduct(
-      deleteTarget.id
-    );
-
-    setMyProducts((prev) =>
-      prev.filter(
-        (p) => p.id !== deleteTarget.id
-      )
-    );
-
-    showToast("Product deleted.");
-    setDeleteTarget(null);
-
-    if (subView === "detail") {
-      closeDetail();
+    if (!deleteTarget) {
+      return;
     }
 
-  } catch (error) {
-    console.error(
-      "Failed to delete product:",
-      error
-    );
+    try {
+      await deleteProduct(deleteTarget.id);
 
-    showToast(
-      error.response?.data?.message ||
-      "Failed to delete product."
-    );
-  }
-};
+      setMyProducts((prev) => prev.filter((p) => p.id !== deleteTarget.id));
+
+      showToast("Product deleted.");
+      setDeleteTarget(null);
+
+      if (subView === "detail") {
+        closeDetail();
+      }
+    } catch (error) {
+      console.error("Failed to delete product:", error);
+
+      showToast(error.response?.data?.message || "Failed to delete product.");
+    }
+  };
 
   const renderMain = () => {
     if (subView === "detail" && selectedProduct) {
@@ -577,34 +579,49 @@ const handleProductSubmit = async (
             setSubView("edit");
           }}
           onDelete={(p) => setDeleteTarget(p)}
+          onViewSeller={openSellerProfile}
         />
       );
     }
 
     if (subView === "add") {
       return (
-       <ProductFormPage
-  studentId={studentProfile?.studentId}
-  onCancel={() => {
-    setSubView(null);
-    setMainSection("myProducts");
-  }}
-  onSubmit={handleProductSubmit}
-/>
+        <ProductFormPage
+          studentId={studentProfile?.studentId}
+          onCancel={() => {
+            setSubView(null);
+            setMainSection("myProducts");
+          }}
+          onSubmit={handleProductSubmit}
+        />
       );
     }
 
     if (subView === "edit" && editingProduct) {
       return (
-       <ProductFormPage
-  initialData={editingProduct}
-  studentId={studentProfile?.studentId}
-  onCancel={() => {
-    setSubView(null);
-    setEditingProduct(null);
-  }}
-  onSubmit={handleProductSubmit}
-/>
+        <ProductFormPage
+          initialData={editingProduct}
+          studentId={studentProfile?.studentId}
+          onCancel={() => {
+            setSubView(null);
+            setEditingProduct(null);
+          }}
+          onSubmit={handleProductSubmit}
+        />
+      );
+    }
+
+    // FIX: now renders straight from state already in memory
+    // (viewedSeller + sellerProducts) — no id-based lookup, no network
+    // call, and therefore nothing that can silently come back empty.
+    if (subView === "sellerProfile" && viewedSeller) {
+      return (
+        <SellerProfileSection
+          seller={viewedSeller}
+          products={sellerProducts}
+          onBack={closeSellerProfile}
+          onOpenProduct={openDetail}
+        />
       );
     }
 
@@ -654,10 +671,7 @@ const handleProductSubmit = async (
         return <MyComplaintsSection complaints={complaints} />;
       case "raiseComplaint":
         return (
-          <RaiseComplaintSection
-            completedTransactions={myPurchases}
-            onSubmit={handleRaiseComplaint}
-          />
+          <RaiseComplaintSection completedTransactions={myPurchases} onSubmit={handleRaiseComplaint} />
         );
       case "complaintsAgainstMe":
         return <ComplaintsAgainstMeSection complaints={complaintsAgainstMe} />;

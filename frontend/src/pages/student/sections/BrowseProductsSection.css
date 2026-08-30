@@ -506,3 +506,84 @@
         grid-template-columns: 1fr;
     }
 }
+.pcard-seller-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 8px 0;
+}
+
+.pcard-seller-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #eef1ee;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  flex-shrink: 0;
+  color: #6b7a6f;
+  font-size: 14px;
+}
+
+.pcard-seller-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.pcard-seller-text {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.25;
+  overflow: hidden;
+}
+
+.pcard-seller-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: #222;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pcard-seller-dept {
+  font-size: 12px;
+  color: #7a8a7d;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* Price moved above the seller row, under the category */
+.pcard-price-top {
+  display: block;
+  font-weight: 700;
+  color: #1f3d2b;
+  font-size: 15px;
+  margin: 4px 0 8px;
+}
+
+/* Trust score badge next to the seller info */
+.pcard-seller-row {
+  position: relative; /* keep existing flex layout, just add this */
+}
+
+.pcard-trust-badge {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  margin-left: auto;
+  font-size: 12px;
+  font-weight: 700;
+  color: #a8721c;
+  background: #fdf1de;
+  border-radius: 10px;
+  padding: 3px 7px;
+  flex-shrink: 0;
+}
+
+.pcard-trust-badge svg {
+  font-size: 10px;
+}

@@ -1,15 +1,19 @@
+// MyProductsSection.jsx — this is the file you pasted under the label
+// "BrowseProductSection", but it's actually MyProductsSection (the
+// function name gives it away). No logic change was needed here: it
+// already passes Edit/Delete as the `actions`, never a Buy/Request
+// button — the bug lived in ProductDetailSection, fixed above. Included
+// as-is (with a small defensive default on `products`) for completeness.
 import { useState, useEffect } from "react";
 import { FaPlus, FaPen, FaTrashAlt } from "react-icons/fa";
 import EmptyState from "../components/EmptyState";
 import Pagination from "../components/Pagination";
 import ProductCard from "../components/ProductCard";
 import { PAGE_SIZE } from "../constants";
-// Reuses the product-grid / pcard / filter-bar styles already
-// defined in BrowseProductsSection.css — no need to redeclare them.
 import "./BrowseProductsSection.css";
 
 
-function MyProductsSection({ products, onOpen, onAdd, onEdit, onDelete }) {
+function MyProductsSection({ products = [], onOpen, onAdd, onEdit, onDelete }) {
   const [page, setPage] = useState(1);
   const totalPages = Math.max(1, Math.ceil(products.length / PAGE_SIZE));
 

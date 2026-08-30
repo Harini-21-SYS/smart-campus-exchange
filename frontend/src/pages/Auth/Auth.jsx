@@ -139,7 +139,7 @@ function Auth() {
     year: "",
     financeType: "",
     degree: "",
-    stream: "",
+    department: "",
     mobileNumber: "",
     password: "",
     confirmPassword: "",
@@ -275,11 +275,11 @@ function Auth() {
   };
 
   // Selecting a Degree resets Stream, since the available options change.
-  const handleDegreeChange = (e) => {
-    const value = e.target.value;
-    setRegisterData((d) => ({ ...d, degree: value, stream: "" }));
-    setRegisterErrors((errs) => ({ ...errs, degree: "", stream: "" }));
-  };
+ const handleDegreeChange = (e) => {
+  const value = e.target.value;
+  setRegisterData((d) => ({ ...d, degree: value, department: "" }));
+  setRegisterErrors((errs) => ({ ...errs, degree: "", department: "" }));
+};
 
   const handleLoginChange = (e) => {
     const { name, value } = e.target;

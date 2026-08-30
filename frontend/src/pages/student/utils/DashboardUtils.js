@@ -3,7 +3,7 @@
    sections. Pure functions only — no React/state here.
 --------------------------------------------------------- */
 
-import { TYPES } from "../constants";
+import { TYPES, PROFILE_IMAGE_BASE_URL } from "../constants";
 
 /* =========================================================
    Browsing / purchase history
@@ -209,7 +209,32 @@ export function mapBackendProduct(product) {
 
     ownerId: product.ownerId,
 
-    department: "",
+    // FIX: this was hardcoded to "" before, silently discarding
+    // `ownerDepartment` even though the backend DTO (ProductResponse)
+    // already sends it. The Student entity has department as
+    // nullable = false, so every product's owner genuinely has one —
+    // it just never made it past this mapper.
+    department: product.ownerDepartment || "",
+
+    // FIX: previously not mapped at all — the key from the backend
+    // (`ownerProfileImage`) was silently dropped. Same treatment as
+    // the student's own profile image in StudentDashboard.jsx
+    // (PROFILE_IMAGE_BASE_URL + the stored path), so seller avatars
+    // resolve the same way your own avatar already does.
+    sellerProfileImage: product.ownerProfileImage
+      ? `${PROFILE_IMAGE_BASE_URL}${product.ownerProfileImage}`
+      : null,
+
+    // FIX: previously not mapped at all. `null` here (rather than a
+    // fallback number) is intentional — it means "no trust score yet
+    // computed for this student" (e.g. no completed transactions),
+    // which ProductCard/ProductDetailSection already handle by hiding
+    // the trust badge instead of showing a fake 0.
+    sellerTrustScore:
+      product.trustScore !== null &&
+      product.trustScore !== undefined
+        ? product.trustScore
+        : null,
 
     images: (product.images || []).map(
       (img) => ({

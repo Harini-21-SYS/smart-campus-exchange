@@ -1,3 +1,4 @@
+// productApi.js
 import axios from "axios";
 
 const BASE_URL = "http://localhost:8081/api/products";
@@ -5,6 +6,32 @@ const BASE_URL = "http://localhost:8081/api/products";
 const authHeaders = () => ({
   Authorization: `Bearer ${localStorage.getItem("token")}`,
 });
+
+/* =========================================================
+   CURRENT LOGGED-IN STUDENT ID
+   Decoded straight from the JWT stored in localStorage (no extra
+   network call). Used anywhere the UI needs to know "is this MY
+   product" — e.g. hiding the Buy/Donate/Exchange button on your
+   own listing in ProductDetailSection.
+   ========================================================= */
+export const getCurrentStudentId = () => {
+  const token = localStorage.getItem("token");
+  if (!token) return null;
+
+  try {
+    const payloadSegment = token.split(".")[1];
+    const normalized = payloadSegment.replace(/-/g, "+").replace(/_/g, "/");
+    const payloadJson = atob(normalized);
+    const payload = JSON.parse(payloadJson);
+
+    // Different backends put the id under different claim names —
+    // check the common ones rather than assuming just one.
+    return payload.studentId ?? payload.id ?? payload.userId ?? payload.sub ?? null;
+  } catch (err) {
+    console.warn("getCurrentStudentId: failed to decode token", err);
+    return null;
+  }
+};
 
 /* =========================================================
    ADD PRODUCT + IMAGES
@@ -235,4 +262,50 @@ export const getBrowseProducts = async () => {
   );
 
   return response.data;
+};
+
+
+/* =========================================================
+   SELLER PUBLIC PROFILE
+   No dedicated /api/users/{id} endpoint exists yet, so this is
+   built from data already embedded on product records. Any
+   product by this seller carries their name/department/avatar/
+   trust score — we just need one such product to build the
+   header, and the caller (SellerProfileSection) also calls
+   getProductsBySeller for the listings + count.
+
+   NOTE: assumes each product has a `sellerId` field alongside
+   the existing sellerName / sellerProfileImage / sellerTrustScore
+   fields. If your backend calls this field something else
+   (ownerId, studentId, etc.), update the two spots below marked
+   with a comment.
+   ========================================================= */
+
+export const getProductsBySeller = async (sellerId) => {
+  const all = await getAllProducts();
+  return (all || []).filter(
+    (p) => String(p.sellerId) === String(sellerId) // <-- adjust field name here if needed
+  );
+};
+
+export const getSellerProfile = async (sellerId) => {
+  const sellerProducts = await getProductsBySeller(sellerId);
+
+  if (sellerProducts.length === 0) {
+    // No listings to read seller info off of — nothing to build a profile from.
+    return null;
+  }
+
+  const sample = sellerProducts[0];
+
+  return {
+    id: sellerId,
+    name: sample.sellerName || "Unknown student",
+    department: sample.department || null,
+    profileImage: sample.sellerProfileImage || null,
+    trustScore:
+      sample.sellerTrustScore !== null && sample.sellerTrustScore !== undefined
+        ? sample.sellerTrustScore
+        : null,
+  };
 };
