@@ -1,24 +1,58 @@
 package com.sce.smartcampexchange.dto;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 
 public class RequestResponse {
 
     private Long id;
 
+    // =========================================
+    // REQUESTED PRODUCT
+    // =========================================
+
     private Long productId;
 
     private String productTitle;
 
-    private Long ownerId;
+    private String productImage;
 
-    private String ownerName;
+
+    // =========================================
+    // OFFERED PRODUCT
+    // =========================================
+
+    private Long offeredProductId;
+
+    private String offeredProductTitle;
+
+    private String offeredProductImage;
+
+
+    // =========================================
+    // SELLER
+    // =========================================
+
+    private Long sellerId;
+
+    private String sellerName;
+
+
+    // =========================================
+    // REQUESTER
+    // =========================================
 
     private Long requesterId;
 
     private String requesterName;
 
-    private String reqType;
+
+    // =========================================
+    // REQUEST DETAILS
+    // =========================================
+
+    private String requestType;
 
     private String status;
 
@@ -26,38 +60,108 @@ public class RequestResponse {
 
     private LocalDateTime updatedAt;
 
-    public RequestResponse() {
-    }
+
+    // =========================================
+    // PICKUP DETAILS
+    // =========================================
+
+    private String pickupLocation;
+
+    private LocalDate pickupDate;
+
+    private LocalTime pickupTime;
+
+    private String pickupStatus;
+
+
+    // =========================================
+    // CONSTRUCTOR
+    // =========================================
 
     public RequestResponse(
+
             Long id,
+
+            // Requested Product
             Long productId,
             String productTitle,
-            Long ownerId,
-            String ownerName,
+            String productImage,
+
+            // Offered Product
+            Long offeredProductId,
+            String offeredProductTitle,
+            String offeredProductImage,
+
+            // Seller
+            Long sellerId,
+            String sellerName,
+
+            // Requester
             Long requesterId,
             String requesterName,
-            String reqType,
+
+            // Request Details
+            String requestType,
             String status,
+
+            // Dates
             LocalDateTime createdAt,
-            LocalDateTime updatedAt) {
+            LocalDateTime updatedAt,
+
+            // Pickup Details
+            String pickupLocation,
+            LocalDate pickupDate,
+            LocalTime pickupTime,
+            String pickupStatus
+
+    ) {
 
         this.id = id;
+
+        // Requested Product
         this.productId = productId;
         this.productTitle = productTitle;
-        this.ownerId = ownerId;
-        this.ownerName = ownerName;
+        this.productImage = productImage;
+
+        // Offered Product
+        this.offeredProductId = offeredProductId;
+        this.offeredProductTitle = offeredProductTitle;
+        this.offeredProductImage = offeredProductImage;
+
+        // Seller
+        this.sellerId = sellerId;
+        this.sellerName = sellerName;
+
+        // Requester
         this.requesterId = requesterId;
         this.requesterName = requesterName;
-        this.reqType = reqType;
+
+        // Request Details
+        this.requestType = requestType;
         this.status = status;
+
+        // Dates
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
+
+        // Pickup Details
+        this.pickupLocation = pickupLocation;
+        this.pickupDate = pickupDate;
+        this.pickupTime = pickupTime;
+        this.pickupStatus = pickupStatus;
     }
+
+
+    // =========================================
+    // GETTERS
+    // =========================================
 
     public Long getId() {
         return id;
     }
+
+
+    // Requested Product
 
     public Long getProductId() {
         return productId;
@@ -67,13 +171,38 @@ public class RequestResponse {
         return productTitle;
     }
 
-    public Long getOwnerId() {
-        return ownerId;
+    public String getProductImage() {
+        return productImage;
     }
 
-    public String getOwnerName() {
-        return ownerName;
+
+    // Offered Product
+
+    public Long getOfferedProductId() {
+        return offeredProductId;
     }
+
+    public String getOfferedProductTitle() {
+        return offeredProductTitle;
+    }
+
+    public String getOfferedProductImage() {
+        return offeredProductImage;
+    }
+
+
+    // Seller
+
+    public Long getSellerId() {
+        return sellerId;
+    }
+
+    public String getSellerName() {
+        return sellerName;
+    }
+
+
+    // Requester
 
     public Long getRequesterId() {
         return requesterId;
@@ -83,13 +212,19 @@ public class RequestResponse {
         return requesterName;
     }
 
-    public String getReqType() {
-        return reqType;
+
+    // Request Details
+
+    public String getRequestType() {
+        return requestType;
     }
 
     public String getStatus() {
         return status;
     }
+
+
+    // Dates
 
     public LocalDateTime getCreatedAt() {
         return createdAt;
@@ -98,4 +233,24 @@ public class RequestResponse {
     public LocalDateTime getUpdatedAt() {
         return updatedAt;
     }
+
+
+    // Pickup Details
+
+    public String getPickupLocation() {
+        return pickupLocation;
+    }
+
+    public LocalDate getPickupDate() {
+        return pickupDate;
+    }
+
+    public LocalTime getPickupTime() {
+        return pickupTime;
+    }
+
+    public String getPickupStatus() {
+        return pickupStatus;
+    }
+
 }

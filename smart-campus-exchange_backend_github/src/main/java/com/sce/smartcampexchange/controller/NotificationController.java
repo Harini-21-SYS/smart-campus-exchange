@@ -1,79 +1,73 @@
 package com.sce.smartcampexchange.controller;
 
-import com.sce.smartcampexchange.dto.NotificationRequest;
-import com.sce.smartcampexchange.dto.NotificationResponse;
-import com.sce.smartcampexchange.service.NotificationService;
+import java.util.List;
 
-import org.springframework.http.HttpStatus;
+
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
 
+import com.sce.smartcampexchange.service.NotificationService;
+import com.sce.smartcampexchange.dto.NotificationResponse;
 @RestController
 @RequestMapping("/api/notifications")
 public class NotificationController {
 
     private final NotificationService notificationService;
 
+
     public NotificationController(
             NotificationService notificationService) {
 
-        this.notificationService = notificationService;
+        this.notificationService =
+                notificationService;
     }
 
-    // =========================
-    // Add Notification
-    // =========================
 
-    @PostMapping
-    public ResponseEntity<NotificationResponse> addNotification(
-            @RequestBody NotificationRequest request) {
-
-        NotificationResponse response =
-                notificationService.addNotification(request);
-
-        return new ResponseEntity<>(
-                response,
-                HttpStatus.CREATED
-        );
-    }
-
-    // =========================
-    // Get All Notifications
-    // =========================
+    // =========================================================
+    // GET MY NOTIFICATIONS
+    // =========================================================
 
     @GetMapping
-    public ResponseEntity<List<NotificationResponse>> getAllNotifications() {
+    public ResponseEntity<List<NotificationResponse>>
+            getMyNotifications() {
 
         return ResponseEntity.ok(
-                notificationService.getAllNotifications()
+                notificationService.getMyNotifications()
         );
     }
-
-    // =========================
-    // Get Notification By ID
-    // =========================
-
-    @GetMapping("/{id}")
-    public ResponseEntity<NotificationResponse> getNotificationById(
-            @PathVariable Long id) {
+    @PutMapping("/{notificationId}/read")
+    public ResponseEntity<NotificationResponse> markAsRead(
+            @PathVariable Long notificationId) {
 
         return ResponseEntity.ok(
-                notificationService.getNotificationById(id)
+                notificationService
+                        .markAsRead(notificationId)
         );
     }
+    
+    // =========================================================
+    // MARK ALL NOTIFICATIONS AS READ
+    // =========================================================
 
-    // =========================
-    // Delete Notification
-    // =========================
+    @PutMapping("/read-all")
+    public ResponseEntity<Void> markAllAsRead() {
 
-    @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteNotification(
-            @PathVariable Long id) {
+    	notificationService.markAllNotificationsAsRead();
 
-        notificationService.deleteNotification(id);
-
-        return ResponseEntity.noContent().build();
+        return ResponseEntity.ok().build();
     }
+    
+ // =========================================================
+ // GET UNREAD NOTIFICATION COUNT
+ // =========================================================
+
+ @GetMapping("/unread-count")
+ public ResponseEntity<Long> getUnreadNotificationCount() {
+
+     return ResponseEntity.ok(
+             notificationService.getUnreadNotificationCount()
+     );
+ }
+ 
 }

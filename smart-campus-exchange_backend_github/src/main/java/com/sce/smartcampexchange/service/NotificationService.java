@@ -1,18 +1,48 @@
 package com.sce.smartcampexchange.service;
 
-import com.sce.smartcampexchange.dto.NotificationRequest;
-import com.sce.smartcampexchange.dto.NotificationResponse;
-
 import java.util.List;
+
+import com.sce.smartcampexchange.dto.NotificationResponse;
+import com.sce.smartcampexchange.entity.Notification;
 
 public interface NotificationService {
 
-    NotificationResponse addNotification(
-            NotificationRequest request);
+    // ==========================================
+    // CREATE NOTIFICATION
+    // ==========================================
 
-    List<NotificationResponse> getAllNotifications();
+    Notification createNotification(
+            StudentNotificationData data
+    );
 
-    NotificationResponse getNotificationById(Long id);
 
-    void deleteNotification(Long id);
+    // ==========================================
+    // GET MY NOTIFICATIONS
+    // ==========================================
+
+    List<NotificationResponse> getMyNotifications();
+
+
+    // ==========================================
+    // MARK ONE NOTIFICATION AS READ
+    // ==========================================
+
+    NotificationResponse markAsRead(
+            Long notificationId
+    );
+
+
+    // ==========================================
+    // MARK ALL NOTIFICATIONS AS READ
+    // ==========================================
+
+    void markAllNotificationsAsRead();
+
+
+    // ==========================================
+    // GET UNREAD NOTIFICATION COUNT
+    // ==========================================
+
+    long getUnreadNotificationCount();
+
 }

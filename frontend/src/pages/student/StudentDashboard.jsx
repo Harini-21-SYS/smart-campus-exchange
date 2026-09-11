@@ -14,6 +14,26 @@ import {
   deleteProductImage,
   setPrimaryImage,
 } from "../../services/productService";
+
+import {
+  createRequest,
+  getMyRequests,
+  getIncomingRequests,
+  deleteRequest,
+} from "../../services/requestService";
+
+import {
+  getMyNotifications,
+  markNotificationAsRead,
+  markAllNotificationsAsRead,
+ 
+} from "../../services/notificationService";
+
+import {
+  getMyComplaints,
+  getComplaintsAgainstMe,
+} from "../../services/complaintService";
+
 import { FaUser, FaCheckCircle } from "react-icons/fa";
 
 import {
@@ -21,7 +41,7 @@ import {
   COMPLAINTS_SIDEBAR_GROUP,
   PROFILE_IMAGE_BASE_URL,
   HISTORY_STORAGE_KEYS,
-  SAMPLE_INCOMING_REQUESTS,
+ 
   SAMPLE_COMPLAINTS_AGAINST_ME,
   TYPE_INFO,
   REQUEST_STATUS,
@@ -86,6 +106,203 @@ const VALID_SECTIONS = [
   "raiseComplaint",
   "complaintsAgainstMe",
 ];
+const mapBackendRequest = (r) => ({
+  id: r.id,
+
+  productId:
+    r.productId ??
+    r.product?.id,
+
+  productName:
+    r.productTitle ??
+    r.product?.title ??
+    "Untitled listing",
+
+  productImage:
+    r.productImage ??
+    r.product?.images?.[0]?.imageUrl ??
+    r.product?.images?.[0]?.url ??
+    null,
+
+  category:
+    r.category ??
+    r.product?.category ??
+    "",
+
+  sellerId:
+    r.sellerId ??
+    r.seller?.studentId,
+
+  sellerName:
+    r.sellerName ??
+    r.seller?.fullName ??
+    "Unknown Seller",
+
+  requesterId:
+    r.requesterId ??
+    r.requester?.studentId,
+
+  requesterName:
+    r.requesterName ??
+    r.requester?.fullName ??
+    "Unknown Student",
+
+  requestType:
+    r.requestType,
+
+  type:
+    r.productType ??
+    r.product?.type ??
+    (r.requestType === "EXCHANGE"
+      ? "Exchange"
+      : r.requestType === "DONATE"
+      ? "Donate"
+      : "Sell"),
+
+  price:
+    r.productPrice ??
+    r.product?.price ??
+    0,
+
+  message:
+    r.message ??
+    "",
+
+  offeredProduct:
+    r.offeredProduct ??
+    null,
+
+  status:
+    r.status ??
+    "PENDING",
+
+  pickupLocation:
+    r.pickupLocation ??
+    null,
+
+  pickupTime:
+    r.pickupTime ??
+    null,
+
+  time:
+    r.createdAt
+      ? new Date(r.createdAt).getTime()
+      : Date.now(),
+
+  updatedAt:
+    r.updatedAt ??
+    null,
+});
+const mapBackendComplaint = (complaint) => ({
+  id:
+    complaint.complaintId,
+
+  productId:
+    complaint.productId,
+
+  productName:
+    complaint.productTitle ||
+    "Unknown Product",
+
+ productImage:
+    complaint.productImage ||
+    complaint.imageUrl ||
+    null,
+
+  requestId:
+    complaint.requestId,
+
+  complaintType:
+    complaint.complaintType,
+
+  description:
+    complaint.description,
+
+  status:
+    complaint.status,
+
+  createdAt:
+    complaint.createdAt
+      ? new Date(
+          complaint.createdAt
+        ).getTime()
+      : Date.now(),
+
+  resolvedAt:
+    complaint.resolvedAt
+      ? new Date(
+          complaint.resolvedAt
+        ).getTime()
+      : null,
+
+  studentId:
+    complaint.studentId,
+
+  studentName:
+    complaint.studentName,
+
+  againstStudentId:
+    complaint.againstStudentId,
+
+  againstStudentName:
+    complaint.againstStudentName,
+});
+const getNotificationMessage = (type) => {
+
+  switch (type) {
+
+    case "REQUEST_RECEIVED":
+      return "You received a new request.";
+
+    case "REQUEST_ACCEPTED":
+      return "Your request has been accepted.";
+
+    case "REQUEST_REJECTED":
+      return "Your request has been rejected.";
+
+    case "REQUEST_CANCELLED":
+      return "A request has been cancelled.";
+
+    case "COMPLAINT_RECEIVED":
+      return "A new complaint has been raised against you.";
+
+    case "COMPLAINT_UPDATED":
+      return "Your complaint has been updated.";
+
+    case "COMPLAINT_RESOLVED":
+      return "Your complaint has been resolved.";
+
+    default:
+      return "You have a new notification.";
+  }
+};
+
+const mapBackendNotification = (notification) => ({
+  id:
+    notification.id ??
+    notification.notifyId,
+
+  notifyType:
+    notification.notifyType,
+
+  relatedId:
+    notification.relatedId,
+
+  read:
+    notification.isRead ?? false,
+
+  time:
+    notification.createdAt
+      ? new Date(notification.createdAt).getTime()
+      : Date.now(),
+
+  createdAt:
+    notification.createdAt,
+
+  message:
+    notification.message ??
+    getNotificationMessage(notification.notifyType),
+});
 
 function StudentDashboard() {
   const location = useLocation();
@@ -121,24 +338,189 @@ function StudentDashboard() {
   const [products, setProducts] = useState([]);
   const [myProducts, setMyProducts] = useState([]);
   const [myRequests, setMyRequests] = useState([]);
-  const [incomingRequests, setIncomingRequests] = useState(SAMPLE_INCOMING_REQUESTS);
-  const [complaints, setComplaints] = useState([]); // complaints YOU raised
-  const [complaintsAgainstMe] = useState(SAMPLE_COMPLAINTS_AGAINST_ME); // complaints raised on you
-  const [notifications, setNotifications] = useState(() => [
-    {
-      id: "n-seed-1",
-      message: "Ishaan Verma requested your Graphing Calculator (TI-84 Plus).",
-      time: Date.now() - 1000 * 60 * 60 * 3,
-      read: false,
-    },
-    {
-      id: "n-seed-2",
-      message: "Fatima Sheikh requested to donate-adopt your Hostel Study Chair.",
-      time: Date.now() - 1000 * 60 * 60 * 26,
-      read: false,
-    },
-  ]);
 
+  const [
+  incomingRequests,
+  setIncomingRequests
+] = useState([]);
+const loadMyRequests = useCallback(async () => {
+  try {
+    const data = await getMyRequests();
+
+    const mappedRequests =
+      (data || []).map(mapBackendRequest);
+
+    setMyRequests(mappedRequests);
+
+    return mappedRequests;
+
+  } catch (error) {
+
+    console.error(
+      "Failed to load my requests:",
+      error
+    );
+
+    return [];
+  }
+}, []);
+
+useEffect(() => {
+  loadMyRequests();
+}, [loadMyRequests]);
+
+
+
+const loadIncomingRequests =
+  useCallback(async () => {
+
+    try {
+
+      const data =
+        await getIncomingRequests();
+
+      const mappedRequests =
+        (data || []).map(
+          mapBackendRequest
+        );
+
+      setIncomingRequests(
+        mappedRequests
+      );
+
+      return mappedRequests;
+
+    } catch (error) {
+
+      console.error(
+        "Failed to load incoming requests:",
+        error
+      );
+
+      return [];
+
+    }
+
+  }, []);
+
+  useEffect(() => {
+  loadIncomingRequests();
+}, [loadIncomingRequests]);
+
+ const [complaints, setComplaints] = useState([]);
+
+const [
+  complaintsAgainstMe,
+  setComplaintsAgainstMe
+] = useState([]);
+const loadMyComplaints =
+  useCallback(async () => {
+
+    try {
+
+      const data =
+        await getMyComplaints();
+
+      const mappedComplaints =
+        (data || []).map(
+          mapBackendComplaint
+        );
+
+      setComplaints(
+        mappedComplaints
+      );
+
+      return mappedComplaints;
+
+    } catch (error) {
+
+      console.error(
+        "Failed to load my complaints:",
+        error
+      );
+
+      return [];
+
+    }
+
+  }, []);
+
+
+useEffect(() => {
+
+  loadMyComplaints();
+
+}, [
+  loadMyComplaints
+]);
+
+const loadComplaintsAgainstMe =
+  useCallback(async () => {
+
+    try {
+
+      const data =
+        await getComplaintsAgainstMe();
+
+      const mappedComplaints =
+        (data || []).map(
+          mapBackendComplaint
+        );
+
+      setComplaintsAgainstMe(
+        mappedComplaints
+      );
+
+      return mappedComplaints;
+
+    } catch (error) {
+
+      console.error(
+        "Failed to load complaints against me:",
+        error
+      );
+
+      return [];
+
+    }
+
+  }, []);
+  useEffect(() => {
+
+  loadComplaintsAgainstMe();
+
+}, [
+  loadComplaintsAgainstMe
+]);
+
+const [notifications, setNotifications] = useState([]);
+useEffect(() => {
+  let cancelled = false;
+
+  const loadNotifications = async () => {
+    try {
+      const data = await getMyNotifications();
+
+      if (!cancelled) {
+        setNotifications(
+          (data || []).map(mapBackendNotification)
+        );
+      }
+    } catch (error) {
+      console.error(
+        "Failed to load notifications:",
+        error
+      );
+    }
+  };
+
+  loadNotifications();
+
+  return () => {
+    cancelled = true;
+  };
+}, []);
+const [notificationTarget, setNotificationTarget] = useState(null);
   // ---------- Signed-in student's name + photo for the sidebar ----------
   const [studentProfile, setStudentProfile] = useState(null);
   useEffect(() => {
@@ -157,42 +539,86 @@ function StudentDashboard() {
 
   // ---------- Product catalog ----------
   // ---------- Browse Products ----------
-  useEffect(() => {
-    let cancelled = false;
 
-    getBrowseProducts()
-      .then((data) => {
-        if (cancelled) return;
 
-        setProducts((data || []).map(mapBackendProduct));
-      })
-      .catch((error) => {
-        console.error("Failed to load browse products:", error);
-      });
+const loadBrowseProducts =
+  useCallback(async () => {
 
-    return () => {
-      cancelled = true;
-    };
+    try {
+
+      const data =
+        await getBrowseProducts();
+
+      const mappedProducts =
+        (data || []).map(
+          mapBackendProduct
+        );
+
+      setProducts(
+        mappedProducts
+      );
+
+      return mappedProducts;
+
+    } catch (error) {
+
+      console.error(
+        "Failed to load browse products:",
+        error
+      );
+
+      return [];
+
+    }
+
   }, []);
+
+  useEffect(() => {
+  loadBrowseProducts();
+}, [loadBrowseProducts]);
 
   // ---------- My Products ----------
-  useEffect(() => {
-    let cancelled = false;
+ 
+const loadMyProducts =
+  useCallback(async () => {
 
-    getMyProducts()
-      .then((data) => {
-        if (cancelled) return;
+    try {
 
-        setMyProducts((data || []).map(mapBackendProduct));
-      })
-      .catch((error) => {
-        console.error("Failed to load my products:", error);
-      });
+      const data =
+        await getMyProducts();
 
-    return () => {
-      cancelled = true;
-    };
+      const mappedProducts =
+        (data || []).map(
+          mapBackendProduct
+        );
+
+      setMyProducts(
+        mappedProducts
+      );
+
+      return mappedProducts;
+
+    } catch (error) {
+
+      console.error(
+        "Failed to load my products:",
+        error
+      );
+
+      return [];
+
+    }
+
   }, []);
+  useEffect(() => {
+  loadMyProducts();
+}, [
+  loadMyProducts
+]);
+  // ---------- My Requests ----------
+
+// ---------- Incoming Requests ----------
+
 
   // ---------- Personalization signals ----------
   const [browsingHistory, setBrowsingHistory] = useState(() => loadHistory(HISTORY_STORAGE_KEYS.browsing));
@@ -244,16 +670,18 @@ function StudentDashboard() {
   // "Purchases" = requests you sent where the seller accepted AND you
   // confirmed the pickup. This is also the pool Exchange offers are
   // picked from — you can only offer something you've actually received.
-  const myPurchases = useMemo(
-    () => myRequests.filter((r) => r.status === REQUEST_STATUS.CONFIRMED),
-    [myRequests]
-  );
+ const myPurchases = useMemo(
+  () =>
+    myRequests.filter(
+      (r) =>
+        r.status ===
+        REQUEST_STATUS.CONFIRMED
+    ),
+  [myRequests]
+);
 
   const unreadNotifCount = useMemo(() => notifications.filter((n) => !n.read).length, [notifications]);
-  const incomingPendingCount = useMemo(
-    () => incomingRequests.filter((r) => r.status === REQUEST_STATUS.PENDING).length,
-    [incomingRequests]
-  );
+  
 
   const addNotification = useCallback((message) => {
     setNotifications((prev) => [
@@ -268,30 +696,40 @@ function StudentDashboard() {
   };
 
   // ---------- Navigation ----------
-  const goToSection = (id) => {
-    // Guard here too: any caller of goToSection/goToSidebarItem with a
-    // bad id falls back to "products" instead of blanking the page.
-    setMainSection(VALID_SECTIONS.includes(id) ? id : "products");
-    setSubView(null);
-    setSidebarOpen(false);
-  };
+ const goToSection = (
+  id,
+  target = null
+) => {
+
+  setMainSection(
+    VALID_SECTIONS.includes(id)
+      ? id
+      : "products"
+  );
+
+  setNotificationTarget(target);
+
+  setSubView(null);
+
+  setSidebarOpen(false);
+};
 
   const handleNavTabClick = (tab) => {
-    if (tab.id === "home") {
-      navigate("/");
-      return;
-    }
-    if (tab.id === "profile") {
-      navigate("/profile");
-      return;
-    }
 
-    goToSection(tab.id);
+  if (tab.id === "home") {
+    navigate("/");
+    return;
+  }
 
-    if (tab.id === "notifications") {
-      setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
-    }
-  };
+  if (tab.id === "profile") {
+    navigate("/profile");
+    return;
+  }
+
+  goToSection(tab.id);
+
+  
+};
 
   const goToSidebarItem = (id) => goToSection(id);
 
@@ -358,84 +796,131 @@ function StudentDashboard() {
     }
   };
 
-  const createOutgoingRequest = (product, offeredProduct) => {
+
+  
+const createOutgoingRequest = async (product, offeredProduct) => {
+  try {
+    let requestType = "BUY";
+
+    if (product.type === "Exchange") {
+      requestType = "EXCHANGE";
+    } else if (product.type === "Donate") {
+      requestType = "DONATE";
+    }
+
+    const savedRequest = await createRequest(
+  product.id,
+  requestType,
+  offeredProduct?.productId || null
+);
+
+    const newRequest = {
+      id: savedRequest.id,
+      productId: savedRequest.productId,
+      productName: savedRequest.productTitle,
+      productImage: null,
+      category: product.category,
+      sellerName: savedRequest.sellerName,
+      type:
+        savedRequest.requestType === "EXCHANGE"
+          ? "Exchange"
+          : savedRequest.requestType === "DONATE"
+          ? "Donate"
+          : "Sell",
+      price: product.price,
+      message: "",
+      offeredProduct: offeredProduct || null,
+      status: savedRequest.status,
+      pickupLocation: null,
+      pickupTime: null,
+      time: savedRequest.createdAt
+        ? new Date(savedRequest.createdAt).getTime()
+        : Date.now(),
+    };
+
+    setMyRequests((prev) => [
+      newRequest,
+      ...prev,
+    ]);
+
     setPurchaseHistory((prev) =>
       [
         ...prev,
-        { id: product.id, category: product.category, type: product.type, time: Date.now() },
+        {
+          id: product.id,
+          category: product.category,
+          type: product.type,
+          time: Date.now(),
+        },
       ].slice(-50)
     );
 
-    setMyRequests((prev) => [
-      ...prev,
-      {
-        id: `req-${Date.now()}`,
-        productId: product.id,
-        productName: product.name,
-        productImage: product.images?.[product.primaryIndex ?? 0]?.url || null,
-        category: product.category,
-        sellerName: product.sellerName,
-        type: product.type,
-        price: product.price,
-        message: "",
-        offeredProduct: offeredProduct || null,
-        status: REQUEST_STATUS.PENDING,
-        pickupLocation: null,
-        pickupTime: null,
-        time: Date.now(),
-      },
-    ]);
+    const info =
+      TYPE_INFO[product.type] ||
+      TYPE_INFO.Sell;
 
-    const info = TYPE_INFO[product.type];
-    addNotification(`${info.actionLabel} sent to ${product.sellerName} for "${product.name}".`);
-    showToast(`${info.actionLabel} sent to ${product.sellerName}.`);
+    addNotification(
+      `${info.actionLabel} sent to ${product.sellerName} for "${product.name}".`
+    );
 
-    if (subView === "detail") closeDetail();
-  };
+    showToast(
+      `${info.actionLabel} sent successfully.`
+    );
+
+    if (subView === "detail") {
+      closeDetail();
+    }
+
+  } catch (error) {
+
+    console.error(
+      "Failed to create request:",
+      error
+    );
+
+    showToast(
+      error.response?.data?.message ||
+      "Failed to send request."
+    );
+  }
+};
 
   // Sell / Donate confirm
-  const handleConfirmRequest = () => {
-    createOutgoingRequest(requestTarget, null);
-    setRequestTarget(null);
-  };
+const handleConfirmRequest = async () => {
+  if (!requestTarget) return;
+
+  await createOutgoingRequest(
+    requestTarget,
+    null
+  );
+
+  setRequestTarget(null);
+};
 
   // Exchange: buyer picked an item from My Purchases to offer
-  const handleConfirmExchangeItem = (offeredPurchase) => {
-    createOutgoingRequest(exchangeTarget, {
+ const handleConfirmExchangeItem = async (offeredPurchase) => {
+  if (!exchangeTarget) return;
+
+  await createOutgoingRequest(
+    exchangeTarget,
+    {
       id: offeredPurchase.id,
       productId: offeredPurchase.productId,
       productName: offeredPurchase.productName,
       productImage: offeredPurchase.productImage,
       category: offeredPurchase.category,
-    });
-    setExchangeTarget(null);
-  };
+    }
+  );
+
+  setExchangeTarget(null);
+};
 
   // ---------- Step 2: seller accepts (with pickup details) or rejects ----------
   // NOTE: incomingRequests is seeded from sample data in this mock —
   // in a real backend, a request sent via createOutgoingRequest() above
   // would show up here on the seller's side via the same request id.
-  const handleSellerAccept = (request, { location, time }) => {
-    setIncomingRequests((prev) =>
-      prev.map((r) =>
-        r.id === request.id
-          ? { ...r, status: REQUEST_STATUS.AWAITING_CONFIRMATION, pickupLocation: location, pickupTime: time }
-          : r
-      )
-    );
-    addNotification(
-      `You accepted ${request.requesterName}'s request for "${request.productName}" and sent pickup details.`
-    );
-    showToast(`Pickup details sent to ${request.requesterName}.`);
-  };
+  
 
-  const handleSellerReject = (request) => {
-    setIncomingRequests((prev) =>
-      prev.map((r) => (r.id === request.id ? { ...r, status: REQUEST_STATUS.REJECTED } : r))
-    );
-    addNotification(`You declined ${request.requesterName}'s request for "${request.productName}".`);
-    showToast(`Declined ${request.requesterName}'s request.`);
-  };
 
   // ---------- Step 3: buyer confirms pickup, or cancels a pending request ----------
   const handleBuyerConfirmPickup = (request) => {
@@ -446,33 +931,60 @@ function StudentDashboard() {
     showToast("Pickup confirmed — check My Purchases.");
   };
 
-  const handleCancelMyRequest = (request) => {
-    setMyRequests((prev) => prev.filter((r) => r.id !== request.id));
-    showToast(`Cancelled your request for "${request.productName}".`);
-  };
+const handleCancelMyRequest = async (request) => {
+
+  try {
+
+    await deleteRequest(request.id);
+
+    setMyRequests((prev) =>
+      prev.filter((r) => r.id !== request.id)
+    );
+
+    showToast("Request cancelled successfully.");
+
+  } catch (error) {
+
+    console.error(
+      "Failed to cancel request:",
+      error
+    );
+
+    showToast(
+      error.response?.data?.message ||
+      "Failed to cancel request."
+    );
+  }
+};
 
   // ---------- Complaints ----------
   // Only completed transactions (confirmed pickups) are eligible —
   // enforced by only ever passing `myPurchases` into RaiseComplaintSection.
-  const handleRaiseComplaint = (payload) => {
-    setComplaints((prev) => [
-      ...prev,
-      {
-        id: `cmp-${Date.now()}`,
-        productId: payload.productId,
-        productName: payload.productName,
-        productImage: payload.productImage,
-        requestId: payload.requestId,
-        complaintType: payload.complaintType,
-        description: payload.description,
-        status: COMPLAINT_STATUS.PENDING,
-        createdAt: Date.now(),
-        resolvedAt: null,
-      },
-    ]);
-    addNotification(`Your complaint about "${payload.productName}" has been submitted.`);
-    showToast("Complaint submitted.");
-  };
+  const handleRaiseComplaint = (
+  createdComplaint
+) => {
+
+  const complaint =
+    mapBackendComplaint(
+      createdComplaint
+    );
+
+
+  setComplaints((prev) => [
+    complaint,
+    ...prev,
+  ]);
+
+
+  addNotification(
+    `Your complaint about "${complaint.productName}" has been submitted.`
+  );
+
+
+  showToast(
+    "Complaint submitted successfully."
+  );
+};
 
   const handleProductSubmit = async (
     productData,
@@ -542,6 +1054,8 @@ function StudentDashboard() {
     }
   };
 
+
+
   const handleConfirmDelete = async () => {
     if (!deleteTarget) {
       return;
@@ -565,9 +1079,188 @@ function StudentDashboard() {
     }
   };
 
+  // ========================================
+// MARK ONE NOTIFICATION AS READ
+// ========================================
+
+const handleMarkNotificationAsRead = async (notification) => {
+
+  try {
+
+    if (!notification.read) {
+
+      await markNotificationAsRead(
+        notification.id
+      );
+
+      setNotifications((prev) =>
+        prev.map((item) =>
+          item.id === notification.id
+            ? {
+                ...item,
+                read: true,
+              }
+            : item
+        )
+      );
+
+    }
+
+
+    // ========================================
+    // REFRESH REQUEST DATA
+    // ========================================
+
+   // ========================================
+// REFRESH REQUEST DATA
+// ========================================
+
+if (
+  notification.notifyType === "REQUEST_ACCEPTED" ||
+  notification.notifyType === "REQUEST_REJECTED"
+) {
+  await loadMyRequests();
+}
+
+// ========================================
+// REFRESH COMPLAINT DATA
+// ========================================
+
+if (notification.notifyType === "COMPLAINT_RECEIVED") {
+  await loadComplaintsAgainstMe();
+}
+
+if (
+  notification.notifyType === "COMPLAINT_UPDATED" ||
+  notification.notifyType === "COMPLAINT_RESOLVED"
+) {
+  await loadMyComplaints();
+}
+    // ========================================
+    // NOTIFICATION NAVIGATION
+    // ========================================
+
+   switch (notification.notifyType) {
+
+  case "REQUEST_RECEIVED":
+
+    goToSection(
+      "incomingRequests",
+      {
+        type: notification.notifyType,
+        relatedId: notification.relatedId,
+      }
+    );
+
+    break;
+
+
+  case "REQUEST_ACCEPTED":
+  case "REQUEST_REJECTED":
+
+    goToSection(
+      "myRequests",
+      {
+        type: notification.notifyType,
+        relatedId: notification.relatedId,
+      }
+    );
+
+    break;
+
+
+  case "REQUEST_CANCELLED":
+
+    goToSection(
+      "incomingRequests",
+      {
+        type: notification.notifyType,
+        relatedId: notification.relatedId,
+      }
+    );
+
+    break;
+
+
+  case "COMPLAINT_RECEIVED":
+
+    goToSection(
+      "complaintsAgainstMe",
+      {
+        type: notification.notifyType,
+        relatedId: notification.relatedId,
+      }
+    );
+
+    break;
+
+
+  case "COMPLAINT_UPDATED":
+  case "COMPLAINT_RESOLVED":
+
+    goToSection(
+      "myComplaints",
+      {
+        type: notification.notifyType,
+        relatedId: notification.relatedId,
+      }
+    );
+
+    break;
+
+
+  default:
+
+    break;
+}
+
+  } catch (error) {
+
+    console.error(
+      "Failed to process notification:",
+      error
+    );
+
+    showToast(
+      "Failed to open notification."
+    );
+
+  }
+
+};
+
+
+// ========================================
+// MARK ALL NOTIFICATIONS AS READ
+// ========================================
+
+const handleMarkAllNotificationsAsRead = async () => {
+  try {
+    await markAllNotificationsAsRead();
+
+    setNotifications((prev) =>
+      prev.map((notification) => ({
+        ...notification,
+        read: true,
+      }))
+    );
+
+  } catch (error) {
+    console.error(
+      "Failed to mark all notifications as read:",
+      error
+    );
+  }
+};
+
   const renderMain = () => {
     if (subView === "detail" && selectedProduct) {
-      const isOwner = selectedProduct.sellerName === "You";
+      const isOwner =
+  myProducts.some(
+    (product) =>
+      String(product.id) ===
+      String(selectedProduct.id)
+  );
       return (
         <ProductDetailSection
           product={selectedProduct}
@@ -634,16 +1327,35 @@ function StudentDashboard() {
             recommendations={recommendations}
           />
         );
-      case "incomingRequests":
-        return (
-          <IncomingRequestsSection
-            requests={incomingRequests}
-            onAccept={handleSellerAccept}
-            onReject={handleSellerReject}
-          />
-        );
-      case "notifications":
-        return <NotificationsSection notifications={notifications} />;
+  case "incomingRequests":
+  return (
+    <IncomingRequestsSection
+      onToast={showToast}
+
+      notificationTargetId={
+        notificationTarget?.relatedId
+      }
+
+      onRequestUpdated={async () => {
+
+        await loadIncomingRequests();
+
+        await loadMyRequests();
+
+        await loadMyProducts();
+
+        await loadBrowseProducts();
+
+      }}
+    />
+  );
+     case "notifications":
+  return (
+    <NotificationsSection
+      notifications={notifications}
+      onMarkAsRead={handleMarkNotificationAsRead}
+    />
+  );
       case "myProducts":
         return (
           <MyProductsSection
@@ -657,25 +1369,38 @@ function StudentDashboard() {
             onDelete={(p) => setDeleteTarget(p)}
           />
         );
-      case "myRequests":
-        return (
-          <MyRequestsSection
-            requests={myRequests}
-            onCancel={handleCancelMyRequest}
-            onConfirmPickup={handleBuyerConfirmPickup}
-          />
-        );
+     case "myRequests":
+  return (
+    <MyRequestsSection
+      requests={myRequests}
+      onCancel={handleCancelMyRequest}
+      onConfirmPickup={handleBuyerConfirmPickup}
+      notificationTargetId={
+        notificationTarget?.relatedId
+      }
+    />
+  );
       case "myPurchases":
         return <MyPurchasesSection purchases={myPurchases} />;
-      case "myComplaints":
-        return <MyComplaintsSection complaints={complaints} />;
-      case "raiseComplaint":
+     case "myComplaints":
+  return (
+    <MyComplaintsSection
+      complaints={complaints}
+      notificationTargetId={notificationTarget?.relatedId}
+    />
+  );
+  case "raiseComplaint":
         return (
           <RaiseComplaintSection completedTransactions={myPurchases} onSubmit={handleRaiseComplaint} />
         );
       case "complaintsAgainstMe":
-        return <ComplaintsAgainstMeSection complaints={complaintsAgainstMe} />;
-      default:
+  return (
+    <ComplaintsAgainstMeSection
+      complaints={complaintsAgainstMe}
+      notificationTargetId={notificationTarget?.relatedId}
+    />
+  );
+   default:
         // mainSection should always be one of VALID_SECTIONS (enforced at
         // every entry point above), so this should be unreachable. But if
         // it's ever hit anyway, fall back to Browse Products instead of
@@ -708,7 +1433,7 @@ function StudentDashboard() {
         onSidebarToggle={() => setSidebarOpen((o) => !o)}
         sidebarOpen={sidebarOpen}
         unreadNotifCount={unreadNotifCount}
-        incomingPendingCount={incomingPendingCount}
+        incomingPendingCount={0}
       />
 
       <div className="dash-body">

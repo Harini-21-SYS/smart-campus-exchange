@@ -71,21 +71,10 @@ public class SecurityConfig {
             )
 
             .authorizeHttpRequests(auth -> auth
-
-                .requestMatchers(
-                    "/api/auth/**",
-                    "/uploads/**"
-                )
-                .permitAll()
-
-                .anyRequest()
-<<<<<<< HEAD
-                
-              .authenticated()
-=======
-                .authenticated()
->>>>>>> f8b079a (Product backend)
-            )
+            	    .requestMatchers("/api/auth/**").permitAll()
+            	    .requestMatchers("/uploads/**").permitAll()
+            	    .anyRequest().authenticated()
+            	)
 
             .addFilterBefore(
                 jwtAuthenticationFilter,

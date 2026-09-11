@@ -1,60 +1,125 @@
 package com.sce.smartcampexchange.entity;
 
-import jakarta.persistence.*;
 import java.time.LocalDateTime;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.Table;
 
 @Entity
 @Table(name = "notifications")
 public class Notification {
 
+    // =========================================================
+    // Primary Key
+    // =========================================================
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "notify_id")
-    private Long id;
+    private Long notifyId;
 
-    @Column(name = "recipient_type", nullable = false)
-    private String recipientType;
 
-    @ManyToOne(fetch = FetchType.EAGER)
-    @JoinColumn(name = "std_id")
+    // =========================================================
+    // Student
+    // =========================================================
+
+    @ManyToOne
+    @JoinColumn(name = "student_id", nullable = false)
     private Student student;
 
-    @Column(name = "notify_type", nullable = false)
+
+    // =========================================================
+    // Existing std_id column
+    // =========================================================
+
+    @Column(name = "std_id")
+    private Long stdId;
+
+
+    // =========================================================
+    // Notification Type
+    // =========================================================
+
+    @Column(name = "notify_type")
     private String notifyType;
+
+
+    // =========================================================
+    // Recipient Type
+    // =========================================================
+
+    @Column(name = "recipient_type")
+    private String recipientType;
+
+
+    // =========================================================
+    // Related ID
+    // =========================================================
 
     @Column(name = "related_id")
     private Long relatedId;
 
+
+    // =========================================================
+    // Is Read
+    // =========================================================
+
     @Column(name = "is_read", nullable = false)
-    private boolean isRead;
+    private Boolean isRead = false;
+
+
+    // =========================================================
+    // Created At
+    // =========================================================
 
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
 
-    @PrePersist
-    protected void onCreate() {
-        createdAt = LocalDateTime.now();
-        isRead = false;
-    }
+
+    // =========================================================
+    // Constructor
+    // =========================================================
 
     public Notification() {
     }
 
-    public Long getId() {
-        return id;
+
+    // =========================================================
+    // Before Insert
+    // =========================================================
+
+    @PrePersist
+    protected void onCreate() {
+
+        if (createdAt == null) {
+            createdAt = LocalDateTime.now();
+        }
+
+        if (isRead == null) {
+            isRead = false;
+        }
     }
 
-    public void setId(Long id) {
-        this.id = id;
+
+    // =========================================================
+    // Getters and Setters
+    // =========================================================
+
+    public Long getNotifyId() {
+        return notifyId;
     }
 
-    public String getRecipientType() {
-        return recipientType;
+    public void setNotifyId(Long notifyId) {
+        this.notifyId = notifyId;
     }
 
-    public void setRecipientType(String recipientType) {
-        this.recipientType = recipientType;
-    }
 
     public Student getStudent() {
         return student;
@@ -64,6 +129,16 @@ public class Notification {
         this.student = student;
     }
 
+
+    public Long getStdId() {
+        return stdId;
+    }
+
+    public void setStdId(Long stdId) {
+        this.stdId = stdId;
+    }
+
+
     public String getNotifyType() {
         return notifyType;
     }
@@ -71,6 +146,16 @@ public class Notification {
     public void setNotifyType(String notifyType) {
         this.notifyType = notifyType;
     }
+
+
+    public String getRecipientType() {
+        return recipientType;
+    }
+
+    public void setRecipientType(String recipientType) {
+        this.recipientType = recipientType;
+    }
+
 
     public Long getRelatedId() {
         return relatedId;
@@ -80,13 +165,15 @@ public class Notification {
         this.relatedId = relatedId;
     }
 
-    public boolean isRead() {
+
+    public Boolean getIsRead() {
         return isRead;
     }
 
-    public void setRead(boolean read) {
-        isRead = read;
+    public void setIsRead(Boolean isRead) {
+        this.isRead = isRead;
     }
+
 
     public LocalDateTime getCreatedAt() {
         return createdAt;

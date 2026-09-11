@@ -2,10 +2,10 @@ import { useEffect, useState } from "react";
 import { FaCheck, FaBan, FaChevronDown, FaChevronUp, FaUser } from "react-icons/fa";
 import EmptyState from "../components/EmptyState";
 import { TYPE_INFO } from "../constants";
-import { timeAgo } from "../utils/dashboardUtils";
+import { timeAgo } from "../utils/DashboardUtils";
 import { getIncomingRequests, acceptRequest, rejectRequest } from "../../../services/requestService";
 import "./RequestList.css";
-
+import PickupDetailsModal from "../components/PickupDetailsModal";
 // Normalizes whatever the backend sends (PENDING / Pending / pending)
 // into the lowercase form the CSS classes and copy expect.
 function normalizeStatus(status) {
@@ -15,31 +15,108 @@ function normalizeStatus(status) {
 // Defensive mapping — backend field names can drift; this keeps the
 // rest of the component simple even if some fields are missing.
 function mapRequest(r) {
-  const images = r.product?.images || [];
-  const primary = images.find((img) => img.primary) || images[0];
-
   return {
     id: r.id,
-    productId: r.product?.id,
-    productName: r.product?.title || "Untitled listing",
-    productImage: primary?.imageUrl || null,
-    requesterName: r.requester?.fullName || "Unknown Student",
-    department: r.requester?.department || "—",
-    year: r.requester?.year || "—",
-    type: r.type || r.product?.type || "Sell",
-    message: r.message || "",
-    time: r.createdAt ? new Date(r.createdAt).getTime() : Date.now(),
-    status: normalizeStatus(r.status),
-  };
+
+    productId:
+      r.productId ??
+      r.product?.id,
+
+    productName:
+      r.productTitle ??
+      r.product?.title ??
+      "Untitled listing",
+
+    productImage:
+      r.productImage ??
+      r.product?.images?.[0]?.imageUrl ??
+      r.product?.images?.[0]?.url ??
+      null,
+
+    requesterId:
+      r.requesterId ??
+      r.requester?.studentId,
+
+    requesterName:
+      r.requesterName ??
+      r.requester?.fullName ??
+      "Unknown Student",
+
+    department:
+      r.requesterDepartment ??
+      r.requester?.department ??
+      "—",
+
+    year:
+      r.requesterYear ??
+      r.requester?.year ??
+      "—",
+
+   type:
+  r.productType ??
+  r.product?.type ??
+  (r.requestType === "BUY"
+    ? "Sell"
+    : r.requestType === "EXCHANGE"
+    ? "Exchange"
+    : r.requestType === "DONATE"
+    ? "Donate"
+    : "Sell"),
+
+    message:
+      r.message ?? "",
+
+    time:
+      r.createdAt
+        ? new Date(r.createdAt).getTime()
+        : Date.now(),
+
+    status:
+  normalizeStatus(r.status),
+
+pickupLocation:
+  r.pickupLocation ??
+  null,
+
+pickupTime:
+  r.pickupTime ??
+  null,
+};
 }
 
-function IncomingRequestsSection({ onToast }) {
+function IncomingRequestsSection({
+  onToast,
+  notificationTargetId,
+  onRequestUpdated
+}) {
+  
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
   const [actingId, setActingId] = useState(null); // request currently being accepted/rejected
   const [expandedId, setExpandedId] = useState(null); // "view profile" panel
+  const [selectedRequest, setSelectedRequest] = useState(null);
+  useEffect(() => {
+  if (!notificationTargetId) return;
 
+  // Wait for request cards to render
+  setTimeout(() => {
+    const element = document.getElementById(
+      `request-${notificationTargetId}`
+    );
+
+    if (element) {
+      element.scrollIntoView({
+        behavior: "smooth",
+        block: "center",
+      });
+
+      // Optional: automatically expand requester profile
+      setExpandedId(notificationTargetId);
+    }
+  }, 100);
+
+}, [notificationTargetId, requests]);
   const notify = (message) => (onToast ? onToast(message) : console.log(message));
 
   useEffect(() => {
@@ -69,37 +146,129 @@ function IncomingRequestsSection({ onToast }) {
     };
   }, []);
 
-  const handleAccept = async (request) => {
-    setActingId(request.id);
-    try {
-      await acceptRequest(request.id);
-      setRequests((prev) =>
-        prev.map((r) => (r.id === request.id ? { ...r, status: "accepted" } : r))
-      );
-      notify(`Accepted ${request.requesterName}'s request for "${request.productName}".`);
-    } catch (error) {
-      console.error("Failed to accept request:", error);
-      notify(error.response?.data?.message || "Couldn't accept the request. Please try again.");
-    } finally {
-      setActingId(null);
-    }
-  };
 
-  const handleReject = async (request) => {
-    setActingId(request.id);
-    try {
-      await rejectRequest(request.id);
-      setRequests((prev) =>
-        prev.map((r) => (r.id === request.id ? { ...r, status: "rejected" } : r))
+const handlePickupAccept = async ({ location, time }) => {
+
+  if (!selectedRequest) return;
+
+  const requestId =
+    selectedRequest.id;
+
+  setActingId(requestId);
+
+  try {
+
+    const response =
+      await acceptRequest(
+        requestId,
+        {
+          pickupLocation: location,
+          pickupTime: time,
+        }
       );
-      notify(`Declined ${request.requesterName}'s request for "${request.productName}".`);
-    } catch (error) {
-      console.error("Failed to reject request:", error);
-      notify(error.response?.data?.message || "Couldn't decline the request. Please try again.");
-    } finally {
-      setActingId(null);
-    }
-  };
+
+    // Update local request card
+    setRequests((prev) =>
+      prev.map((r) =>
+        String(r.id) === String(requestId)
+          ? {
+              ...r,
+
+              status:
+                normalizeStatus(
+                  response.status ??
+                  "ACCEPTED"
+                ),
+
+              pickupLocation:
+                response.pickupLocation ??
+                location,
+
+              pickupTime:
+                response.pickupTime ??
+                time,
+            }
+          : r
+      )
+    );
+
+    // IMPORTANT:
+    // Refresh Dashboard data
+    await onRequestUpdated?.();
+
+    notify(
+      `Accepted ${selectedRequest.requesterName}'s request for "${selectedRequest.productName}".`
+    );
+
+    setSelectedRequest(null);
+
+  } catch (error) {
+
+    console.error(
+      "Failed to accept request:",
+      error
+    );
+
+    notify(
+      error.response?.data?.message ||
+      "Couldn't accept the request. Please try again."
+    );
+
+  } finally {
+
+    setActingId(null);
+
+  }
+
+};
+  const handleReject = async (request) => {
+
+  setActingId(request.id);
+
+  try {
+
+    await rejectRequest(
+      request.id
+    );
+
+    setRequests((prev) =>
+      prev.map((r) =>
+        String(r.id) ===
+        String(request.id)
+          ? {
+              ...r,
+              status: "rejected",
+            }
+          : r
+      )
+    );
+
+    // Refresh dashboard data
+    await onRequestUpdated?.();
+
+    notify(
+      `Declined ${request.requesterName}'s request for "${request.productName}".`
+    );
+
+  } catch (error) {
+
+    console.error(
+      "Failed to reject request:",
+      error
+    );
+
+    notify(
+      error.response?.data?.message ||
+      "Couldn't decline the request. Please try again."
+    );
+
+  } finally {
+
+    setActingId(null);
+
+  }
+
+};
 
   if (loading) {
     return (
@@ -134,13 +303,21 @@ function IncomingRequestsSection({ onToast }) {
       ) : (
         <div className="request-list">
           {requests.map((r) => {
-            const info = TYPE_INFO[r.type];
+            const info = TYPE_INFO[r.type] || TYPE_INFO.Sell;
             const isPending = r.status === "pending";
             const isActing = actingId === r.id;
             const isExpanded = expandedId === r.id;
 
             return (
-              <div key={r.id} className="request-card">
+            <div
+  key={r.id}
+  id={`request-${r.id}`}
+  className={`request-card ${
+    String(r.id) === String(notificationTargetId)
+      ? "notification-highlight"
+      : ""
+  }`}
+>
                 <div className="request-card-top">
                   <div className="request-thumb">
                     {r.productImage ? (
@@ -190,12 +367,13 @@ function IncomingRequestsSection({ onToast }) {
                   {isPending ? (
                     <div className="request-actions">
                       <button
-                        className="dash-btn dash-btn-primary dash-btn-sm"
-                        disabled={isActing}
-                        onClick={() => handleAccept(r)}
-                      >
-                        <FaCheck /> {isActing ? "..." : "Accept"}
-                      </button>
+  className="dash-btn dash-btn-primary dash-btn-sm"
+  disabled={isActing}
+  onClick={() => setSelectedRequest(r)}
+>
+  <FaCheck />
+  {isActing ? "..." : "Accept"}
+</button>
                       <button
                         className="dash-btn dash-btn-danger dash-btn-sm"
                         disabled={isActing}
@@ -216,6 +394,17 @@ function IncomingRequestsSection({ onToast }) {
           })}
         </div>
       )}
+      {selectedRequest && (
+  <PickupDetailsModal
+    request={selectedRequest}
+    onCancel={() => setSelectedRequest(null)}
+    onAccept={handlePickupAccept}
+    onReject={() => {
+      handleReject(selectedRequest);
+      setSelectedRequest(null);
+    }}
+  />
+)}
     </div>
   );
 }
