@@ -26,7 +26,7 @@ const DRAFT_KEY = "authDraftState";
 // ---------- Validation helpers ----------
 const NAME_REGEX = /^[A-Za-z][A-Za-z\s]{1,49}$/; // letters + spaces only, 2-50 chars
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const REGISTER_NUMBER_REGEX = /^[A-Za-z0-9]{4,20}$/; // alphanumeric only
+const REGISTER_NUMBER_REGEX = /^[A-Za-z0-9]{7,20}$/; // alphanumeric only
 const MOBILE_REGEX = /^[0-9]{10}$/; // exactly 10 digits
 const PASSWORD_MIN_LENGTH = 6;
 const OTP_LENGTH = 4;
@@ -43,14 +43,14 @@ const OTP_VALIDITY_SECONDS = 5 * 60;
 // their Degree and Stream manually below. There's no backend lookup for
 // the aided/self-financed distinction either; it's inferred purely from
 // the register number pattern itself.
-const REGISTER_NUMBER_PARSE_REGEX = /^(\d{2})([Ss]?)([UuPp])([A-Za-z]+)(\d{2})$/;
+const REGISTER_NUMBER_PARSE_REGEX = /^(\d{2})([Ss]?)([Aa]?)([UuPp])([A-Za-z]+)(\d{2})$/;
 
-const YEAR_LABELS = ["1st Year", "2nd Year", "3rd Year", "4th Year"];
+const YEAR_LABELS = ["1st Year", "2nd Year", "3rd Year"];
 
 // ---------- Degree -> available Streams ----------
 const DEGREE_STREAMS = {
   "B.Sc": ["Computer Science", "Mathematics", "Physics", "Chemistry", "Zoology", "Botany","Data Science","Information Technology","Psychology"],
-  "B.Com": ["General", "Professional Accounting","Computer Applications","Honours"],
+  "B.Com": ["General", "Professional Accounting","Computer Applications"],
   "BCA": ["Computer Applications"],
   "BBA": ["General"],
   "B.A": ["English", "Economics","Tamil"],
@@ -59,13 +59,14 @@ const DEGREE_STREAMS = {
   "MCA": ["Computer Applications"],
   "MBA": ["Business Administration"],
   "M.A": ["English", "Economics","Tamil"],
+  "D.pharm":["pharmacy"]
 
 };
 
 const DEGREES = Object.keys(DEGREE_STREAMS);
 
 /**
- * Parses a register number like "24UCS23" or "24SUCS24" into
+ * Parses a register number like "24UCS23" or "24SUCS23" into
  * { year, financeType, programLevel }.
  * - First 2 digits: admission year (24 -> 2024)
  * - Optional "S" right after: Self-Financed (absent = Aided)
@@ -86,12 +87,12 @@ function deriveYearAndFinanceType(registerNumber) {
 
   const isPG = levelChar.toUpperCase() === "P";
   result.programLevel = isPG ? "PG" : "UG";
-  const maxYears = isPG ? 2 : 4;
+  const maxYears = isPG ? 2 : 3;
 
   // e.g. admitted 2024, current year 2026 -> 3rd year
   let yearNumber = currentYear - admissionYear + 1;
   if (yearNumber < 1) yearNumber = 1;
-  if (yearNumber > maxYears) yearNumber = maxYears;
+  if (yearNumber > maxYears) yearNumber = 0;
 
   if (admissionYear <= currentYear) {
     result.year = YEAR_LABELS[yearNumber - 1];
@@ -107,6 +108,71 @@ const formatTime = (totalSeconds) => {
   const s = totalSeconds % 60;
   return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
 };
+
+// ---------- Backend responses that mean "this is actually a failure" ----------
+// Some backends return HTTP 200 with { success: true, message: "..." } even
+// for cases like a duplicate email, instead of using success:false or a
+// non-2xx status. Axios treats a 2xx response as a resolved promise, so the
+// normal catch() block never runs and the OTP modal opens by mistake.
+// This is a defensive, best-effort guard on the frontend for that specific
+// backend bug. The message-text check is fragile (it breaks if wording
+// changes) — the real fix belongs on the backend. See note at bottom of file.
+const REGISTRATION_FAILURE_PATTERNS = [
+  /already registered/i,
+  /already exists/i,
+  /already in use/i,
+  /email.*taken/i,
+  /register number.*exists/i,
+  /register number.*taken/i,
+];
+
+function isRegistrationActuallySuccessful(response) {
+  if (!response) return false;
+
+  // Preferred: backend explicitly tells us via success flag.
+  if (response.success === false) return false;
+
+  // Preferred: backend explicitly tells us an OTP was sent.
+  if (typeof response.otpSent === "boolean") return response.otpSent;
+
+  // Fallback: sniff the message for known failure phrasing.
+  const message = (response.message || "").toString();
+  if (REGISTRATION_FAILURE_PATTERNS.some((pattern) => pattern.test(message))) {
+    return false;
+  }
+
+  // Otherwise trust it (matches previous behavior for genuinely new users).
+  return true;
+}
+
+// Same defensive pattern for OTP verification endpoints (registration OTP
+// and forgot-password OTP). If your backend returns HTTP 200 with
+// success:true even on a wrong/expired OTP, this catches it via message
+// sniffing until the backend is fixed to send success:false / a non-2xx
+// status for that case.
+const OTP_FAILURE_PATTERNS = [
+  /invalid otp/i,
+  /incorrect otp/i,
+  /wrong otp/i,
+  /otp.*expired/i,
+  /otp.*not match/i,
+  /otp.*mismatch/i,
+  /does not match/i,
+];
+
+function isOtpActuallyVerified(response) {
+  if (!response) return false;
+
+  if (response.success === false) return false;
+  if (typeof response.verified === "boolean") return response.verified;
+
+  const message = (response.message || "").toString();
+  if (OTP_FAILURE_PATTERNS.some((pattern) => pattern.test(message))) {
+    return false;
+  }
+
+  return true;
+}
 
 function Auth() {
   const [isLogin, setIsLogin] = useState(true);
@@ -171,7 +237,12 @@ function Auth() {
   useEffect(() => {
     const token = localStorage.getItem("token");
     if (token) {
-      navigate("/StudentDashboard");
+      // FIX: route based on the stored role instead of always sending
+      // everyone to StudentDashboard — otherwise an admin who refreshes
+      // the page (or lands back here with a token already saved) gets
+      // bounced into the student view instead of the admin one.
+      const role = (localStorage.getItem("role") || "").toUpperCase();
+      navigate(role === "ADMIN" ? "/AdminDashboard" : "/StudentDashboard");
       return;
     }
 
@@ -274,7 +345,8 @@ function Auth() {
     setRegisterErrors((errs) => (errs[name] ? { ...errs, [name]: "" } : errs));
   };
 
-  // Selecting a Degree resets Stream, since the available options change.
+  // Selecting a Degree resets Department, since the available options
+  // change and any previously chosen department may no longer be valid.
  const handleDegreeChange = (e) => {
   const value = e.target.value;
   setRegisterData((d) => ({ ...d, degree: value, department: "" }));
@@ -406,6 +478,12 @@ function Auth() {
     setRegisterStep((s) => Math.max(s - 1, 1));
   };
 
+  // ---------- FIXED: no longer blindly opens the OTP modal on any resolved
+  // promise. Some backends respond with HTTP 200 + { success: true,
+  // message: "Email already registered" }, which axios treats as a normal
+  // success — so the previous code showed the OTP modal even though no
+  // OTP was ever sent. This now inspects the response body itself before
+  // deciding the registration actually succeeded. ----------
   const handleRegister = async (e) => {
     e.preventDefault();
 
@@ -417,6 +495,17 @@ function Auth() {
     try {
       const response = await registerUser(registerData);
       console.log(response);
+
+      if (!isRegistrationActuallySuccessful(response)) {
+        // Backend responded 2xx but this is really a failure
+        // (e.g. duplicate email/register number). Surface the real
+        // message instead of opening the OTP modal.
+        showToast(
+          response?.message || "Registration failed. Please try again.",
+          "error"
+        );
+        return;
+      }
 
       showToast("Almost there — check your inbox for the OTP! ✨", "success");
       setOtpTimeLeft(OTP_VALIDITY_SECONDS);
@@ -430,6 +519,9 @@ function Auth() {
     }
   };
 
+  // FIX: route based on the role the backend actually returned, not a
+  // hardcoded email — so ANY admin account lands on AdminDashboard, not
+  // just one specific address.
   const handleLogin = async (e) => {
     e.preventDefault();
 
@@ -444,9 +536,19 @@ function Auth() {
       localStorage.setItem("role", response.role);
       clearDraft();
 
-      showToast("Welcome back! Taking you to the marketplace 🎓", "success");
+      const role = (response.role || "").toString().toUpperCase();
+      const isAdmin = role === "ADMIN";
 
-      setTimeout(() => navigate("/StudentDashboard"), 900);
+      showToast(
+        isAdmin
+          ? "Welcome back, Admin! Taking you to the dashboard 🛠️"
+          : "Welcome back! Taking you to the marketplace 🎓",
+        "success"
+      );
+
+      setTimeout(() => {
+        navigate(isAdmin ? "/AdminDashboard" : "/StudentDashboard");
+      }, 900);
     } catch (error) {
 
     console.log("LOGIN ERROR STATUS:", error.response?.status);
@@ -483,6 +585,17 @@ function Auth() {
       });
 
       console.log(response);
+
+      // Same class of bug as registration: don't trust a resolved
+      // promise alone. Some backends return HTTP 200 + success:true
+      // even for a wrong OTP, so check the body before celebrating.
+      if (!isOtpActuallyVerified(response)) {
+        const msg = response?.message || "That OTP didn't match — try again.";
+        setOtpError(msg);
+        showToast(msg, "error");
+        return;
+      }
+
       showToast("You're verified! Please sign in to continue 🎉", "success");
 
       // Auto-fill the login form with the details just used to register,
@@ -533,6 +646,15 @@ function Auth() {
         email: forgotEmail,
         otp: forgotOtp,
       });
+
+      // Same defensive check — don't advance to the reset-password step
+      // just because the request resolved with a 2xx status.
+      if (!isOtpActuallyVerified(response)) {
+        const msg = response?.message || "That OTP didn't match — try again.";
+        setForgotOtpError(msg);
+        showToast(msg, "error");
+        return;
+      }
 
       showToast(response.message || "OTP verified — set your new password.", "success");
       setForgotOtpError("");

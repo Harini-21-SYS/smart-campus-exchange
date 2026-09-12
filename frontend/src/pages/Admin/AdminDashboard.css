@@ -1,0 +1,896 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Poppins', sans-serif;
+}
+
+/* Same tokens as StudentDashboard.css — kept identical on purpose so
+   the admin panel and the student dashboard are visually one product,
+   not two different apps. If the student side's palette ever changes,
+   mirror the change here too. */
+:root {
+    --dash-green: #1F4D3A;
+    --dash-green-light: #2F6B54;
+    --dash-gold: #E3A72B;
+    --dash-cream: #F8F5EE;
+    --dash-blue: #3B6E8F;
+    --dash-red: #C0483D;
+    --dash-navbar-h: 64px;
+}
+
+@media (max-width: 640px) {
+    :root {
+        --dash-navbar-h: 56px;
+    }
+}
+
+@media (max-height: 600px) {
+    :root {
+        --dash-navbar-h: 52px;
+    }
+}
+
+/* No sidebar on the admin panel, so the page is just navbar + a single
+   scrollable content column — same "locked viewport, content scrolls
+   internally" approach as the student dashboard, just one column. */
+.adm-page {
+    height: 100vh;
+    height: 100dvh;
+    background: var(--dash-cream);
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    overflow: hidden;
+}
+
+/* ================================================
+   Navbar — identical structure/classes to the student
+   navbar (logo, pill nav links, mobile toggle) so both
+   pages share one navbar look.
+================================================ */
+.adm-navbar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    width: 100%;
+    z-index: 200;
+    height: var(--dash-navbar-h);
+    flex-shrink: 0;
+
+    display: flex;
+    align-items: center;
+    gap: 14px;
+
+    background: #fff;
+    padding: 0 20px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+}
+
+.adm-logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--dash-green);
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.adm-logo span {
+    color: var(--dash-gold);
+}
+
+.adm-logo-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 10px;
+    background: var(--dash-green);
+    color: var(--dash-gold);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    flex-shrink: 0;
+}
+
+.adm-nav-toggle {
+    display: none;
+    background: none;
+    border: 1.5px solid var(--dash-green);
+    color: var(--dash-green);
+    width: 38px;
+    height: 38px;
+    border-radius: 10px;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 15px;
+    flex-shrink: 0;
+    margin-left: auto;
+}
+
+.adm-nav-links {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    overflow-x: auto;
+    scrollbar-width: none;
+    margin-left: auto;
+}
+
+.adm-nav-links::-webkit-scrollbar {
+    display: none;
+}
+
+.adm-nav-links button {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: transparent;
+    border: none;
+    font-family: inherit;
+    font-weight: 700;
+    font-size: 14px;
+    color: #444;
+    padding: 9px 15px;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: background 0.2s ease, color 0.2s ease;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.adm-nav-links button:hover {
+    background: #f2f2ec;
+    color: var(--dash-green);
+}
+
+.adm-nav-links button.active {
+    background: var(--dash-green);
+    color: #fff;
+}
+
+.adm-nav-links button.active:hover {
+    background: var(--dash-green-light);
+    color: #fff;
+}
+
+.adm-nav-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 17px;
+    height: 17px;
+    padding: 0 4px;
+    border-radius: 999px;
+    background: var(--dash-red);
+    color: #fff;
+    font-size: 10px;
+    font-weight: 700;
+    margin-left: 2px;
+}
+
+.adm-nav-links button.active .adm-nav-badge {
+    background: #fff;
+    color: var(--dash-green);
+}
+
+/* ================================================
+   Content — single scrollable column, no sidebar offset
+================================================ */
+.adm-content {
+    flex: 1;
+    min-width: 0;
+    width: 100%;
+    height: 100%;
+    margin-top: var(--dash-navbar-h);
+    overflow-y: auto;
+    padding: clamp(16px, 2.5vh, 26px) clamp(16px, 2.5vw, 28px) clamp(30px, 5vh, 60px);
+}
+
+.adm-section {
+    animation: adm-fade-up 0.4s ease both;
+    max-width: 1280px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+@keyframes adm-fade-up {
+    from { opacity: 0; transform: translateY(14px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.adm-section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+}
+
+.adm-section-header h1 {
+    font-size: 1.5rem;
+    color: #1a1a1a;
+    font-weight: 700;
+}
+
+.adm-section-header-count {
+    color: #999;
+    font-size: 13px;
+    font-weight: 500;
+}
+
+.adm-back-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: none;
+    border: none;
+    color: var(--dash-green);
+    font-family: inherit;
+    font-weight: 600;
+    font-size: 14px;
+    cursor: pointer;
+    padding: 8px 0;
+}
+
+.adm-back-link:hover {
+    text-decoration: underline;
+}
+
+/* ================================================
+   Buttons — shared with the student dashboard's button system
+================================================ */
+.adm-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    border: none;
+    border-radius: 10px;
+    padding: 11px 18px;
+    font-family: inherit;
+    font-weight: 600;
+    font-size: 14px;
+    cursor: pointer;
+    transition: transform 0.15s ease, background 0.2s ease, color 0.2s ease;
+    white-space: nowrap;
+}
+
+.adm-btn-primary {
+    background: var(--dash-green);
+    color: #fff;
+    box-shadow: 0 6px 16px rgba(31, 77, 58, 0.25);
+}
+
+.adm-btn-primary:hover {
+    background: var(--dash-green-light);
+    transform: translateY(-2px);
+}
+
+.adm-btn-outline {
+    background: transparent;
+    border: 1.5px solid var(--dash-green);
+    color: var(--dash-green);
+}
+
+.adm-btn-outline:hover {
+    background: var(--dash-green);
+    color: #fff;
+}
+
+.adm-btn-danger {
+    background: transparent;
+    border: 1.5px solid var(--dash-red);
+    color: var(--dash-red);
+}
+
+.adm-btn-danger:hover {
+    background: var(--dash-red);
+    color: #fff;
+}
+
+.adm-btn-danger-solid {
+    background: var(--dash-red);
+    color: #fff;
+}
+
+.adm-btn-danger-solid:hover {
+    background: #a63c32;
+}
+
+.adm-btn-sm {
+    padding: 7px 10px;
+    font-size: 12px;
+}
+
+.adm-btn-block {
+    width: 100%;
+}
+
+/* ================================================
+   Empty state — shared with student dashboard
+================================================ */
+.adm-empty {
+    text-align: center;
+    padding: 60px 20px;
+    background: #fff;
+    border-radius: 20px;
+    border: 1px dashed #ddd;
+}
+
+.adm-empty-icon {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    background: var(--dash-cream);
+    color: var(--dash-green);
+    font-size: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 16px;
+}
+
+.adm-empty h3 {
+    color: var(--dash-green);
+    font-size: 1.1rem;
+    margin-bottom: 8px;
+}
+
+.adm-empty p {
+    color: #999;
+    font-size: 14px;
+}
+
+/* ================================================
+   Modals (confirm dialogs) — shared with student dashboard
+================================================ */
+.adm-modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(4px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 999;
+    padding: 20px;
+    animation: adm-fade-in 0.25s ease;
+}
+
+@keyframes adm-fade-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.adm-modal {
+    background: #fff;
+    border-radius: 22px;
+    padding: 32px;
+    width: 420px;
+    max-width: 100%;
+    max-height: 88vh;
+    max-height: 88dvh;
+    overflow-y: auto;
+    position: relative;
+    text-align: center;
+    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.3);
+    animation: adm-modal-pop 0.3s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+@keyframes adm-modal-pop {
+    from { opacity: 0; transform: scale(0.92) translateY(12px); }
+    to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+.adm-modal h2 {
+    color: #1a1a1a;
+    font-size: 1.25rem;
+    margin-bottom: 10px;
+}
+
+.adm-modal-desc {
+    color: #666;
+    font-size: 14px;
+    line-height: 1.6;
+    margin-bottom: 22px;
+    word-break: break-word;
+}
+
+.adm-confirm-btn-row {
+    display: flex;
+    gap: 10px;
+}
+
+.adm-confirm-btn-row .adm-btn {
+    flex: 1;
+}
+
+/* ================================================
+   Toast — shared with student dashboard
+================================================ */
+.adm-toast {
+    position: fixed;
+    bottom: 28px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #fff;
+    color: #222;
+    padding: 14px 22px;
+    border-radius: 999px;
+    box-shadow: 0 16px 36px rgba(0, 0, 0, 0.2);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 14px;
+    font-weight: 500;
+    z-index: 1000;
+    animation: adm-toast-in 0.3s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+    max-width: calc(100vw - 32px);
+}
+
+.adm-toast span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.adm-toast svg {
+    color: var(--dash-green);
+    flex-shrink: 0;
+}
+
+.adm-toast-error svg {
+    color: var(--dash-red);
+}
+
+@keyframes adm-toast-in {
+    from { opacity: 0; transform: translate(-50%, 16px); }
+    to { opacity: 1; transform: translate(-50%, 0); }
+}
+
+/* ================================================
+   Admin-only pieces — stat cards, student list, product
+   grid, detail layouts. Built from the same tokens/scale
+   as everything above so nothing looks bolted-on.
+================================================ */
+
+.adm-stat-row {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+}
+
+.adm-stat-card {
+    background: #fff;
+    border-radius: 16px;
+    padding: 18px 20px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+.adm-stat-icon {
+    width: 46px;
+    height: 46px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    color: #fff;
+    flex-shrink: 0;
+}
+
+.adm-stat-icon-students { background: var(--dash-green); }
+.adm-stat-icon-products { background: var(--dash-gold); }
+.adm-stat-icon-blocked { background: var(--dash-red); }
+
+.adm-stat-value { font-size: 22px; font-weight: 800; line-height: 1.1; color: #1a1a1a; }
+.adm-stat-label { font-size: 13px; color: #999; margin-top: 2px; }
+
+@media (max-width: 700px) {
+    .adm-stat-row { grid-template-columns: 1fr; }
+}
+
+/* ---------- Toolbar (search + filters) ---------- */
+.adm-toolbar {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    align-items: center;
+}
+
+.adm-search-box {
+    flex: 1;
+    min-width: 220px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: #fff;
+    border: 1px solid #e5e0d8;
+    border-radius: 10px;
+    padding: 10px 14px;
+    color: #999;
+}
+
+.adm-search-box input {
+    border: none;
+    outline: none;
+    flex: 1;
+    font-size: 14px;
+    color: #1a1a1a;
+    background: transparent;
+    font-family: inherit;
+}
+
+.adm-toolbar select {
+    border: 1px solid #e5e0d8;
+    border-radius: 10px;
+    padding: 10px 12px;
+    background: #fff;
+    font-size: 14px;
+    color: #1a1a1a;
+    font-family: inherit;
+}
+
+.adm-filter-pills { display: flex; gap: 8px; flex-wrap: wrap; }
+
+.adm-pill {
+    border: 1px solid #e5e0d8;
+    background: #fff;
+    border-radius: 999px;
+    padding: 8px 16px;
+    font-size: 13px;
+    font-weight: 600;
+    color: #999;
+    cursor: pointer;
+    font-family: inherit;
+}
+
+.adm-pill-active {
+    background: var(--dash-green);
+    border-color: var(--dash-green);
+    color: #fff;
+}
+
+/* ---------- Student list ---------- */
+.adm-student-list {
+    background: #fff;
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+.adm-student-row {
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr 0.8fr 1fr;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 18px;
+    border-bottom: 1px solid #f0ede4;
+}
+
+.adm-student-row:last-child { border-bottom: none; }
+
+.adm-student-row-head {
+    background: #faf8f2;
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: #999;
+}
+
+.adm-student-identity {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    border: none;
+    background: none;
+    cursor: pointer;
+    text-align: left;
+    padding: 0;
+    font-family: inherit;
+}
+
+.adm-student-name-block { display: flex; flex-direction: column; }
+.adm-student-name-block strong { color: #1a1a1a; font-size: 14px; }
+.adm-student-email { font-size: 12px; color: #999; }
+
+@media (max-width: 800px) {
+    .adm-student-row-head { display: none; }
+    .adm-student-row {
+        grid-template-columns: 1fr;
+        gap: 8px;
+    }
+    .adm-cell-label { display: flex; justify-content: space-between; font-size: 13px; }
+    .adm-cell-label::before {
+        content: attr(data-label);
+        font-weight: 700;
+        color: #999;
+    }
+}
+
+/* ---------- Avatar ---------- */
+.adm-avatar {
+    border-radius: 50%;
+    background: var(--dash-cream);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    color: var(--dash-green);
+    flex-shrink: 0;
+}
+
+.adm-avatar img { width: 100%; height: 100%; object-fit: cover; }
+
+/* ---------- Status / type badges ---------- */
+.adm-status-badge {
+    display: inline-block;
+    font-size: 12px;
+    font-weight: 700;
+    padding: 4px 10px;
+    border-radius: 999px;
+}
+
+.adm-status-active { background: #e5f4ea; color: var(--dash-green); }
+.adm-status-blocked { background: #fbe9e7; color: var(--dash-red); }
+.adm-status-neutral { background: #f2efe6; color: #999; width: fit-content; }
+
+.adm-type-badge {
+    display: inline-block;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    padding: 4px 10px;
+    border-radius: 999px;
+    width: fit-content;
+}
+
+.adm-badge-sell { background: #fdf1de; color: #a4750f; }
+.adm-badge-exchange { background: #e5f0ea; color: var(--dash-green); }
+.adm-badge-donate { background: #e3edf7; color: var(--dash-blue); }
+
+/* ---------- Product grid ---------- */
+.adm-product-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 16px;
+}
+
+.adm-product-card {
+    background: #fff;
+    border-radius: 16px;
+    padding: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    text-align: left;
+    border: 1px solid #f0ede4;
+    cursor: pointer;
+    font-family: inherit;
+    transition: box-shadow 0.2s ease;
+}
+
+.adm-product-card:hover { box-shadow: 0 4px 14px rgba(0, 0, 0, 0.06); }
+
+.adm-product-image {
+    width: 100%;
+    aspect-ratio: 4 / 3;
+    background: var(--dash-cream);
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 26px;
+    color: #c9c2b2;
+    overflow: hidden;
+}
+
+.adm-product-image img { width: 100%; height: 100%; object-fit: cover; }
+.adm-product-title { margin: 2px 0 0; font-size: 15px; color: #1a1a1a; font-weight: 600; }
+.adm-product-category { font-size: 12px; color: #999; }
+.adm-product-price { font-weight: 700; color: var(--dash-green); font-size: 14px; }
+.adm-product-seller { display: flex; align-items: center; gap: 6px; margin-top: 4px; }
+.adm-product-seller-name { font-size: 12.5px; color: #999; }
+
+/* ---------- Detail views ---------- */
+.adm-detail-card {
+    background: #fff;
+    border-radius: 20px;
+    padding: 26px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.adm-detail-header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.adm-detail-name { margin: 0 0 4px; font-size: 20px; color: #1a1a1a; font-weight: 700; }
+.adm-detail-meta { color: #999; margin: 0; font-size: 14px; }
+.adm-detail-price { font-size: 20px; font-weight: 800; color: var(--dash-green); margin: 0; }
+.adm-detail-desc { color: #333; line-height: 1.6; }
+
+.adm-detail-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+}
+
+@media (max-width: 600px) {
+    .adm-detail-grid { grid-template-columns: 1fr; }
+}
+
+.adm-detail-field {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    font-size: 14px;
+    color: #1a1a1a;
+}
+
+.adm-detail-field svg { color: var(--dash-gold); margin-top: 3px; flex-shrink: 0; }
+
+.adm-detail-field-label {
+    display: block;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: #999;
+    font-weight: 700;
+}
+
+.adm-detail-grid-2col {
+    display: grid;
+    grid-template-columns: 1fr 1.2fr;
+    gap: 20px;
+}
+
+@media (max-width: 760px) {
+    .adm-detail-grid-2col { grid-template-columns: 1fr; }
+}
+
+.adm-detail-image-box {
+    background: var(--dash-cream);
+    border-radius: 20px;
+    aspect-ratio: 1 / 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+}
+
+.adm-detail-image-box img { width: 100%; height: 100%; object-fit: cover; }
+.adm-detail-image-placeholder { font-size: 40px; color: #c9c2b2; }
+
+.adm-seller-card {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    border: 1px solid #f0ede4;
+    border-radius: 14px;
+    padding: 12px;
+}
+
+.adm-seller-text { display: flex; flex-direction: column; flex: 1; font-size: 14px; color: #1a1a1a; }
+.adm-seller-text span { color: #999; font-size: 12.5px; }
+
+.adm-trust-badge {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 13px;
+    font-weight: 700;
+    color: #a8721c;
+    background: #fdf1de;
+    border-radius: 10px;
+    padding: 4px 9px;
+}
+
+.adm-profile-card { align-items: flex-start; }
+
+/* ==================================================================
+   RESPONSIVE — large desktop down to the smallest phones
+================================================================== */
+
+@media (min-width: 1440px) {
+    .adm-content { padding: 32px 48px 70px; }
+}
+
+@media (max-width: 1200px) {
+    .adm-content { padding: 24px 22px 55px; }
+}
+
+@media (max-width: 900px) {
+    .adm-nav-toggle { display: flex; }
+
+    .adm-nav-links {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+
+        flex-direction: column;
+        align-items: stretch;
+        gap: 4px;
+
+        background: #fff;
+        box-shadow: 0 12px 24px rgba(0, 0, 0, 0.08);
+        border-radius: 0 0 16px 16px;
+
+        max-height: 0;
+        overflow: hidden;
+        padding: 0 5%;
+
+        transition: max-height 0.35s ease, padding 0.35s ease;
+    }
+
+    .adm-nav-links.adm-nav-open {
+        max-height: min(340px, calc(100vh - var(--dash-navbar-h) - 12px));
+        padding: 10px 5% 18px;
+        overflow-y: auto;
+    }
+
+    .adm-nav-links button {
+        text-align: left;
+        width: 100%;
+        justify-content: flex-start;
+    }
+
+    .adm-content {
+        padding: 20px 5% 50px;
+    }
+}
+
+@media (max-width: 640px) {
+    .adm-navbar { padding: 0 14px; gap: 10px; }
+    .adm-logo { font-size: 15px; }
+    .adm-logo span { display: none; }
+    .adm-logo-icon { width: 28px; height: 28px; font-size: 11px; }
+    .adm-nav-toggle { width: 34px; height: 34px; font-size: 13px; }
+
+    .adm-section-header { flex-direction: column; align-items: flex-start; }
+    .adm-section-header .adm-btn { width: 100%; }
+
+    .adm-modal { padding: 22px 18px; border-radius: 18px; width: 100%; }
+    .adm-confirm-btn-row { flex-direction: column; }
+
+    .adm-toast { left: 12px; right: 12px; transform: none; bottom: 14px; max-width: none; }
+
+    @keyframes adm-toast-in {
+        from { opacity: 0; transform: translateY(16px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+}
+
+@media (max-width: 340px) {
+    .adm-navbar { padding: 0 10px; gap: 8px; }
+    .adm-content { padding: 16px 4% 40px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .adm-section,
+    .adm-modal-overlay,
+    .adm-modal,
+    .adm-toast,
+    .adm-btn,
+    .adm-nav-links,
+    .adm-product-card {
+        animation: none !important;
+        transition: none !important;
+    }
+}

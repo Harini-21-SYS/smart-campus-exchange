@@ -36,6 +36,23 @@ function ProductFormPage({ initialData, studentId, onCancel, onSubmit }) {
     setErrors((errs) => (errs[name] ? { ...errs, [name]: "" } : errs));
   };
 
+  // ---------- Image file validation ----------
+  // accept="image/*" on the <input> below is only a UI hint — browsers
+  // still allow "All Files" in the picker, and drag-and-drop ignores it
+  // entirely. URL.createObjectURL() also doesn't care what the file
+  // actually is, so without an explicit check here a .txt, .docx, or
+  // any other file type would silently get added to the listing and
+  // eventually sent to the backend as a "product image".
+  const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
+  const ALLOWED_IMAGE_EXTENSIONS = [".jpg", ".jpeg", ".png", ".webp"];
+  const MAX_IMAGE_SIZE_BYTES = 5 * 1024 * 1024; // 5MB
+
+  const isAllowedImageFile = (file) => {
+    const typeOk = ALLOWED_IMAGE_TYPES.includes(file.type);
+    const extOk = ALLOWED_IMAGE_EXTENSIONS.some((ext) => file.name.toLowerCase().endsWith(ext));
+    return typeOk && extOk;
+  };
+
   const handleAddImages = (e) => {
     const files = Array.from(e.target.files || []);
     if (!files.length) return;
@@ -47,14 +64,36 @@ function ProductFormPage({ initialData, studentId, onCancel, onSubmit }) {
       return;
     }
 
-    const toAdd = files.slice(0, room).map((file) => ({
+    const candidates = files.slice(0, room);
+    const validFiles = candidates.filter(isAllowedImageFile);
+    const rejectedCount = candidates.length - validFiles.length;
+
+    if (validFiles.length === 0) {
+      setErrors((errs) => ({ ...errs, images: "Please upload JPG, PNG, or WEBP images only." }));
+      e.target.value = "";
+      return;
+    }
+
+    const oversized = validFiles.filter((f) => f.size > MAX_IMAGE_SIZE_BYTES);
+    const withinSizeLimit = validFiles.filter((f) => f.size <= MAX_IMAGE_SIZE_BYTES);
+
+    const toAdd = withinSizeLimit.map((file) => ({
       id: `${Date.now()}-${Math.random()}`,
       url: URL.createObjectURL(file),
       file,
     }));
 
     setImages((prev) => [...prev, ...toAdd]);
-    setErrors((errs) => ({ ...errs, images: "" }));
+
+    if (rejectedCount > 0 || oversized.length > 0) {
+      const messages = [];
+      if (rejectedCount > 0) messages.push(`${rejectedCount} file(s) skipped — only JPG, PNG, or WEBP allowed.`);
+      if (oversized.length > 0) messages.push(`${oversized.length} file(s) skipped — over 5MB.`);
+      setErrors((errs) => ({ ...errs, images: messages.join(" ") }));
+    } else {
+      setErrors((errs) => ({ ...errs, images: "" }));
+    }
+
     e.target.value = "";
   };
 
@@ -226,7 +265,14 @@ onSubmit(
               </div>
             )}
 
-            <input ref={fileInputRef} type="file" accept="image/*" multiple hidden onChange={handleAddImages} />
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/png, image/jpeg, image/jpg, image/webp"
+              multiple
+              hidden
+              onChange={handleAddImages}
+            />
             {errors.images && <span className="field-error-msg">{errors.images}</span>}
           </div>
 

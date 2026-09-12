@@ -16,6 +16,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 import org.springframework.transaction.annotation.Transactional;
+
 import com.sce.smartcampexchange.dto.ProductImageResponse;
 import com.sce.smartcampexchange.dto.ProductRequest;
 import com.sce.smartcampexchange.dto.ProductResponse;
@@ -33,23 +34,13 @@ import com.sce.smartcampexchange.repository.TrustScoreRepository;
 public class ProductService {
 
     private final ProductRepository productRepository;
-
     private final ProductImageRepository productImageRepository;
-
     private final StudentRepository studentRepository;
-
-<<<<<<< HEAD
-    // Upload folder
-    private final Path uploadPath =
-            Paths.get("uploads/products");
-
-=======
     private final TrustScoreRepository trustScoreRepository;
-    
+
     // Upload folder
-    private final Path uploadPath =
-            Paths.get("uploads/products");
->>>>>>> f8b079a (Product backend)
+    private final Path uploadPath = Paths.get("uploads/products");
+
     public ProductService(
             ProductRepository productRepository,
             ProductImageRepository productImageRepository,
@@ -61,10 +52,10 @@ public class ProductService {
         this.studentRepository = studentRepository;
         this.trustScoreRepository = trustScoreRepository;
     }
+
     // =========================================================
     // Get Logged-in Student
     // =========================================================
-
     private Student getLoggedInStudent() {
 
         Authentication authentication =
@@ -82,11 +73,6 @@ public class ProductService {
 
         String email = authentication.getName();
 
-        System.out.println("=================================");
-        System.out.println("LOGGED-IN USER DEBUG");
-        System.out.println("Authentication Name: " + email);
-        System.out.println("Authentication: " + authentication);
-
         Student student =
                 studentRepository
                         .findByCollegeEmail(email)
@@ -95,105 +81,125 @@ public class ProductService {
                                         HttpStatus.UNAUTHORIZED,
                                         "Logged-in student not found"));
 
-        System.out.println(
-                "Student ID: " + student.getStudentId());
-
-        System.out.println(
-                "Student Email: " + student.getCollegeEmail());
-
-        System.out.println(
-                "Student Name: " + student.getFullName());
-
-        System.out.println("=================================");
-
         return student;
     }
+
     // =========================================================
     // Add Product
     // =========================================================
     @Transactional
- public ProductResponse addProduct(
-        ProductRequest request,
-        MultipartFile[] images,
-        Integer primaryImageIndex) {
-
-<<<<<<< HEAD
     public ProductResponse addProduct(
             ProductRequest request,
-            MultipartFile[] images) {
-=======
-    Student student = getLoggedInStudent();
->>>>>>> f8b079a (Product backend)
+            MultipartFile[] images,
+            Integer primaryImageIndex) {
 
-    // =========================================================
-    // Validate images
-    // =========================================================
+        // Basic validations
+        if (request == null) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Product details are required"
+            );
+        }
 
-<<<<<<< HEAD
+        if (request.getTitle() == null || request.getTitle().isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Product title is required");
+        }
+        if (request.getDescription() == null || request.getDescription().isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Product description is required");
+        }
+        if (request.getCategory() == null || request.getCategory().isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Product category is required");
+        }
+        if (request.getType() == null || request.getType().isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Product type is required");
+        }
+        if (request.getCondition() == null || request.getCondition().isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Product condition is required");
+        }
+        if (request.getPrice() == null || request.getPrice().signum() < 0) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Valid product price is required");
+        }
+
+        if (images == null || images.length == 0) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "At least 1 product image is required");
+        }
+        if (images.length > 4) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Maximum 4 product images are allowed");
+        }
+
+        if (primaryImageIndex != null) {
+            if (primaryImageIndex < 0 || primaryImageIndex >= images.length) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid primary image selection");
+            }
+            if (images[primaryImageIndex] == null || images[primaryImageIndex].isEmpty()) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Selected primary image is invalid");
+            }
+        }
+
+        int validImageCount = 0;
+        for (MultipartFile file : images) {
+            if (file != null && !file.isEmpty()) validImageCount++;
+        }
+        if (validImageCount == 0) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "At least 1 valid product image is required");
+        }
+
+        // Create product
+        Student student = getLoggedInStudent();
+
         Product product = new Product();
-
-        // Set logged-in student as owner
         product.setOwner(student);
-
         product.setTitle(request.getTitle());
         product.setDescription(request.getDescription());
         product.setCategory(request.getCategory());
         product.setType(request.getType());
         product.setPrice(request.getPrice());
         product.setCondition(request.getCondition());
-
-        // Product requires admin approval
         product.setStatus("PENDING");
 
-        Product savedProduct =
-                productRepository.save(product);
+        Product savedProduct = productRepository.save(product);
 
-        List<ProductImageResponse> imageResponses =
-                new ArrayList<>();
+        // Save images
+        List<ProductImageResponse> imageResponses = new ArrayList<>();
 
-        // Save uploaded images
-        if (images != null && images.length > 0) {
+        for (int i = 0; i < images.length; i++) {
+            MultipartFile file = images[i];
+            if (file == null || file.isEmpty()) continue;
 
-            boolean firstImage = true;
+            String imageUrl = saveImage(file);
 
-            for (MultipartFile file : images) {
+            ProductImage image = new ProductImage();
+            image.setProduct(savedProduct);
+            image.setImageUrl(imageUrl);
 
-                if (file == null || file.isEmpty()) {
-                    continue;
-                }
-
-                String imageUrl =
-                        saveImage(file);
-
-                ProductImage image =
-                        new ProductImage();
-
-                image.setProduct(savedProduct);
-                image.setImageUrl(imageUrl);
-                image.setPrimary(firstImage);
-
-                ProductImage savedImage =
-                        productImageRepository.save(image);
-
-                imageResponses.add(
-                        new ProductImageResponse(
-                                savedImage.getId(),
-                                savedImage.getImageUrl(),
-                                savedImage.isPrimary()
-                        )
-                );
-
-                firstImage = false;
+            boolean makePrimary;
+            if (primaryImageIndex != null) {
+                makePrimary = (i == primaryImageIndex);
+            } else {
+                makePrimary = (i == 0);
             }
+            image.setPrimary(makePrimary);
+
+            ProductImage savedImage = productImageRepository.save(image);
+
+            imageResponses.add(new ProductImageResponse(
+                    savedImage.getId(),
+                    savedImage.getImageUrl(),
+                    savedImage.isPrimary()
+            ));
         }
+
+        savedProduct.setStatus("AVAILABLE");
+        savedProduct = productRepository.save(savedProduct);
 
         return new ProductResponse(
                 savedProduct.getId(),
-
                 savedProduct.getOwner().getStudentId(),
-
                 savedProduct.getOwner().getFullName(),
-
+                savedProduct.getOwner().getProfileImage(),
+                trustScoreRepository.findByStudentStudentId(savedProduct.getOwner().getStudentId())
+                        .map(TrustScore::getScore).orElse(50.0),
+                savedProduct.getOwner().getDepartment(),
                 savedProduct.getTitle(),
                 savedProduct.getDescription(),
                 savedProduct.getCategory(),
@@ -203,905 +209,189 @@ public class ProductService {
                 savedProduct.getStatus(),
                 savedProduct.getCreatedAt(),
                 savedProduct.getUpdatedAt(),
-
                 imageResponses
-=======
-    if (request == null) {
-        throw new ResponseStatusException(
-            HttpStatus.BAD_REQUEST,
-            "Product details are required"
->>>>>>> f8b079a (Product backend)
         );
     }
-
-    if (request.getTitle() == null ||
-            request.getTitle().isBlank()) {
-
-        throw new ResponseStatusException(
-            HttpStatus.BAD_REQUEST,
-            "Product title is required"
-        );
-    }
-
-    if (request.getDescription() == null ||
-            request.getDescription().isBlank()) {
-
-        throw new ResponseStatusException(
-            HttpStatus.BAD_REQUEST,
-            "Product description is required"
-        );
-    }
-
-    if (request.getCategory() == null ||
-            request.getCategory().isBlank()) {
-
-        throw new ResponseStatusException(
-            HttpStatus.BAD_REQUEST,
-            "Product category is required"
-        );
-    }
-
-    if (request.getType() == null ||
-            request.getType().isBlank()) {
-
-        throw new ResponseStatusException(
-            HttpStatus.BAD_REQUEST,
-            "Product type is required"
-        );
-    }
-
-    if (request.getCondition() == null ||
-            request.getCondition().isBlank()) {
-
-        throw new ResponseStatusException(
-            HttpStatus.BAD_REQUEST,
-            "Product condition is required"
-        );
-    }
-
-    if (request.getPrice() == null ||
-            request.getPrice().signum() < 0) {
-
-        throw new ResponseStatusException(
-            HttpStatus.BAD_REQUEST,
-            "Valid product price is required"
-        );
-    }
-    
-    if (images == null || images.length == 0) {
-
-        throw new ResponseStatusException(
-                HttpStatus.BAD_REQUEST,
-                "At least 1 product image is required"
-        );
-    }
-
-    if (images.length > 4) {
-
-        throw new ResponseStatusException(
-                HttpStatus.BAD_REQUEST,
-                "Maximum 4 product images are allowed"
-        );
-    }
-
- // =========================================================
- // Primary Image Validation
- // =========================================================
-
- if (primaryImageIndex != null) {
-
-     if (primaryImageIndex < 0 ||
-             primaryImageIndex >= images.length) {
-
-         throw new ResponseStatusException(
-                 HttpStatus.BAD_REQUEST,
-                 "Invalid primary image selection"
-         );
-     }
-
-     if (images[primaryImageIndex] == null ||
-             images[primaryImageIndex].isEmpty()) {
-
-         throw new ResponseStatusException(
-                 HttpStatus.BAD_REQUEST,
-                 "Selected primary image is invalid"
-         );
-     }
- }
-
-    int validImageCount = 0;
-
-    for (MultipartFile file : images) {
-
-        if (file != null && !file.isEmpty()) {
-            validImageCount++;
-        }
-    }
-
-    if (validImageCount == 0) {
-
-        throw new ResponseStatusException(
-                HttpStatus.BAD_REQUEST,
-                "At least 1 valid product image is required"
-        );
-    }
-
-   
-
-    // =========================================================
-<<<<<<< HEAD
-    // Save Image File
-    // =========================================================
-
-    private String saveImage(MultipartFile file) {
-
-        try {
-
-            // Create uploads/products directory
-            Files.createDirectories(uploadPath);
-
-            String originalFileName =
-                    file.getOriginalFilename();
-
-            String extension = "";
-
-            if (originalFileName != null &&
-                    originalFileName.contains(".")) {
-
-                extension =
-                        originalFileName.substring(
-                                originalFileName.lastIndexOf("."));
-            }
-
-            // Generate unique filename
-            String fileName =
-                    UUID.randomUUID() + extension;
-
-            Path filePath =
-                    uploadPath.resolve(fileName);
-
-            Files.copy(
-                    file.getInputStream(),
-                    filePath,
-                    StandardCopyOption.REPLACE_EXISTING
-            );
-
-            // URL stored in product_images table
-            return "/uploads/products/" + fileName;
-
-        } catch (IOException e) {
-
-            throw new ResponseStatusException(
-                    HttpStatus.INTERNAL_SERVER_ERROR,
-                    "Failed to save image",
-                    e
-            );
-        }
-    }
- // =========================================================
- // Upload Product Images
- // Rules:
- // Minimum 1 image
- // Maximum 4 images TOTAL
- // Exactly 1 primary image
- // =========================================================
-
- public ProductResponse uploadProductImages(
-         Long id,
-         MultipartFile[] images,
-         int primaryImageIndex) {
-
-     // -----------------------------------------------------
-     // Get logged-in student
-     // -----------------------------------------------------
-
-     Student loggedInStudent =
-             getLoggedInStudent();
-
-     // -----------------------------------------------------
-     // Find product
-     // -----------------------------------------------------
-
-     Product product =
-             productRepository.findById(id)
-                     .orElseThrow(() ->
-                             new ResponseStatusException(
-                                     HttpStatus.NOT_FOUND,
-                                     "Product not found with id: " + id
-                             ));
-
-     // -----------------------------------------------------
-     // Ownership check
-     // -----------------------------------------------------
-
-     if (!product.getOwner()
-             .getStudentId()
-             .equals(loggedInStudent.getStudentId())) {
-
-         throw new ResponseStatusException(
-                 HttpStatus.FORBIDDEN,
-                 "You are not allowed to upload images for this product"
-         );
-     }
-
-     // -----------------------------------------------------
-     // Validate images
-     // -----------------------------------------------------
-
-     if (images == null || images.length == 0) {
-
-         throw new ResponseStatusException(
-                 HttpStatus.BAD_REQUEST,
-                 "At least 1 product image is required"
-         );
-     }
-
-     if (images.length > 4) {
-
-         throw new ResponseStatusException(
-                 HttpStatus.BAD_REQUEST,
-                 "Maximum 4 product images are allowed"
-         );
-     }
-
-     if (primaryImageIndex < 0 ||
-             primaryImageIndex >= images.length) {
-
-         throw new ResponseStatusException(
-                 HttpStatus.BAD_REQUEST,
-                 "Invalid primary image selection"
-         );
-     }
-
-     // -----------------------------------------------------
-     // Validate selected primary image
-     // -----------------------------------------------------
-
-     if (images[primaryImageIndex] == null ||
-             images[primaryImageIndex].isEmpty()) {
-
-         throw new ResponseStatusException(
-                 HttpStatus.BAD_REQUEST,
-                 "Selected primary image is invalid"
-         );
-     }
-
-     // -----------------------------------------------------
-     // Count existing images
-     // -----------------------------------------------------
-
-     int existingImageCount = 0;
-
-     if (product.getImages() != null) {
-
-         existingImageCount =
-                 product.getImages().size();
-     }
-
-     // -----------------------------------------------------
-     // Count valid new images
-     // -----------------------------------------------------
-
-     int newImageCount = 0;
-
-     for (MultipartFile file : images) {
-
-         if (file != null && !file.isEmpty()) {
-
-             newImageCount++;
-         }
-     }
-
-     // -----------------------------------------------------
-     // Validate at least one valid image
-     // -----------------------------------------------------
-
-     if (newImageCount == 0) {
-
-         throw new ResponseStatusException(
-                 HttpStatus.BAD_REQUEST,
-                 "At least 1 valid image must be uploaded"
-         );
-     }
-
-     // -----------------------------------------------------
-     // Maximum 4 images TOTAL
-     // -----------------------------------------------------
-
-     if (existingImageCount + newImageCount > 4) {
-
-         throw new ResponseStatusException(
-                 HttpStatus.BAD_REQUEST,
-                 "A product can have maximum 4 images. "
-                 + "Existing images: "
-                 + existingImageCount
-                 + ", New images: "
-                 + newImageCount
-         );
-     }
-
-     // -----------------------------------------------------
-     // Remove existing primary image
-     // -----------------------------------------------------
-
-     List<ProductImage> existingImages =
-             productImageRepository.findByProduct(product);
-
-     for (ProductImage existingImage : existingImages) {
-
-         if (existingImage.isPrimary()) {
-
-             existingImage.setPrimary(false);
-
-             productImageRepository.save(existingImage);
-         }
-     }
-
-     // -----------------------------------------------------
-     // Save new images
-     // -----------------------------------------------------
-
-     for (int i = 0; i < images.length; i++) {
-
-         MultipartFile file = images[i];
-
-         if (file == null || file.isEmpty()) {
-             continue;
-         }
-
-         // Save physical image
-         String imageUrl = saveImage(file);
-
-         // Create ProductImage entity
-         ProductImage image = new ProductImage();
-
-         image.setProduct(product);
-         image.setImageUrl(imageUrl);
-
-         // Frontend-selected primary image
-         image.setPrimary(i == primaryImageIndex);
-
-         productImageRepository.save(image);
-     }
-
-     // -----------------------------------------------------
-     // Return updated product
-     // -----------------------------------------------------
-
-     return convertToProductResponse(product);
- }
-
-    // =========================================================
-    // Get All Products
-=======
-    // Create Product
->>>>>>> f8b079a (Product backend)
-    // =========================================================
-
-    Product product = new Product();
-
-    product.setOwner(student);
-    product.setTitle(request.getTitle());
-    product.setDescription(request.getDescription());
-    product.setCategory(request.getCategory());
-    product.setType(request.getType());
-    product.setPrice(request.getPrice());
-    product.setCondition(request.getCondition());
-
-    // Product is NOT available yet
-    product.setStatus("PENDING");
-
-    Product savedProduct =
-            productRepository.save(product);
-
- // =========================================================
- // Save Images
- // =========================================================
-
- List<ProductImageResponse> imageResponses =
-         new ArrayList<>();
-
- for (int i = 0; i < images.length; i++) {
-
-     MultipartFile file = images[i];
-
-     if (file == null || file.isEmpty()) {
-         continue;
-     }
-
-     String imageUrl = saveImage(file);
-
-     ProductImage image =
-             new ProductImage();
-
-     image.setProduct(savedProduct);
-     image.setImageUrl(imageUrl);
-
-     // =====================================================
-     // Primary image logic
-     // =====================================================
-
-     boolean makePrimary;
-
-     if (primaryImageIndex != null) {
-
-         // User selected primary image
-         makePrimary =
-                 (i == primaryImageIndex);
-
-     } else {
-
-         // User did not select primary
-         // First image becomes primary
-         makePrimary =
-                 (i == 0);
-     }
-
-     image.setPrimary(makePrimary);
-
-     ProductImage savedImage =
-             productImageRepository.save(image);
-
-     imageResponses.add(
-             new ProductImageResponse(
-                     savedImage.getId(),
-                     savedImage.getImageUrl(),
-                     savedImage.isPrimary()
-             )
-     );
- }
-    // =========================================================
-    // Product + images successfully uploaded
-    // =========================================================
-
-    savedProduct.setStatus("AVAILABLE");
-
-    savedProduct =
-            productRepository.save(savedProduct);
-
-    // =========================================================
-    // Response
-    // =========================================================
-
-    return new ProductResponse(
-            savedProduct.getId(),
-            savedProduct.getOwner().getStudentId(),
-            savedProduct.getOwner().getFullName(),
-            savedProduct.getOwner().getProfileImage(),
-            trustScoreRepository
-                    .findByStudentStudentId(
-                            savedProduct.getOwner().getStudentId()
-                    )
-                    .map(TrustScore::getScore)
-                    .orElse(50.0),
-            savedProduct.getTitle(),
-            savedProduct.getDescription(),
-            savedProduct.getCategory(),
-            savedProduct.getType(),
-            savedProduct.getPrice(),
-            savedProduct.getCondition(),
-            savedProduct.getStatus(),
-            savedProduct.getCreatedAt(),
-            savedProduct.getUpdatedAt(),
-            imageResponses
-    );
-}
 
     // =========================================================
     // Save Image File
     // =========================================================
-
     private String saveImage(MultipartFile file) {
-
         try {
-
-            // Create uploads/products directory
             Files.createDirectories(uploadPath);
 
-            String originalFileName =
-                    file.getOriginalFilename();
-
+            String originalFileName = file.getOriginalFilename();
             String extension = "";
-
-            if (originalFileName != null &&
-                    originalFileName.contains(".")) {
-
-                extension =
-                        originalFileName.substring(
-                                originalFileName.lastIndexOf("."));
+            if (originalFileName != null && originalFileName.contains(".")) {
+                extension = originalFileName.substring(originalFileName.lastIndexOf("."));
             }
 
-            // Generate unique filename
-            String fileName =
-                    UUID.randomUUID() + extension;
+            String fileName = UUID.randomUUID() + extension;
+            Path filePath = uploadPath.resolve(fileName);
 
-            Path filePath =
-                    uploadPath.resolve(fileName);
+            Files.copy(file.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
 
-            Files.copy(
-                    file.getInputStream(),
-                    filePath,
-                    StandardCopyOption.REPLACE_EXISTING
-            );
-
-            // URL stored in product_images table
             return "/uploads/products/" + fileName;
-
         } catch (IOException e) {
-
-            throw new ResponseStatusException(
-                    HttpStatus.INTERNAL_SERVER_ERROR,
-                    "Failed to save image",
-                    e
-            );
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to save image", e);
         }
     }
 
+    // =========================================================
+    // Add More Product Images
+    // =========================================================
+    @Transactional
+    public ProductResponse uploadProductImages(
+            Long id,
+            MultipartFile[] images,
+            Integer primaryImageIndex) {
 
-// =========================================================
-// Add More Product Images
-//
-// Rules:
-// Existing images + new images <= 4
-// At least 1 new image required
-// If primaryImageIndex is provided,
-// new image can become primary
-// If primaryImageIndex is not provided,
-// existing primary remains primary
-// =========================================================
+        Student loggedInStudent = getLoggedInStudent();
 
-public ProductResponse uploadProductImages(
-        Long id,
-        MultipartFile[] images,
-        Integer primaryImageIndex) {
+        Product product = productRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Product not found with id: " + id));
 
-    // -----------------------------------------------------
-    // Get logged-in student
-    // -----------------------------------------------------
+        if (!product.getOwner().getStudentId().equals(loggedInStudent.getStudentId())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You are not allowed to upload images for this product");
+        }
 
-    Student loggedInStudent =
-            getLoggedInStudent();
+        if (images == null || images.length == 0) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "At least 1 image is required");
+        }
+        if (images.length > 4) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Maximum 4 images can be uploaded at a time");
+        }
 
-    // -----------------------------------------------------
-    // Find product
-    // -----------------------------------------------------
+        List<ProductImage> existingImages = productImageRepository.findByProduct(product);
+        int existingImageCount = existingImages.size();
 
-    Product product =
-            productRepository.findById(id)
-                    .orElseThrow(() ->
-                            new ResponseStatusException(
-                                    HttpStatus.NOT_FOUND,
-                                    "Product not found with id: " + id
-                            ));
-
-    // -----------------------------------------------------
-    // Ownership check
-    // -----------------------------------------------------
-
-    if (!product.getOwner()
-            .getStudentId()
-            .equals(loggedInStudent.getStudentId())) {
-
-        throw new ResponseStatusException(
-                HttpStatus.FORBIDDEN,
-                "You are not allowed to upload images for this product"
-        );
-    }
-
-    // -----------------------------------------------------
-    // Validate new images
-    // -----------------------------------------------------
-
-    if (images == null || images.length == 0) {
-
-        throw new ResponseStatusException(
-                HttpStatus.BAD_REQUEST,
-                "At least 1 image is required"
-        );
-    }
-
-    // -----------------------------------------------------
-    // Maximum number of NEW images
-    // -----------------------------------------------------
-
-    if (images.length > 4) {
-
-        throw new ResponseStatusException(
-                HttpStatus.BAD_REQUEST,
-                "Maximum 4 images can be uploaded at a time"
-        );
-    }
-
-    // -----------------------------------------------------
-    // Count existing images
-    // -----------------------------------------------------
-
-    List<ProductImage> existingImages =
-            productImageRepository.findByProduct(product);
-
-    int existingImageCount =
-            existingImages.size();
-
-    // -----------------------------------------------------
-    // Count valid new images
-    // -----------------------------------------------------
-
-    int newImageCount = 0;
-
-    if (images != null) {
+        int newImageCount = 0;
         for (MultipartFile file : images) {
-            if (file != null && !file.isEmpty()) {
-                newImageCount++;
-            }
-        }
-    }
-
-    if (existingImageCount + newImageCount > 4) {
-        throw new ResponseStatusException(
-                HttpStatus.BAD_REQUEST,
-                "A product can have maximum 4 images"
-        );
-    }
-    
-   
-
-    // -----------------------------------------------------
-    // At least 1 valid image
-    // -----------------------------------------------------
-
-    if (newImageCount == 0) {
-
-        throw new ResponseStatusException(
-                HttpStatus.BAD_REQUEST,
-                "At least 1 valid image is required"
-        );
-    }
-
-    // -----------------------------------------------------
-    // Maximum 4 images TOTAL
-    // -----------------------------------------------------
-
-    if (existingImageCount + newImageCount > 4) {
-
-        throw new ResponseStatusException(
-                HttpStatus.BAD_REQUEST,
-                "A product can have maximum 4 images. "
-                + "Existing images: "
-                + existingImageCount
-                + ", New images: "
-                + newImageCount
-        );
-    }
-
-    // -----------------------------------------------------
-    // Validate primaryImageIndex if provided
-    // -----------------------------------------------------
-
-    if (primaryImageIndex != null) {
-
-        if (primaryImageIndex < 0 ||
-                primaryImageIndex >= images.length) {
-
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST,
-                    "Invalid primary image selection"
-            );
+            if (file != null && !file.isEmpty()) newImageCount++;
         }
 
-        MultipartFile selectedImage =
-                images[primaryImageIndex];
-
-        if (selectedImage == null ||
-                selectedImage.isEmpty()) {
-
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST,
-                    "Selected primary image is invalid"
-            );
+        if (newImageCount == 0) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "At least 1 valid image is required");
         }
-
-        // -------------------------------------------------
-        // Remove primary from existing images
-        // -------------------------------------------------
-
-        for (ProductImage existingImage : existingImages) {
-
-            if (existingImage.isPrimary()) {
-
-                existingImage.setPrimary(false);
-
-                productImageRepository.save(existingImage);
-            }
+        if (existingImageCount + newImageCount > 4) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "A product can have maximum 4 images. Existing images: "
+                    + existingImageCount + ", New images: " + newImageCount);
         }
-    }
-
-    // -----------------------------------------------------
-    // Save new images
-    // -----------------------------------------------------
-
-    for (int i = 0; i < images.length; i++) {
-
-        MultipartFile file = images[i];
-
-        if (file == null || file.isEmpty()) {
-            continue;
-        }
-
-        // Save physical image
-        String imageUrl =
-                saveImage(file);
-
-        // Create ProductImage
-        ProductImage image =
-                new ProductImage();
-
-        image.setProduct(product);
-        image.setImageUrl(imageUrl);
-
-        // -------------------------------------------------
-        // Primary logic
-        // -------------------------------------------------
 
         if (primaryImageIndex != null) {
+            if (primaryImageIndex < 0 || primaryImageIndex >= images.length) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid primary image selection");
+            }
+            MultipartFile selectedImage = images[primaryImageIndex];
+            if (selectedImage == null || selectedImage.isEmpty()) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Selected primary image is invalid");
+            }
 
-            // User selected a new primary image
-            image.setPrimary(
-                    i == primaryImageIndex
-            );
-
-        } else {
-
-            // No new primary selected
-            // Keep existing primary
-            image.setPrimary(false);
+            // remove primary from existing
+            for (ProductImage existingImage : existingImages) {
+                if (existingImage.isPrimary()) {
+                    existingImage.setPrimary(false);
+                    productImageRepository.save(existingImage);
+                }
+            }
         }
 
-        productImageRepository.save(image);
+        // Save new images
+        for (int i = 0; i < images.length; i++) {
+            MultipartFile file = images[i];
+            if (file == null || file.isEmpty()) continue;
+
+            String imageUrl = saveImage(file);
+            ProductImage image = new ProductImage();
+            image.setProduct(product);
+            image.setImageUrl(imageUrl);
+
+            if (primaryImageIndex != null) {
+                image.setPrimary(i == primaryImageIndex);
+            } else {
+                image.setPrimary(false);
+            }
+            productImageRepository.save(image);
+        }
+
+        return convertToProductResponse(product);
     }
 
-    // -----------------------------------------------------
-    // Return updated product
-    // -----------------------------------------------------
-
-    return convertToProductResponse(product);
-}
-
-//=========================================================
-//Get Other Students' Products
-//=========================================================
-
-public List<ProductResponse> getOtherProducts() {
-
- Student loggedInStudent = getLoggedInStudent();
-
- List<Product> products =
-         productRepository.findByOwnerNot(loggedInStudent);
-
- List<ProductResponse> responses =
-         new ArrayList<>();
-
- for (Product product : products) {
-
-     responses.add(
-             convertToProductResponse(product)
-     );
- }
-
- return responses;
-}
-// =========================================================
-// Get My Products
-// =========================================================
-
-public List<ProductResponse> getMyProducts() {
-
-    Student loggedInStudent = getLoggedInStudent();
-
-    List<Product> products =
-            productRepository.findByOwner(loggedInStudent);
-
-    List<ProductResponse> responses =
-            new ArrayList<>();
-
-    for (Product product : products) {
-
-        responses.add(
-                convertToProductResponse(product)
-        );
+    // =========================================================
+    // Get Other Students' Products
+    // =========================================================
+    public List<ProductResponse> getOtherProducts() {
+        Student loggedInStudent = getLoggedInStudent();
+        List<Product> products = productRepository.findByOwnerNot(loggedInStudent);
+        List<ProductResponse> responses = new ArrayList<>();
+        for (Product product : products) {
+            responses.add(convertToProductResponse(product));
+        }
+        return responses;
     }
 
-    return responses;
-}
-
-
+    // =========================================================
+    // Get My Products
+    // =========================================================
+    public List<ProductResponse> getMyProducts() {
+        Student loggedInStudent = getLoggedInStudent();
+        List<Product> products = productRepository.findByOwner(loggedInStudent);
+        List<ProductResponse> responses = new ArrayList<>();
+        for (Product product : products) {
+            responses.add(convertToProductResponse(product));
+        }
+        return responses;
+    }
 
     // =========================================================
     // Get Product By ID
     // =========================================================
-
     public ProductResponse getProductById(Long id) {
-
-        Product product =
-                productRepository.findById(id)
-                        .orElseThrow(() ->
-                                new ResponseStatusException(
-                                        HttpStatus.NOT_FOUND,
-                                        "Product not found with id: "
-                                                + id));
-
+        Product product = productRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Product not found with id: " + id));
         return convertToProductResponse(product);
     }
 
     // =========================================================
     // Update Product
     // =========================================================
-
-<<<<<<< HEAD
+    @Transactional
     public ProductResponse updateProduct(
             Long id,
             ProductRequest request,
             MultipartFile[] images) {
-=======
-  @Transactional
-public ProductResponse updateProduct(
-        Long id,
-        ProductRequest request,
-        MultipartFile[] images) {
->>>>>>> f8b079a (Product backend)
 
-    Student loggedInStudent =
-            getLoggedInStudent();
+        Student loggedInStudent = getLoggedInStudent();
 
-    Product product =
-            productRepository.findById(id)
-                    .orElseThrow(() ->
-                            new ResponseStatusException(
-                                    HttpStatus.NOT_FOUND,
-                                    "Product not found with id: " + id
-                            ));
+        Product product = productRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Product not found with id: " + id));
 
-<<<<<<< HEAD
-        // Ownership check
-     // Ownership check
+        if (!product.getOwner().getStudentId().equals(loggedInStudent.getStudentId())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You are not allowed to update this product");
+        }
 
-        System.out.println("=================================");
-        System.out.println("PRODUCT OWNERSHIP DEBUG");
+        if (request == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Product details are required");
+        }
+        if (request.getTitle() == null || request.getTitle().isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Product title is required");
+        }
+        if (request.getDescription() == null || request.getDescription().isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Product description is required");
+        }
+        if (request.getCategory() == null || request.getCategory().isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Product category is required");
+        }
+        if (request.getType() == null || request.getType().isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Product type is required");
+        }
+        if (request.getCondition() == null || request.getCondition().isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Product condition is required");
+        }
+        if (request.getPrice() == null || request.getPrice().signum() < 0) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Valid product price is required");
+        }
 
-        System.out.println(
-                "Product ID: " + product.getId());
-
-        System.out.println(
-                "Product Owner ID: "
-                        + product.getOwner().getStudentId());
-
-        System.out.println(
-                "Product Owner Email: "
-                        + product.getOwner().getCollegeEmail());
-
-        System.out.println(
-                "Logged-in Student ID: "
-                        + loggedInStudent.getStudentId());
-
-        System.out.println(
-                "Logged-in Student Email: "
-                        + loggedInStudent.getCollegeEmail());
-
-        System.out.println("=================================");
-
-        if (!product.getOwner()
-                .getStudentId()
-                .equals(loggedInStudent.getStudentId())) {
-=======
-    // =========================================================
-    // Ownership check
-    // =========================================================
->>>>>>> f8b079a (Product backend)
-
-    if (!product.getOwner()
-            .getStudentId()
-            .equals(loggedInStudent.getStudentId())) {
-
-<<<<<<< HEAD
         product.setTitle(request.getTitle());
         product.setDescription(request.getDescription());
         product.setCategory(request.getCategory());
@@ -1109,247 +399,59 @@ public ProductResponse updateProduct(
         product.setPrice(request.getPrice());
         product.setCondition(request.getCondition());
 
-        Product updatedProduct =
-                productRepository.save(product);
+        Product updatedProduct = productRepository.save(product);
 
-        /*
-         * If new images are supplied,
-         * add them to the product.
-         */
         if (images != null && images.length > 0) {
-
+            List<ProductImage> existingImages = productImageRepository.findByProduct(product);
+            int existingCount = existingImages.size();
+            int newCount = 0;
             for (MultipartFile file : images) {
-
-                if (file == null || file.isEmpty()) {
-                    continue;
-                }
-
-                String imageUrl =
-                        saveImage(file);
-
-                ProductImage image =
-                        new ProductImage();
-
+                if (file != null && !file.isEmpty()) newCount++;
+            }
+            if (existingCount + newCount > 4) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "A product can have maximum 4 images");
+            }
+            for (MultipartFile file : images) {
+                if (file == null || file.isEmpty()) continue;
+                String imageUrl = saveImage(file);
+                ProductImage image = new ProductImage();
                 image.setProduct(updatedProduct);
                 image.setImageUrl(imageUrl);
                 image.setPrimary(false);
-
                 productImageRepository.save(image);
             }
         }
 
-        return convertToProductResponse(
-                updatedProduct
-=======
-        throw new ResponseStatusException(
-                HttpStatus.FORBIDDEN,
-                "You are not allowed to update this product"
->>>>>>> f8b079a (Product backend)
-        );
-    }
-
-    // =========================================================
-    // Validate product details
-    // =========================================================
-
-    if (request == null) {
-        throw new ResponseStatusException(
-                HttpStatus.BAD_REQUEST,
-                "Product details are required"
-        );
-    }
-
-    if (request.getTitle() == null ||
-            request.getTitle().isBlank()) {
-
-        throw new ResponseStatusException(
-                HttpStatus.BAD_REQUEST,
-                "Product title is required"
-        );
-    }
-
-    if (request.getDescription() == null ||
-            request.getDescription().isBlank()) {
-
-        throw new ResponseStatusException(
-                HttpStatus.BAD_REQUEST,
-                "Product description is required"
-        );
-    }
-
-    if (request.getCategory() == null ||
-            request.getCategory().isBlank()) {
-
-        throw new ResponseStatusException(
-                HttpStatus.BAD_REQUEST,
-                "Product category is required"
-        );
-    }
-
-    if (request.getType() == null ||
-            request.getType().isBlank()) {
-
-        throw new ResponseStatusException(
-                HttpStatus.BAD_REQUEST,
-                "Product type is required"
-        );
-    }
-
-    if (request.getCondition() == null ||
-            request.getCondition().isBlank()) {
-
-        throw new ResponseStatusException(
-                HttpStatus.BAD_REQUEST,
-                "Product condition is required"
-        );
-    }
-
-    if (request.getPrice() == null ||
-            request.getPrice().signum() < 0) {
-
-        throw new ResponseStatusException(
-                HttpStatus.BAD_REQUEST,
-                "Valid product price is required"
-        );
-    }
-
-    // =========================================================
-    // Update product details
-    // =========================================================
-
-    product.setTitle(request.getTitle());
-    product.setDescription(request.getDescription());
-    product.setCategory(request.getCategory());
-    product.setType(request.getType());
-    product.setPrice(request.getPrice());
-    product.setCondition(request.getCondition());
-
-    Product updatedProduct =
-            productRepository.save(product);
-
-    // =========================================================
-    // Add new images
-    // =========================================================
-
-    if (images != null && images.length > 0) {
-
-        List<ProductImage> existingImages =
-                productImageRepository
-                        .findByProduct(product);
-
-        int existingCount =
-                existingImages.size();
-
-        int newCount = 0;
-
-        for (MultipartFile file : images) {
-
-            if (file != null &&
-                    !file.isEmpty()) {
-
-                newCount++;
+        List<ProductImage> finalImages = productImageRepository.findByProduct(updatedProduct);
+        if (finalImages.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "A product must have at least 1 image");
+        }
+        boolean hasPrimary = false;
+        for (ProductImage image : finalImages) {
+            if (image.isPrimary()) {
+                hasPrimary = true;
+                break;
             }
         }
-
-        if (existingCount + newCount > 4) {
-
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST,
-                    "A product can have maximum 4 images"
-            );
+        if (!hasPrimary) {
+            ProductImage firstImage = finalImages.get(0);
+            firstImage.setPrimary(true);
+            productImageRepository.save(firstImage);
         }
 
-        for (MultipartFile file : images) {
-
-            if (file == null ||
-                    file.isEmpty()) {
-                continue;
-            }
-
-            String imageUrl =
-                    saveImage(file);
-
-            ProductImage image =
-                    new ProductImage();
-
-            image.setProduct(updatedProduct);
-            image.setImageUrl(imageUrl);
-            image.setPrimary(false);
-
-            productImageRepository.save(image);
-        }
+        return convertToProductResponse(updatedProduct);
     }
-
-    // =========================================================
-    // Make sure at least one image exists
-    // =========================================================
-
-    List<ProductImage> finalImages =
-            productImageRepository
-                    .findByProduct(updatedProduct);
-
-    if (finalImages.isEmpty()) {
-
-        throw new ResponseStatusException(
-                HttpStatus.BAD_REQUEST,
-                "A product must have at least 1 image"
-        );
-    }
-
-    // =========================================================
-    // Make sure one image is primary
-    // =========================================================
-
-    boolean hasPrimary = false;
-
-    for (ProductImage image : finalImages) {
-
-        if (image.isPrimary()) {
-            hasPrimary = true;
-            break;
-        }
-    }
-
-    if (!hasPrimary) {
-
-        ProductImage firstImage =
-                finalImages.get(0);
-
-        firstImage.setPrimary(true);
-
-        productImageRepository.save(firstImage);
-    }
-
-    return convertToProductResponse(
-            updatedProduct
-    );
-}
 
     // =========================================================
     // Delete Product
     // =========================================================
-
     public void deleteProduct(Long id) {
+        Student loggedInStudent = getLoggedInStudent();
+        Product product = productRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Product not found with id: " + id));
 
-        Student loggedInStudent =
-                getLoggedInStudent();
-
-        Product product =
-                productRepository.findById(id)
-                        .orElseThrow(() ->
-                                new ResponseStatusException(
-                                        HttpStatus.NOT_FOUND,
-                                        "Product not found with id: "
-                                                + id));
-
-        // Ownership check
-        if (!product.getOwner()
-                .getStudentId()
-                .equals(loggedInStudent.getStudentId())) {
-
-            throw new ResponseStatusException(
-                    HttpStatus.FORBIDDEN,
-                    "You are not allowed to delete this product");
+        if (!product.getOwner().getStudentId().equals(loggedInStudent.getStudentId())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You are not allowed to delete this product");
         }
 
         productRepository.delete(product);
@@ -1358,52 +460,27 @@ public ProductResponse updateProduct(
     // =========================================================
     // Convert Product Entity → ProductResponse
     // =========================================================
+    private ProductResponse convertToProductResponse(Product product) {
 
-    private ProductResponse convertToProductResponse(
-            Product product) {
-
-        List<ProductImageResponse> imageResponses =
-                new ArrayList<>();
-
+        List<ProductImageResponse> imageResponses = new ArrayList<>();
         if (product.getImages() != null) {
-
-            for (ProductImage image :
-                    product.getImages()) {
-
-                imageResponses.add(
-                        new ProductImageResponse(
-                                image.getId(),
-                                image.getImageUrl(),
-                                image.isPrimary()
-                        )
-                );
+            for (ProductImage image : product.getImages()) {
+                imageResponses.add(new ProductImageResponse(image.getId(), image.getImageUrl(), image.isPrimary()));
             }
         }
 
         Long ownerId = null;
-
         String ownerName = null;
-
         String ownerProfileImage = null;
-
+        String ownerDepartment = null;
         Double trustScore = null;
 
         if (product.getOwner() != null) {
-
-            ownerId =
-                    product.getOwner().getStudentId();
-
-            ownerName =
-                    product.getOwner().getFullName();
-
-            ownerProfileImage =
-                    product.getOwner().getProfileImage();
-
-            trustScore =
-                    trustScoreRepository
-                            .findByStudentStudentId(ownerId)
-                            .map(TrustScore::getScore)
-                            .orElse(50.0);
+            ownerId = product.getOwner().getStudentId();
+            ownerName = product.getOwner().getFullName();
+            ownerProfileImage = product.getOwner().getProfileImage();
+            ownerDepartment = product.getOwner().getDepartment();
+            trustScore = trustScoreRepository.findByStudentStudentId(ownerId).map(TrustScore::getScore).orElse(50.0);
         }
 
         return new ProductResponse(
@@ -1412,6 +489,7 @@ public ProductResponse updateProduct(
                 ownerName,
                 ownerProfileImage,
                 trustScore,
+                ownerDepartment,
                 product.getTitle(),
                 product.getDescription(),
                 product.getCategory(),
@@ -1424,181 +502,71 @@ public ProductResponse updateProduct(
                 imageResponses
         );
     }
+
     @Transactional
-    public ProductResponse setPrimaryImage(
-            Long productId,
-            Long imageId) {
+    public ProductResponse setPrimaryImage(Long productId, Long imageId) {
+        Student loggedInStudent = getLoggedInStudent();
+        Product product = productRepository.findById(productId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Product not found with id: " + productId));
 
-        Student loggedInStudent =
-                getLoggedInStudent();
-
-        Product product =
-                productRepository.findById(productId)
-                        .orElseThrow(() ->
-                                new ResponseStatusException(
-                                        HttpStatus.NOT_FOUND,
-                                        "Product not found with id: "
-                                                + productId
-                                ));
-
-        // =========================================
-        // Ownership check
-        // =========================================
-
-        if (!product.getOwner()
-                .getStudentId()
-                .equals(loggedInStudent.getStudentId())) {
-
-            throw new ResponseStatusException(
-                    HttpStatus.FORBIDDEN,
-                    "You are not allowed to modify this product"
-            );
+        if (!product.getOwner().getStudentId().equals(loggedInStudent.getStudentId())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You are not allowed to modify this product");
         }
 
-        // =========================================
-        // Find image
-        // =========================================
+        ProductImage selectedImage = productImageRepository.findById(imageId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Product image not found with id: " + imageId));
 
-        ProductImage selectedImage =
-                productImageRepository.findById(imageId)
-                        .orElseThrow(() ->
-                                new ResponseStatusException(
-                                        HttpStatus.NOT_FOUND,
-                                        "Product image not found with id: "
-                                                + imageId
-                                ));
-
-        // =========================================
-        // Make sure image belongs to product
-        // =========================================
-
-        if (!selectedImage.getProduct()
-                .getId()
-                .equals(productId)) {
-
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST,
-                    "Image does not belong to this product"
-            );
+        if (!selectedImage.getProduct().getId().equals(productId)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Image does not belong to this product");
         }
 
-        // =========================================
-        // Remove primary from all images
-        // =========================================
-
-        List<ProductImage> images =
-                productImageRepository
-                        .findByProduct(product);
-
+        List<ProductImage> images = productImageRepository.findByProduct(product);
         for (ProductImage image : images) {
-
             image.setPrimary(false);
         }
 
-        // =========================================
-        // Set selected image as primary
-        // =========================================
-
         selectedImage.setPrimary(true);
-
         productImageRepository.saveAll(images);
-
-        // =========================================
-        // Return updated product
-        // =========================================
 
         return convertToProductResponse(product);
     }
- // =========================================================
- // Delete Product Image
- // =========================================================
 
- @Transactional
- public void deleteProductImage(
-         Long productId,
-         Long imageId) {
+    @Transactional
+    public void deleteProductImage(Long productId, Long imageId) {
+        Student loggedInStudent = getLoggedInStudent();
+        Product product = productRepository.findById(productId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Product not found with id: " + productId));
 
-     Student loggedInStudent =
-             getLoggedInStudent();
+        if (!product.getOwner().getStudentId().equals(loggedInStudent.getStudentId())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You are not allowed to delete this image");
+        }
 
-     Product product =
-             productRepository.findById(productId)
-                     .orElseThrow(() ->
-                             new ResponseStatusException(
-                                     HttpStatus.NOT_FOUND,
-                                     "Product not found with id: "
-                                             + productId
-                             ));
+        ProductImage image = productImageRepository.findById(imageId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Product image not found with id: " + imageId));
 
-     // Ownership check
-     if (!product.getOwner()
-             .getStudentId()
-             .equals(loggedInStudent.getStudentId())) {
+        if (!image.getProduct().getId().equals(productId)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Image does not belong to this product");
+        }
 
-         throw new ResponseStatusException(
-                 HttpStatus.FORBIDDEN,
-                 "You are not allowed to delete this image"
-         );
-     }
-     
-     
+        List<ProductImage> existingImages = productImageRepository.findByProduct(product);
+        if (existingImages.size() <= 1) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "A product must have at least 1 image");
+        }
 
-     // Find image
-     ProductImage image =
-             productImageRepository.findById(imageId)
-                     .orElseThrow(() ->
-                             new ResponseStatusException(
-                                     HttpStatus.NOT_FOUND,
-                                     "Product image not found with id: "
-                                             + imageId
-                             ));
+        if (image.isPrimary()) {
+            ProductImage newPrimary = null;
+            for (ProductImage other : existingImages) {
+                if (!other.getId().equals(imageId)) {
+                    newPrimary = other;
+                    break;
+                }
+            }
+            if (newPrimary != null) {
+                newPrimary.setPrimary(true);
+                productImageRepository.save(newPrimary);
+            }
+        }
 
-     // Make sure image belongs to this product
-     if (!image.getProduct()
-             .getId()
-             .equals(productId)) {
-
-         throw new ResponseStatusException(
-                 HttpStatus.BAD_REQUEST,
-                 "Image does not belong to this product"
-         );
-     }
-
-     // Prevent product from having zero images
-     List<ProductImage> existingImages =
-             productImageRepository.findByProduct(product);
-
-     if (existingImages.size() <= 1) {
-
-         throw new ResponseStatusException(
-                 HttpStatus.BAD_REQUEST,
-                 "A product must have at least 1 image"
-         );
-     }
-
-     // If deleting primary image,
-     // assign another image as primary.
-     if (image.isPrimary()) {
-
-         ProductImage newPrimary = null;
-
-         for (ProductImage other :
-                 existingImages) {
-
-             if (!other.getId()
-                     .equals(imageId)) {
-
-                 newPrimary = other;
-                 break;
-             }
-         }
-
-         if (newPrimary != null) {
-             newPrimary.setPrimary(true);
-             productImageRepository.save(newPrimary);
-         }
-     }
-
-     productImageRepository.delete(image);
- }
+        productImageRepository.delete(image);
+    }
 }

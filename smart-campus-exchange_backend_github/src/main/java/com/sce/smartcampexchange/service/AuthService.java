@@ -69,21 +69,44 @@ public AuthService(
             trustScoreRepository;
     
 }
+
+// FIX: this method used to `return "Email already registered"` as a
+// plain string on failure, which AuthController then wrapped in
+// ApiResponse(true, message) — always true, regardless of what the
+// message said. That's why a duplicate register number (which had no
+// check here at all) sailed straight through to a successful OTP send,
+// and even the duplicate-email case only ever "worked" because the
+// frontend was pattern-matching the message text as a workaround.
+//
+// Now throws RuntimeException on every failure path instead, which
+// AuthController explicitly catches and turns into success:false —
+// see the corrected AuthController below.
 public String register(
         RegisterRequest request) {
 
 	CollegeEmailValidator.validate(
 	        request.getCollegeEmail());
+
     if (studentRepository.existsByCollegeEmail(
             request.getCollegeEmail())) {
 
-        return "Email already registered";
+        throw new RuntimeException("Email already registered");
+    }
+
+    // FIX: this check did not exist before. StudentRepository already
+    // had existsByRegisterNumber() defined — it just was never called
+    // here, which is exactly why a duplicate register number registered
+    // successfully.
+    if (studentRepository.existsByRegisterNumber(
+            request.getRegisterNumber())) {
+
+        throw new RuntimeException("Register number already registered");
     }
 
     if (!request.getPassword().equals(
             request.getConfirmPassword())) {
 
-        return "Passwords do not match";
+        throw new RuntimeException("Passwords do not match");
     }
 
     Optional<PendingRegistration>
@@ -131,6 +154,9 @@ public String register(
     return "OTP Sent Successfully";
 }
 
+// FIX: same bug as register() — `return "Invalid OTP"` on failure was
+// being wrapped as success:true by the controller. Now throws instead,
+// caught explicitly by AuthController.
 public String verifyOtp(
         OtpVerificationRequest request) {
 
@@ -141,7 +167,7 @@ public String verifyOtp(
 
     if (!otpVerified) {
 
-        return "Invalid OTP";
+        throw new RuntimeException("Invalid OTP");
     }
 
     Optional<PendingRegistration>
@@ -153,7 +179,7 @@ public String verifyOtp(
 
     if (pendingRecord.isEmpty()) {
 
-        return "Registration data not found";
+        throw new RuntimeException("Registration data not found");
     }
 
     PendingRegistration pending =

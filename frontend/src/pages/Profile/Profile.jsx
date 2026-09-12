@@ -191,9 +191,34 @@ function Profile() {
   // -----------------------------------------
   // PROFILE IMAGE UPLOAD
   // -----------------------------------------
+  const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
+  const ALLOWED_IMAGE_EXTENSIONS = [".jpg", ".jpeg", ".png", ".webp"];
+  const MAX_IMAGE_SIZE_BYTES = 5 * 1024 * 1024; // 5MB
+
   const handleImageUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
+
+    // accept="image/*" on the <input> is only a UI hint — browsers still
+    // let users pick "All Files", and drag/drop or some file pickers
+    // ignore it entirely. A .txt (or anything) can reach this handler,
+    // so the type actually has to be checked here before uploading.
+    const isAllowedType = ALLOWED_IMAGE_TYPES.includes(file.type);
+    const hasAllowedExtension = ALLOWED_IMAGE_EXTENSIONS.some((ext) =>
+      file.name.toLowerCase().endsWith(ext)
+    );
+
+    if (!isAllowedType || !hasAllowedExtension) {
+      showToast("Please upload a JPG, PNG, or WEBP image.", "error");
+      e.target.value = "";
+      return;
+    }
+
+    if (file.size > MAX_IMAGE_SIZE_BYTES) {
+      showToast("Image is too large. Please pick a file under 5MB.", "error");
+      e.target.value = "";
+      return;
+    }
 
     try {
       const updatedProfile = await updateProfileImage(file);
@@ -369,7 +394,7 @@ const closePasswordModal = () => {
 
                 <input
                   type="file"
-                  accept="image/*"
+                  accept="image/png, image/jpeg, image/jpg, image/webp"
                   ref={fileInputRef}
                   style={{ display: "none" }}
                   onChange={handleImageUpload}
@@ -694,3 +719,4 @@ const closePasswordModal = () => {
 }
 
 export default Profile;
+

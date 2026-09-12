@@ -1,5 +1,6 @@
 package com.sce.smartcampexchange.controller;
 
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
 import org.springframework.web.bind.annotation.*;
@@ -30,6 +31,16 @@ public class AuthController {
         this.authService = authService;
     }
 
+    // FIX: register() in AuthService now throws RuntimeException on
+    // failure (duplicate email, duplicate register number, password
+    // mismatch) instead of returning a plain failure string. Previously
+    // this endpoint did `return ResponseEntity.ok(new ApiResponse(true,
+    // message))` unconditionally — meaning EVERY failure message,
+    // including "Email already registered", was still reported to the
+    // frontend as success:true. This explicit try/catch is what actually
+    // turns a thrown failure into success:false with a non-2xx status,
+    // without depending on a possibly-nonexistent global exception
+    // handler elsewhere in the project.
     @PostMapping("/register")
     public ResponseEntity<ApiResponse> register(
 
@@ -37,13 +48,21 @@ public class AuthController {
             @RequestBody
             RegisterRequest request) {
 
-        String message =
-                authService.register(request);
-
-        return ResponseEntity.ok(
-                new ApiResponse(true, message));
+        try {
+            String message = authService.register(request);
+            return ResponseEntity.ok(new ApiResponse(true, message));
+        } catch (RuntimeException e) {
+            return ResponseEntity
+                    .status(HttpStatus.BAD_REQUEST)
+                    .body(new ApiResponse(false, e.getMessage()));
+        }
     }
 
+    // FIX: same issue as register() — verifyOtp() now throws on an
+    // invalid/expired OTP or missing registration data, and this catch
+    // block is what turns that into success:false instead of the
+    // previous "return ResponseEntity.ok(new ApiResponse(true, message))"
+    // regardless of outcome.
     @PostMapping("/verify-otp")
     public ResponseEntity<ApiResponse> verifyOtp(
 
@@ -51,11 +70,14 @@ public class AuthController {
             @RequestBody
             OtpVerificationRequest request) {
 
-        String message =
-                authService.verifyOtp(request);
-
-        return ResponseEntity.ok(
-                new ApiResponse(true, message));
+        try {
+            String message = authService.verifyOtp(request);
+            return ResponseEntity.ok(new ApiResponse(true, message));
+        } catch (RuntimeException e) {
+            return ResponseEntity
+                    .status(HttpStatus.BAD_REQUEST)
+                    .body(new ApiResponse(false, e.getMessage()));
+        }
     }
 
     @PostMapping("/resend-otp")

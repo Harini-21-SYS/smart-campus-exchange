@@ -79,12 +79,12 @@ public class SecurityConfig {
                 .permitAll()
 
                 .anyRequest()
-<<<<<<< HEAD
+
                 
               .authenticated()
-=======
-                .authenticated()
->>>>>>> f8b079a (Product backend)
+
+                
+
             )
 
             .addFilterBefore(
