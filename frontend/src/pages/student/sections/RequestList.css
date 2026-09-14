@@ -117,6 +117,58 @@
   object-fit: cover;
 }
 
+.notification-highlight {
+  animation: notificationHighlight 2.5s ease-in-out;
+  border: 2px solid #2563eb;
+}
+
+@keyframes notificationHighlight {
+  0% {
+    background-color: rgba(37, 99, 235, 0.25);
+  }
+
+  50% {
+    background-color: rgba(37, 99, 235, 0.12);
+  }
+
+  100% {
+    background-color: transparent;
+  }
+}
+.notification-highlight {
+  animation: notificationPulse 2s ease-in-out;
+  border: 2px solid #4f46e5;
+}
+
+@keyframes notificationPulse {
+  0% {
+    transform: scale(1);
+  }
+
+  50% {
+    transform: scale(1.01);
+  }
+
+  100% {
+    transform: scale(1);
+  }
+}
+.request-profile-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 4px 0;
+  font-size: 13px;
+}
+
+.request-profile-label {
+  color: #7a8a7d;
+  font-weight: 600;
+}
+
+.request-profile-value {
+  color: #22281f;
+}
+
 /* ---------- Responsive ---------- */
 @media (max-width: 640px) {
     .request-card {

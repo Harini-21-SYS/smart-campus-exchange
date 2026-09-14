@@ -33,10 +33,11 @@ export const TYPE_INFO = {
 // Exchange requests additionally carry an `offeredProduct` chosen from
 // the buyer's My Purchases before the request is even sent.
 export const REQUEST_STATUS = {
-  PENDING: "pending", // sent, awaiting seller response
-  AWAITING_CONFIRMATION: "awaiting_confirmation", // seller accepted + gave pickup info, awaiting buyer
-  CONFIRMED: "confirmed", // buyer confirmed pickup — done
-  REJECTED: "rejected", // seller rejected
+  PENDING: "PENDING",
+  ACCEPTED: "ACCEPTED",
+  REJECTED: "REJECTED",
+  COMPLETED: "COMPLETED",
+  CANCELLED: "CANCELLED",
 };
 
 export const SAMPLE_PRODUCTS = [
@@ -74,12 +75,35 @@ export const COMPLAINTS_SIDEBAR_GROUP = {
 // Matches complaint_table.complaint_type — reasonable defaults; adjust
 // to whatever enum/values your backend actually stores.
 export const COMPLAINT_TYPES = [
-  "Item Not as Described",
-  "Item Not Received",
-  "Payment Issue",
-  "No-Show for Pickup",
-  "Damaged Item",
-  "Other",
+  {
+    value: "ITEM_NOT_AS_DESCRIBED",
+    label: "Item Not as Described",
+  },
+
+  {
+    value: "ITEM_NOT_RECEIVED",
+    label: "Item Not Received",
+  },
+
+  {
+    value: "PAYMENT_ISSUE",
+    label: "Payment Issue",
+  },
+
+  {
+    value: "NO_SHOW_FOR_PICKUP",
+    label: "No-Show for Pickup",
+  },
+
+  {
+    value: "DAMAGED_ITEM",
+    label: "Damaged Item",
+  },
+
+  {
+    value: "OTHER",
+    label: "Other",
+  },
 ];
 
 // Matches complaint_table.status.
@@ -96,36 +120,7 @@ export const PROFILE_IMAGE_BASE_URL = "http://localhost:8081/uploads/profile-ima
 // Sample incoming requests — demo data standing in for requests
 // other students have sent for your listings. Shape matches what a
 // real backend request record would carry once wired up.
-export const SAMPLE_INCOMING_REQUESTS = [
-  {
-    id: "inc-1",
-    productName: "Graphing Calculator (TI-84 Plus)",
-    requesterName: "Ishaan Verma",
-    department: "Electronics & Comm.",
-    year: "2",
-    type: "Sell",
-    message: "Hi, is this still available? I can pick up anytime this week.",
-    offeredProduct: null,
-    status: "pending",
-    pickupLocation: null,
-    pickupTime: null,
-    time: Date.now() - 1000 * 60 * 60 * 3,
-  },
-  {
-    id: "inc-2",
-    productName: "Hostel Study Chair",
-    requesterName: "Fatima Sheikh",
-    department: "Business Administration",
-    year: "1",
-    type: "Donate",
-    message: "Would really appreciate this for my room!",
-    offeredProduct: null,
-    status: "pending",
-    pickupLocation: null,
-    pickupTime: null,
-    time: Date.now() - 1000 * 60 * 60 * 26,
-  },
-];
+
 
 // Complaints other students have raised against YOU. Per the safety
 // rule, the complainant's name and department are intentionally never

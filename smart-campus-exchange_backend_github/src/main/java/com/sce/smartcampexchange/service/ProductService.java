@@ -13,9 +13,9 @@ import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
-import org.springframework.transaction.annotation.Transactional;
 
 import com.sce.smartcampexchange.dto.ProductImageResponse;
 import com.sce.smartcampexchange.dto.ProductRequest;
@@ -23,11 +23,10 @@ import com.sce.smartcampexchange.dto.ProductResponse;
 import com.sce.smartcampexchange.entity.Product;
 import com.sce.smartcampexchange.entity.ProductImage;
 import com.sce.smartcampexchange.entity.Student;
+import com.sce.smartcampexchange.entity.TrustScore;
 import com.sce.smartcampexchange.repository.ProductImageRepository;
 import com.sce.smartcampexchange.repository.ProductRepository;
 import com.sce.smartcampexchange.repository.StudentRepository;
-
-import com.sce.smartcampexchange.entity.TrustScore;
 import com.sce.smartcampexchange.repository.TrustScoreRepository;
 
 @Service
@@ -93,6 +92,8 @@ public class ProductService {
             MultipartFile[] images,
             Integer primaryImageIndex) {
 
+        Student student = getLoggedInStudent();
+
         // Basic validations
         if (request == null) {
             throw new ResponseStatusException(
@@ -145,8 +146,6 @@ public class ProductService {
         }
 
         // Create product
-        Student student = getLoggedInStudent();
-
         Product product = new Product();
         product.setOwner(student);
         product.setTitle(request.getTitle());
@@ -176,7 +175,12 @@ public class ProductService {
             if (primaryImageIndex != null) {
                 makePrimary = (i == primaryImageIndex);
             } else {
-                makePrimary = (i == 0);
+                // First successfully-saved image becomes primary — using
+                // imageResponses.isEmpty() (rather than i == 0) correctly
+                // handles the case where index 0 was null/empty and got
+                // skipped, so the actual first real image still gets
+                // marked primary instead of nothing being primary at all.
+                makePrimary = imageResponses.isEmpty();
             }
             image.setPrimary(makePrimary);
 
@@ -503,6 +507,9 @@ public class ProductService {
         );
     }
 
+    // =========================================================
+    // Set Primary Image
+    // =========================================================
     @Transactional
     public ProductResponse setPrimaryImage(Long productId, Long imageId) {
         Student loggedInStudent = getLoggedInStudent();
@@ -531,6 +538,9 @@ public class ProductService {
         return convertToProductResponse(product);
     }
 
+    // =========================================================
+    // Delete Product Image
+    // =========================================================
     @Transactional
     public void deleteProductImage(Long productId, Long imageId) {
         Student loggedInStudent = getLoggedInStudent();

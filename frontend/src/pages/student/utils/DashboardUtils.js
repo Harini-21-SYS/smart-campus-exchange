@@ -135,6 +135,41 @@ export function timeAgo(ts) {
 
 
 /* =========================================================
+   Register number -> Year derivation
+
+   Same parsing logic as Auth.jsx's deriveYearAndFinanceType,
+   extracted here so IncomingRequestsSection (and anywhere else
+   that needs a student's year from their register number) doesn't
+   have to duplicate it. Year itself is never stored in the
+   database — it's always derived from the register number on
+   demand, on whichever side needs it.
+   ========================================================= */
+
+const REGISTER_NUMBER_PARSE_REGEX = /^(\d{2})([Ss]?)([Aa]?)([UuPp])([A-Za-z]+)(\d{2})$/;
+const YEAR_LABELS = ["1st Year", "2nd Year", "3rd Year"];
+
+export function deriveYearFromRegisterNumber(registerNumber) {
+  if (!registerNumber) return "—";
+
+  const match = registerNumber.trim().match(REGISTER_NUMBER_PARSE_REGEX);
+  if (!match) return "—";
+
+  const [, yearDigits, , , levelChar] = match;
+  const admissionYear = 2000 + parseInt(yearDigits, 10);
+  const currentYear = new Date().getFullYear();
+
+  const isPG = levelChar.toUpperCase() === "P";
+  const maxYears = isPG ? 2 : 3;
+
+  let yearNumber = currentYear - admissionYear + 1;
+  if (yearNumber < 1) yearNumber = 1;
+  if (yearNumber > maxYears) return "—";
+
+  return admissionYear <= currentYear ? YEAR_LABELS[yearNumber - 1] : "—";
+}
+
+
+/* =========================================================
    Normalize backend product type
    ========================================================= */
 
@@ -209,27 +244,12 @@ export function mapBackendProduct(product) {
 
     ownerId: product.ownerId,
 
-    // FIX: this was hardcoded to "" before, silently discarding
-    // `ownerDepartment` even though the backend DTO (ProductResponse)
-    // already sends it. The Student entity has department as
-    // nullable = false, so every product's owner genuinely has one —
-    // it just never made it past this mapper.
     department: product.ownerDepartment || "",
 
-    // FIX: previously not mapped at all — the key from the backend
-    // (`ownerProfileImage`) was silently dropped. Same treatment as
-    // the student's own profile image in StudentDashboard.jsx
-    // (PROFILE_IMAGE_BASE_URL + the stored path), so seller avatars
-    // resolve the same way your own avatar already does.
     sellerProfileImage: product.ownerProfileImage
       ? `${PROFILE_IMAGE_BASE_URL}${product.ownerProfileImage}`
       : null,
 
-    // FIX: previously not mapped at all. `null` here (rather than a
-    // fallback number) is intentional — it means "no trust score yet
-    // computed for this student" (e.g. no completed transactions),
-    // which ProductCard/ProductDetailSection already handle by hiding
-    // the trust badge instead of showing a fake 0.
     sellerTrustScore:
       product.trustScore !== null &&
       product.trustScore !== undefined
@@ -259,4 +279,5 @@ export function mapBackendProduct(product) {
       )
     ),
   };
+  
 }

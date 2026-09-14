@@ -27,8 +27,6 @@ public class CorsConfig {
                         "http://localhost:5176",
                         "http://localhost:5177"
                 ));
-        
-
 
         configuration.setAllowedMethods(
                 List.of(

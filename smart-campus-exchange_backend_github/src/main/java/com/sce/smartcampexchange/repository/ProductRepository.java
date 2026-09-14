@@ -8,9 +8,16 @@ import java.util.List;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface ProductRepository
-extends JpaRepository<Product, Long> {
+        extends JpaRepository<Product, Long> {
 
-List<Product> findByOwner(Student owner);
+    List<Product> findByOwner(Student owner);
 
-List<Product> findByOwnerNot(Student owner);
+    List<Product> findByOwnerNot(Student owner);
+
+    List<Product> findByStatus(String status);
+
+    List<Product> findByOwnerAndStatus(
+            Student owner,
+            String status
+    );
 }

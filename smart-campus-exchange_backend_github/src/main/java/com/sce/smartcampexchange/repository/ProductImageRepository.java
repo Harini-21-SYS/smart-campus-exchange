@@ -7,6 +7,9 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import com.sce.smartcampexchange.entity.Product;
 import com.sce.smartcampexchange.entity.ProductImage;
 
-public interface ProductImageRepository extends JpaRepository<ProductImage, Long> {
+public interface ProductImageRepository
+        extends JpaRepository<ProductImage, Long> {
+
     List<ProductImage> findByProduct(Product product);
+
 }

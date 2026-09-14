@@ -1,42 +1,150 @@
+// requestService.js
 import axios from "axios";
 
-// Adjust this to wherever your backend actually mounts the requests
-// controller — this assumes the same host as the product/profile image
-// APIs (see PROFILE_IMAGE_BASE_URL in constants.js).
-const API_BASE_URL = "http://localhost:8081/api/requests";
+const BASE_URL = "http://localhost:8081/api/requests";
 
-function authHeaders() {
+const getAuthHeaders = () => {
   const token = localStorage.getItem("token");
-  return token ? { Authorization: `Bearer ${token}` } : {};
-}
 
-/* ---------------------------------------------------------
-   Incoming — requests other students sent for MY listings
---------------------------------------------------------- */
-export async function getIncomingRequests() {
-  const res = await axios.get(`${API_BASE_URL}/incoming`, { headers: authHeaders() });
-  return res.data;
-}
+  return {
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+  };
+};
 
-export async function acceptRequest(requestId) {
-  const res = await axios.put(`${API_BASE_URL}/${requestId}/accept`, {}, { headers: authHeaders() });
-  return res.data;
-}
 
-export async function rejectRequest(requestId) {
-  const res = await axios.put(`${API_BASE_URL}/${requestId}/reject`, {}, { headers: authHeaders() });
-  return res.data;
-}
+// ==========================================
+// CREATE REQUEST
+// ==========================================
 
-/* ---------------------------------------------------------
-   Mine — requests I sent for OTHER students' listings
---------------------------------------------------------- */
-export async function getMyRequests() {
-  const res = await axios.get(`${API_BASE_URL}/mine`, { headers: authHeaders() });
-  return res.data;
-}
+export const createRequest = async (requestData) => {
 
-export async function cancelRequest(requestId) {
-  const res = await axios.delete(`${API_BASE_URL}/${requestId}`, { headers: authHeaders() });
-  return res.data;
-}
+  const response = await axios.post(
+    BASE_URL,
+    requestData,
+    getAuthHeaders()
+  );
+
+  return response.data;
+};
+
+
+// ==========================================
+// GET MY REQUESTS
+// ==========================================
+
+export const getMyRequests = async () => {
+
+  const response = await axios.get(
+    `${BASE_URL}/my`,
+    getAuthHeaders()
+  );
+
+  return response.data;
+};
+
+
+// ==========================================
+// GET INCOMING REQUESTS
+// (requests other students sent you as a seller)
+// Confirmed: GET /api/requests/incoming
+// ==========================================
+
+export const getIncomingRequests = async () => {
+
+  const response = await axios.get(
+    `${BASE_URL}/incoming`,
+    getAuthHeaders()
+  );
+
+  return response.data;
+};
+
+
+// ==========================================
+// GET REQUEST BY ID
+// Confirmed: GET /api/requests/{id}
+// Used by NotificationsSection.jsx to fetch pickup details for a
+// REQUEST_ACCEPTED notification.
+// ==========================================
+
+export const getRequestById = async (requestId) => {
+
+  const response = await axios.get(
+    `${BASE_URL}/${requestId}`,
+    getAuthHeaders()
+  );
+
+  return response.data;
+};
+
+
+// ==========================================
+// ACCEPT REQUEST
+// ==========================================
+
+export const acceptRequest = async (requestId, pickupDetails) => {
+
+  const response = await axios.put(
+    `${BASE_URL}/${requestId}/accept`,
+    pickupDetails,
+    getAuthHeaders()
+  );
+
+  return response.data;
+};
+
+
+// ==========================================
+// REJECT REQUEST
+// ==========================================
+
+export const rejectRequest = async (requestId) => {
+
+  const response = await axios.put(
+    `${BASE_URL}/${requestId}/reject`,
+    {},
+    getAuthHeaders()
+  );
+
+  return response.data;
+};
+
+
+// ==========================================
+// CANCEL REQUEST
+//
+// NOTE: RequestController.java has no PUT /{id}/cancel endpoint —
+// only /accept and /reject exist. This will 404 if called as-is.
+// ==========================================
+
+export const cancelRequest = async (requestId) => {
+
+  const response = await axios.put(
+    `${BASE_URL}/${requestId}/cancel`,
+    {},
+    getAuthHeaders()
+  );
+
+  return response.data;
+};
+
+
+// ==========================================
+// DELETE REQUEST
+// Confirmed: DELETE /api/requests/{id}
+// Returns 204 No Content — response.data will be undefined, which is
+// expected here, not a bug.
+// ==========================================
+
+export const deleteRequest = async (requestId) => {
+
+  const response = await axios.delete(
+    `${BASE_URL}/${requestId}`,
+    getAuthHeaders()
+  );
+
+  return response.data;
+};

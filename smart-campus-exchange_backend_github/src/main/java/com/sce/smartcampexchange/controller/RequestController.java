@@ -1,14 +1,15 @@
 package com.sce.smartcampexchange.controller;
 
-import com.sce.smartcampexchange.dto.RequestResponse;
-import com.sce.smartcampexchange.entity.Request;
-import com.sce.smartcampexchange.service.RequestService;
+import java.util.List;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
+import com.sce.smartcampexchange.dto.AcceptRequestRequest;
+import com.sce.smartcampexchange.dto.RequestResponse;
+import com.sce.smartcampexchange.dto.CreateRequestRequest;
+import com.sce.smartcampexchange.service.RequestService;
 
 @RestController
 @RequestMapping("/api/requests")
@@ -20,47 +21,105 @@ public class RequestController {
         this.requestService = requestService;
     }
 
-    // Add Request
+    // =========================================================
+    // CREATE REQUEST
+    // =========================================================
+
     @PostMapping
     public ResponseEntity<RequestResponse> addRequest(
-            @RequestBody Request request) {
-
-        RequestResponse savedRequest =
-                requestService.addRequest(request);
+            @RequestBody CreateRequestRequest request) {
 
         return new ResponseEntity<>(
-                savedRequest,
-                HttpStatus.CREATED);
+                requestService.addRequest(request),
+                HttpStatus.CREATED
+        );
     }
 
-    // Get All Requests
+    // =========================================================
+    // GET ALL REQUESTS
+    // =========================================================
+
     @GetMapping
     public ResponseEntity<List<RequestResponse>> getAllRequests() {
 
         return ResponseEntity.ok(
-                requestService.getAllRequests());
+                requestService.getAllRequests()
+        );
     }
 
-    // Get Request By ID
+    // =========================================================
+    // MY REQUESTS
+    // =========================================================
+
+    @GetMapping("/my")
+    public ResponseEntity<List<RequestResponse>> getMyRequests() {
+
+        return ResponseEntity.ok(
+                requestService.getMyRequests()
+        );
+    }
+
+    // =========================================================
+    // INCOMING REQUESTS
+    // =========================================================
+
+    @GetMapping("/incoming")
+    public ResponseEntity<List<RequestResponse>> getIncomingRequests() {
+
+        return ResponseEntity.ok(
+                requestService.getIncomingRequests()
+        );
+    }
+
+    // =========================================================
+    // GET REQUEST BY ID
+    // Used by getRequestById() in requestService.js to fetch pickup
+    // details for a REQUEST_ACCEPTED notification.
+    // =========================================================
+
     @GetMapping("/{id}")
     public ResponseEntity<RequestResponse> getRequestById(
             @PathVariable Long id) {
 
         return ResponseEntity.ok(
-                requestService.getRequestById(id));
+                requestService.getRequestById(id)
+        );
     }
 
-    // Update Request
-    @PutMapping("/{id}")
-    public ResponseEntity<RequestResponse> updateRequest(
+    // =========================================================
+    // ACCEPT REQUEST + CREATE PICKUP SCHEDULE
+    // =========================================================
+
+    @PutMapping("/{id}/accept")
+    public ResponseEntity<RequestResponse> acceptRequest(
             @PathVariable Long id,
-            @RequestBody Request request) {
+            @RequestBody AcceptRequestRequest acceptRequestRequest) {
 
         return ResponseEntity.ok(
-                requestService.updateRequest(id, request));
+                requestService.acceptRequest(
+                        id,
+                        acceptRequestRequest
+                )
+        );
     }
 
-    // Delete Request
+    // =========================================================
+    // REJECT REQUEST
+    // =========================================================
+
+    @PutMapping("/{id}/reject")
+    public ResponseEntity<RequestResponse> rejectRequest(
+            @PathVariable Long id) {
+
+        return ResponseEntity.ok(
+                requestService.rejectRequest(id)
+        );
+    }
+
+    // =========================================================
+    // DELETE REQUEST
+    // =========================================================
+
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteRequest(
             @PathVariable Long id) {

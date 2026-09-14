@@ -133,3 +133,21 @@
     width: 100%;
   }
 }
+.complaint-card-highlight {
+  border: 2px solid #E3A72B;
+  animation: complaintHighlight 2s ease-in-out;
+}
+
+@keyframes complaintHighlight {
+  0% {
+    transform: scale(1);
+  }
+
+  50% {
+    transform: scale(1.02);
+  }
+
+  100% {
+    transform: scale(1);
+  }
+}

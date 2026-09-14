@@ -4,6 +4,7 @@ import EmptyState from "../components/EmptyState";
 import ImagePlaceholder from "../components/ImagePlaceholder";
 import ConfirmDialog from "../components/ConfirmDialog";
 import { COMPLAINT_TYPES } from "../constants";
+import { createComplaint } from "../../../services/complaintService";
 import "./RaiseComplaintSection.css";
 
 /* Two-step flow:
@@ -14,19 +15,24 @@ import "./RaiseComplaintSection.css";
       of complaint_table's fields: complainant_id, against_id, prd_id,
       req_id, status, created_at are all filled in automatically from
       the selected transaction, not asked of the user). */
-function RaiseComplaintSection({ completedTransactions, onSubmit }) {
-  const [selected, setSelected] = useState(null);
+function RaiseComplaintSection({
+  completedTransactions = [],
+  onSubmit,
+}) {
+    const [selected, setSelected] = useState(null);
   const [complaintType, setComplaintType] = useState("");
   const [description, setDescription] = useState("");
   const [errors, setErrors] = useState({});
   const [showConfirm, setShowConfirm] = useState(false);
-
+  const [submitting, setSubmitting] = useState(false);
+const [submitError, setSubmitError] = useState("");
   const resetForm = () => {
-    setSelected(null);
-    setComplaintType("");
-    setDescription("");
-    setErrors({});
-  };
+  setSelected(null);
+  setComplaintType("");
+  setDescription("");
+  setErrors({});
+  setSubmitError("");
+};
 
   const validate = () => {
     const errs = {};
@@ -41,19 +47,110 @@ function RaiseComplaintSection({ completedTransactions, onSubmit }) {
     setShowConfirm(true);
   };
 
-  const handleConfirm = () => {
-    onSubmit({
-      productId: selected.productId,
-      productName: selected.productName,
-      productImage: selected.productImage,
-      requestId: selected.id,
-      againstName: selected.sellerName,
-      complaintType,
-      description: description.trim(),
-    });
+const handleConfirm = async () => {
+
+  if (!selected) {
+    return;
+  }
+
+  if (!selected.productId) {
+
+    setSubmitError(
+      "Product information is missing."
+    );
+
+    return;
+  }
+
+  if (!selected.id) {
+
+    setSubmitError(
+      "Request information is missing."
+    );
+
+    return;
+  }
+
+  if (!selected.sellerId) {
+
+    setSubmitError(
+      "Seller information is missing."
+    );
+
+    return;
+  }
+
+  try {
+
+    setSubmitting(true);
+
+    setSubmitError("");
+
+    const complaintData = {
+
+      productId:
+        selected.productId,
+
+      requestId:
+        selected.id,
+
+      againstStudentId:
+        selected.sellerId,
+
+      complaintType:
+        complaintType,
+
+      description:
+        description.trim(),
+
+    };
+
+    console.log(
+      "Creating complaint:",
+      complaintData
+    );
+
+    const createdComplaint =
+      await createComplaint(
+        complaintData
+      );
+
+    if (onSubmit) {
+
+      onSubmit(
+        createdComplaint
+      );
+
+    }
+
     setShowConfirm(false);
+
     resetForm();
-  };
+
+  } catch (error) {
+
+    console.error(
+      "Error creating complaint:",
+      error
+    );
+
+    setSubmitError(
+
+      error.response?.data?.message ||
+
+      "Failed to submit complaint. Please try again."
+
+    );
+
+    setShowConfirm(false);
+
+  } finally {
+
+    setSubmitting(false);
+
+  }
+
+};
 
   // ---------- Step 1: pick the transaction ----------
   if (!selected) {
@@ -160,9 +257,21 @@ function RaiseComplaintSection({ completedTransactions, onSubmit }) {
           {errors.description && <span className="field-error-msg">{errors.description}</span>}
         </div>
 
-        <button className="dash-btn dash-btn-primary dash-btn-block" onClick={handleSubmitClick}>
-          Submit Complaint
-        </button>
+        {submitError && (
+  <div className="field-error-msg">
+    {submitError}
+  </div>
+)}
+
+<button
+  className="dash-btn dash-btn-primary dash-btn-block"
+  onClick={handleSubmitClick}
+  disabled={submitting}
+>
+  {submitting
+    ? "Submitting..."
+    : "Submit Complaint"}
+</button>
       </div>
 
       {showConfirm && (

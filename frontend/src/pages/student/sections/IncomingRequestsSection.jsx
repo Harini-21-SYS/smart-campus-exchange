@@ -1,45 +1,131 @@
+// IncomingRequestsSection.jsx
 import { useEffect, useState } from "react";
 import { FaCheck, FaBan, FaChevronDown, FaChevronUp, FaUser } from "react-icons/fa";
 import EmptyState from "../components/EmptyState";
 import { TYPE_INFO } from "../constants";
-import { timeAgo } from "../utils/dashboardUtils";
+import { timeAgo, deriveYearFromRegisterNumber } from "../utils/DashboardUtils";
 import { getIncomingRequests, acceptRequest, rejectRequest } from "../../../services/requestService";
 import "./RequestList.css";
+import PickupDetailsModal from "../components/PickupDetailsModal";
 
-// Normalizes whatever the backend sends (PENDING / Pending / pending)
-// into the lowercase form the CSS classes and copy expect.
+const API_ORIGIN = "http://localhost:8081";
+
 function normalizeStatus(status) {
   return (status || "pending").toLowerCase();
 }
 
-// Defensive mapping — backend field names can drift; this keeps the
-// rest of the component simple even if some fields are missing.
-function mapRequest(r) {
-  const images = r.product?.images || [];
-  const primary = images.find((img) => img.primary) || images[0];
-
-  return {
-    id: r.id,
-    productId: r.product?.id,
-    productName: r.product?.title || "Untitled listing",
-    productImage: primary?.imageUrl || null,
-    requesterName: r.requester?.fullName || "Unknown Student",
-    department: r.requester?.department || "—",
-    year: r.requester?.year || "—",
-    type: r.type || r.product?.type || "Sell",
-    message: r.message || "",
-    time: r.createdAt ? new Date(r.createdAt).getTime() : Date.now(),
-    status: normalizeStatus(r.status),
-  };
+function resolveImageUrl(path) {
+  if (!path) return null;
+  if (path.startsWith("http://") || path.startsWith("https://")) return path;
+  return `${API_ORIGIN}${path}`;
 }
 
-function IncomingRequestsSection({ onToast }) {
+function mapRequest(r) {
+  return {
+    id: r.id,
+
+    productId:
+      r.productId ??
+      r.product?.id,
+
+    productName:
+      r.productTitle ??
+      r.product?.title ??
+      "Untitled listing",
+
+    productImage: resolveImageUrl(
+      r.productImage ??
+      r.product?.images?.[0]?.imageUrl ??
+      r.product?.images?.[0]?.url ??
+      null
+    ),
+
+    requesterId:
+      r.requesterId ??
+      r.requester?.studentId,
+
+    requesterName:
+      r.requesterName ??
+      r.requester?.fullName ??
+      "Unknown Student",
+
+    department:
+      r.requesterDepartment ??
+      r.requester?.department ??
+      "—",
+
+    // FIX: this was still reading a `requesterYear`/`requester.year`
+    // field that never existed on the backend response — year is
+    // never stored anywhere, it's derived from the register number.
+    // Now uses the shared util against the register number the
+    // backend actually sends.
+    year: deriveYearFromRegisterNumber(
+      r.requesterRegisterNumber ?? r.requester?.registerNumber
+    ),
+
+   type:
+  r.productType ??
+  r.product?.type ??
+  (r.requestType === "BUY"
+    ? "Sell"
+    : r.requestType === "EXCHANGE"
+    ? "Exchange"
+    : r.requestType === "DONATE"
+    ? "Donate"
+    : "Sell"),
+
+    message:
+      r.message ?? "",
+
+    time:
+      r.createdAt
+        ? new Date(r.createdAt).getTime()
+        : Date.now(),
+
+    status:
+  normalizeStatus(r.status),
+
+pickupLocation:
+  r.pickupLocation ??
+  null,
+
+pickupTime:
+  r.pickupTime ??
+  null,
+};
+}
+
+function IncomingRequestsSection({
+  onToast,
+  notificationTargetId,
+  onRequestUpdated
+}) {
+  
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
-  const [actingId, setActingId] = useState(null); // request currently being accepted/rejected
-  const [expandedId, setExpandedId] = useState(null); // "view profile" panel
+  const [actingId, setActingId] = useState(null);
+  const [expandedId, setExpandedId] = useState(null);
+  const [selectedRequest, setSelectedRequest] = useState(null);
+  useEffect(() => {
+  if (!notificationTargetId) return;
 
+  setTimeout(() => {
+    const element = document.getElementById(
+      `request-${notificationTargetId}`
+    );
+
+    if (element) {
+      element.scrollIntoView({
+        behavior: "smooth",
+        block: "center",
+      });
+
+      setExpandedId(notificationTargetId);
+    }
+  }, 100);
+
+}, [notificationTargetId, requests]);
   const notify = (message) => (onToast ? onToast(message) : console.log(message));
 
   useEffect(() => {
@@ -69,37 +155,125 @@ function IncomingRequestsSection({ onToast }) {
     };
   }, []);
 
-  const handleAccept = async (request) => {
-    setActingId(request.id);
-    try {
-      await acceptRequest(request.id);
-      setRequests((prev) =>
-        prev.map((r) => (r.id === request.id ? { ...r, status: "accepted" } : r))
-      );
-      notify(`Accepted ${request.requesterName}'s request for "${request.productName}".`);
-    } catch (error) {
-      console.error("Failed to accept request:", error);
-      notify(error.response?.data?.message || "Couldn't accept the request. Please try again.");
-    } finally {
-      setActingId(null);
-    }
-  };
 
-  const handleReject = async (request) => {
-    setActingId(request.id);
-    try {
-      await rejectRequest(request.id);
-      setRequests((prev) =>
-        prev.map((r) => (r.id === request.id ? { ...r, status: "rejected" } : r))
+const handlePickupAccept = async ({ location, date, time }) => {
+
+  if (!selectedRequest) return;
+
+  const requestId = selectedRequest.id;
+
+  setActingId(requestId);
+
+  try {
+
+    const response =
+      await acceptRequest(
+        requestId,
+        {
+          location,
+          pickupDate: date,
+          pickupTime: time,
+        }
       );
-      notify(`Declined ${request.requesterName}'s request for "${request.productName}".`);
-    } catch (error) {
-      console.error("Failed to reject request:", error);
-      notify(error.response?.data?.message || "Couldn't decline the request. Please try again.");
-    } finally {
-      setActingId(null);
-    }
-  };
+
+    setRequests((prev) =>
+      prev.map((r) =>
+        String(r.id) === String(requestId)
+          ? {
+              ...r,
+
+              status:
+                normalizeStatus(
+                  response.status ??
+                  "ACCEPTED"
+                ),
+
+              pickupLocation:
+                response.pickupLocation ??
+                location,
+
+              pickupTime:
+                response.pickupTime ??
+                time,
+            }
+          : r
+      )
+    );
+
+    await onRequestUpdated?.();
+
+    notify(
+      `Accepted ${selectedRequest.requesterName}'s request for "${selectedRequest.productName}".`
+    );
+
+    setSelectedRequest(null);
+
+  } catch (error) {
+
+    console.error(
+      "Failed to accept request:",
+      error
+    );
+
+    notify(
+      error.response?.data?.message ||
+      "Couldn't accept the request. Please try again."
+    );
+
+  } finally {
+
+    setActingId(null);
+
+  }
+
+};
+  const handleReject = async (request) => {
+
+  setActingId(request.id);
+
+  try {
+
+    await rejectRequest(
+      request.id
+    );
+
+    setRequests((prev) =>
+      prev.map((r) =>
+        String(r.id) ===
+        String(request.id)
+          ? {
+              ...r,
+              status: "rejected",
+            }
+          : r
+      )
+    );
+
+    await onRequestUpdated?.();
+
+    notify(
+      `Declined ${request.requesterName}'s request for "${request.productName}".`
+    );
+
+  } catch (error) {
+
+    console.error(
+      "Failed to reject request:",
+      error
+    );
+
+    notify(
+      error.response?.data?.message ||
+      "Couldn't decline the request. Please try again."
+    );
+
+  } finally {
+
+    setActingId(null);
+
+  }
+
+};
 
   if (loading) {
     return (
@@ -134,17 +308,40 @@ function IncomingRequestsSection({ onToast }) {
       ) : (
         <div className="request-list">
           {requests.map((r) => {
-            const info = TYPE_INFO[r.type];
+            const info = TYPE_INFO[r.type] || TYPE_INFO.Sell;
             const isPending = r.status === "pending";
             const isActing = actingId === r.id;
             const isExpanded = expandedId === r.id;
 
             return (
-              <div key={r.id} className="request-card">
+            <div
+              key={r.id}
+              id={`request-${r.id}`}
+              className="request-card"
+            >
                 <div className="request-card-top">
-                  <div className="request-thumb">
+                  {/* FIX: constrained size directly via inline style so
+                      it's guaranteed regardless of RequestList.css's
+                      current rules — the oversized thumbnail was also
+                      what pushed the pickup modal layout down. */}
+                  <div
+                    className="request-thumb"
+                    style={{
+                      width: 64,
+                      height: 64,
+                      minWidth: 64,
+                      borderRadius: 10,
+                      overflow: "hidden",
+                      background: "#f2efe6",
+                      flexShrink: 0,
+                    }}
+                  >
                     {r.productImage ? (
-                      <img src={r.productImage} alt={r.productName} />
+                      <img
+                        src={r.productImage}
+                        alt={r.productName}
+                        style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                      />
                     ) : (
                       <span className="request-thumb-empty" />
                     )}
@@ -162,24 +359,45 @@ function IncomingRequestsSection({ onToast }) {
                       type="button"
                       className="request-profile-toggle"
                       onClick={() => setExpandedId(isExpanded ? null : r.id)}
+                      style={{
+                        border: "none",
+                        background: "none",
+                        color: "#1f3d2b",
+                        fontWeight: 600,
+                        fontSize: 13,
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 6,
+                        padding: "6px 0",
+                        cursor: "pointer",
+                      }}
                     >
                       <FaUser /> {isExpanded ? "Hide" : "View"} requester profile
                       {isExpanded ? <FaChevronUp /> : <FaChevronDown />}
                     </button>
 
                     {isExpanded && (
-                      <div className="request-profile-panel">
-                        <div>
-                          <small>Name</small>
-                          <span>{r.requesterName}</span>
+                      <div
+                        className="request-profile-panel"
+                        style={{
+                          background: "#faf8f2",
+                          border: "1px solid #e5e0d8",
+                          borderRadius: 10,
+                          padding: "10px 14px",
+                          marginTop: 4,
+                        }}
+                      >
+                        <div className="request-profile-row" style={{ display: "flex", justifyContent: "space-between", padding: "4px 0", fontSize: 13 }}>
+                          <span className="request-profile-label" style={{ color: "#7a8a7d", fontWeight: 600 }}>Name</span>
+                          <span className="request-profile-value">{r.requesterName}</span>
                         </div>
-                        <div>
-                          <small>Department</small>
-                          <span>{r.department}</span>
+                        <div className="request-profile-row" style={{ display: "flex", justifyContent: "space-between", padding: "4px 0", fontSize: 13 }}>
+                          <span className="request-profile-label" style={{ color: "#7a8a7d", fontWeight: 600 }}>Department</span>
+                          <span className="request-profile-value">{r.department}</span>
                         </div>
-                        <div>
-                          <small>Year</small>
-                          <span>{r.year}</span>
+                        <div className="request-profile-row" style={{ display: "flex", justifyContent: "space-between", padding: "4px 0", fontSize: 13 }}>
+                          <span className="request-profile-label" style={{ color: "#7a8a7d", fontWeight: 600 }}>Year</span>
+                          <span className="request-profile-value">{r.year}</span>
                         </div>
                       </div>
                     )}
@@ -190,12 +408,13 @@ function IncomingRequestsSection({ onToast }) {
                   {isPending ? (
                     <div className="request-actions">
                       <button
-                        className="dash-btn dash-btn-primary dash-btn-sm"
-                        disabled={isActing}
-                        onClick={() => handleAccept(r)}
-                      >
-                        <FaCheck /> {isActing ? "..." : "Accept"}
-                      </button>
+  className="dash-btn dash-btn-primary dash-btn-sm"
+  disabled={isActing}
+  onClick={() => setSelectedRequest(r)}
+>
+  <FaCheck />
+  {isActing ? "..." : "Accept"}
+</button>
                       <button
                         className="dash-btn dash-btn-danger dash-btn-sm"
                         disabled={isActing}
@@ -216,6 +435,17 @@ function IncomingRequestsSection({ onToast }) {
           })}
         </div>
       )}
+      {selectedRequest && (
+  <PickupDetailsModal
+    request={selectedRequest}
+    onCancel={() => setSelectedRequest(null)}
+    onAccept={handlePickupAccept}
+    onReject={() => {
+      handleReject(selectedRequest);
+      setSelectedRequest(null);
+    }}
+  />
+)}
     </div>
   );
 }

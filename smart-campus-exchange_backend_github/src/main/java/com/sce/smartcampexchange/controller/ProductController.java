@@ -21,79 +21,146 @@ public class ProductController {
         this.productService = productService;
     }
 
-    // Add Product (multipart/form-data)
+    // =========================================================
+    // Add Product
+    // =========================================================
     @PostMapping(consumes = "multipart/form-data")
     public ResponseEntity<ProductResponse> addProduct(
-            @RequestPart("product") ProductRequest request,
-            @RequestPart(value = "images", required = false) MultipartFile[] images,
-            @RequestParam(value = "primaryImageIndex", required = false) Integer primaryImageIndex) {
 
-        ProductResponse response = productService.addProduct(request, images, primaryImageIndex);
+            @RequestPart("product") ProductRequest request,
+
+            @RequestPart(value = "images", required = false)
+            MultipartFile[] images,
+
+            @RequestParam(value = "primaryImageIndex", required = false)
+            Integer primaryImageIndex) {
+
+        ProductResponse response =
+                productService.addProduct(
+                        request,
+                        images,
+                        primaryImageIndex);
+
         return new ResponseEntity<>(response, HttpStatus.CREATED);
     }
 
-    // Get other students' products (public)
+    // =========================================================
+    // Get Other Students' Products
+    // =========================================================
     @GetMapping
     public ResponseEntity<List<ProductResponse>> getOtherProducts() {
-        return ResponseEntity.ok(productService.getOtherProducts());
+
+        return ResponseEntity.ok(
+                productService.getOtherProducts());
     }
 
-    // Get my products
+    // =========================================================
+    // Get My Products
+    // =========================================================
     @GetMapping("/my")
     public ResponseEntity<List<ProductResponse>> getMyProducts() {
-        return ResponseEntity.ok(productService.getMyProducts());
+
+        return ResponseEntity.ok(
+                productService.getMyProducts());
     }
 
-    // Get product by id
+    // =========================================================
+    // Get Product By ID
+    // =========================================================
     @GetMapping("/{id}")
     public ResponseEntity<ProductResponse> getProductById(
             @PathVariable Long id) {
 
-        return ResponseEntity.ok(productService.getProductById(id));
+        return ResponseEntity.ok(
+                productService.getProductById(id));
     }
 
-    // Update product (JSON)
-    @PutMapping(value = "/{id}", consumes = "application/json")
+    // =========================================================
+    // Update Product
+    // =========================================================
+    @PutMapping(
+            value = "/{id}",
+            consumes = "application/json")
     public ResponseEntity<ProductResponse> updateProduct(
+
             @PathVariable Long id,
+
             @RequestBody ProductRequest request) {
 
-        return ResponseEntity.ok(productService.updateProduct(id, request, null));
+        return ResponseEntity.ok(
+                productService.updateProduct(
+                        id,
+                        request,
+                        null));
     }
 
-    // Delete product
+    // =========================================================
+    // Delete Product
+    // =========================================================
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteProduct(@PathVariable Long id) {
+    public ResponseEntity<Void> deleteProduct(
+            @PathVariable Long id) {
+
         productService.deleteProduct(id);
+
         return ResponseEntity.noContent().build();
     }
 
-    // Upload additional images (multipart/form-data), primaryImageIndex optional
-    @PostMapping(value = "/{id}/images", consumes = "multipart/form-data")
+    // =========================================================
+    // Upload Product Images
+    // =========================================================
+    @PostMapping(
+            value = "/{id}/images",
+            consumes = "multipart/form-data")
     public ResponseEntity<ProductResponse> uploadProductImages(
-            @PathVariable Long id,
-            @RequestParam("images") MultipartFile[] images,
-            @RequestParam(value = "primaryImageIndex", required = false) Integer primaryImageIndex) {
 
-        return ResponseEntity.ok(productService.uploadProductImages(id, images, primaryImageIndex));
+            @PathVariable Long id,
+
+            @RequestParam("images")
+            MultipartFile[] images,
+
+            @RequestParam(
+                    value = "primaryImageIndex",
+                    required = false)
+            Integer primaryImageIndex) {
+
+        return ResponseEntity.ok(
+                productService.uploadProductImages(
+                        id,
+                        images,
+                        primaryImageIndex));
     }
 
-    // Set primary image
+    // =========================================================
+    // Set Primary Image
+    // =========================================================
     @PutMapping("/{productId}/images/{imageId}/primary")
     public ResponseEntity<ProductResponse> setPrimaryImage(
+
             @PathVariable Long productId,
+
             @PathVariable Long imageId) {
 
-        return ResponseEntity.ok(productService.setPrimaryImage(productId, imageId));
+        return ResponseEntity.ok(
+                productService.setPrimaryImage(
+                        productId,
+                        imageId));
     }
 
-    // Delete product image
+    // =========================================================
+    // Delete Product Image
+    // =========================================================
     @DeleteMapping("/{productId}/images/{imageId}")
     public ResponseEntity<Void> deleteProductImage(
+
             @PathVariable Long productId,
+
             @PathVariable Long imageId) {
 
-        productService.deleteProductImage(productId, imageId);
+        productService.deleteProductImage(
+                productId,
+                imageId);
+
         return ResponseEntity.noContent().build();
     }
 }

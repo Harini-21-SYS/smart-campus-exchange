@@ -9,17 +9,32 @@ import "./RequestModals.css";
    requires a pickup location + time; rejecting doesn't. */
 function PickupDetailsModal({ request, onCancel, onAccept, onReject }) {
   const [location, setLocation] = useState("");
-  const [time, setTime] = useState("");
+  const [dateTime, setDateTime] = useState(""); // combined value straight from <input type="datetime-local">
   const [error, setError] = useState("");
 
   const isExchange = request.type === "Exchange";
 
   const handleAcceptClick = () => {
-    if (!location.trim() || !time) {
+    if (!location.trim() || !dateTime) {
       setError("Please provide both a pickup location and time.");
       return;
     }
-    onAccept({ location: location.trim(), time });
+
+    // FIX: datetime-local gives one combined string like
+    // "2026-09-13T14:30" — date and time glued together with "T".
+    // The backend's AcceptRequestRequest needs pickupDate and
+    // pickupTime as two separate fields (it builds a PickupSchedule
+    // with setPickupDate(...) / setPickupTime(...) independently), so
+    // this was previously sending only the combined string as "time"
+    // and nothing at all as "date" — that missing date is what the
+    // backend's required-field check was rejecting with a 400.
+    const [datePart, timePart] = dateTime.split("T");
+
+    onAccept({
+      location: location.trim(),
+      date: datePart,
+      time: timePart,
+    });
   };
 
   return (
@@ -73,7 +88,7 @@ function PickupDetailsModal({ request, onCancel, onAccept, onReject }) {
             <label>
               <FaClock /> Pickup Date &amp; Time
             </label>
-            <input type="datetime-local" value={time} onChange={(e) => setTime(e.target.value)} />
+            <input type="datetime-local" value={dateTime} onChange={(e) => setDateTime(e.target.value)} />
           </div>
           {error && <span className="field-error-msg">{error}</span>}
         </div>

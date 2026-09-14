@@ -1,24 +1,28 @@
 package com.sce.smartcampexchange.service;
 
-import com.sce.smartcampexchange.dto.NotificationRequest;
-import com.sce.smartcampexchange.dto.NotificationResponse;
+import java.util.List;
+
+import org.springframework.http.HttpStatus;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
+
 import com.sce.smartcampexchange.entity.Notification;
 import com.sce.smartcampexchange.entity.Student;
 import com.sce.smartcampexchange.repository.NotificationRepository;
 import com.sce.smartcampexchange.repository.StudentRepository;
-
-import org.springframework.http.HttpStatus;
-import org.springframework.stereotype.Service;
-import org.springframework.web.server.ResponseStatusException;
-
 import java.util.ArrayList;
-import java.util.List;
 
+import com.sce.smartcampexchange.dto.NotificationResponse;
 @Service
-public class NotificationServiceImpl implements NotificationService {
+public class NotificationServiceImpl
+        implements NotificationService {
 
     private final NotificationRepository notificationRepository;
     private final StudentRepository studentRepository;
+
 
     public NotificationServiceImpl(
             NotificationRepository notificationRepository,
@@ -28,141 +32,310 @@ public class NotificationServiceImpl implements NotificationService {
         this.studentRepository = studentRepository;
     }
 
-    // =========================
-    // Add Notification
-    // =========================
+
+    // =========================================================
+    // CREATE NOTIFICATION
+    // =========================================================
 
     @Override
-    public NotificationResponse addNotification(
-            NotificationRequest request) {
+    @Transactional
+    public Notification createNotification(
+            StudentNotificationData data) {
+
+        if (data == null) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Notification data is required");
+        }
+
+
+        // -----------------------------------------------------
+        // Find recipient student
+        // -----------------------------------------------------
 
         Student student =
-                studentRepository.findById(request.getStudentId())
-                        .orElseThrow(() ->
-                                new ResponseStatusException(
-                                        HttpStatus.NOT_FOUND,
-                                        "Student not found with id: "
-                                                + request.getStudentId()
-                                ));
+                studentRepository.findById(
+                        data.getStudentId()
+                )
+                .orElseThrow(() ->
+                        new ResponseStatusException(
+                                HttpStatus.NOT_FOUND,
+                                "Student not found"));
 
-        Notification notification =
-                new Notification();
+
+        // -----------------------------------------------------
+        // Create notification
+        // -----------------------------------------------------
+        Notification notification = new Notification();
 
         notification.setStudent(student);
-        notification.setRecipientType(
-                request.getRecipientType()
+
+        notification.setStdId(
+                student.getStudentId()
         );
+
         notification.setNotifyType(
-                request.getNotifyType()
+                data.getNotifyType()
         );
+
+        notification.setRecipientType(
+                data.getRecipientType()
+        );
+
         notification.setRelatedId(
-                request.getRelatedId()
+                data.getRelatedId()
         );
 
-        // @PrePersist automatically sets isRead = false
-        Notification savedNotification =
-                notificationRepository.save(notification);
+        notification.setIsRead(false);
 
-        return convertToResponse(savedNotification);
+        return notificationRepository.save(
+                notification
+        );
     }
 
-    // =========================
-    // Get All Notifications
-    // =========================
+
+    // =========================================================
+    // GET MY NOTIFICATIONS
+    // =========================================================
 
     @Override
-    public List<NotificationResponse> getAllNotifications() {
+@Transactional(readOnly = true)
+public List<NotificationResponse> getMyNotifications() {
 
-        List<Notification> notifications =
-                notificationRepository.findAll();
+    Authentication authentication =
+            SecurityContextHolder
+                    .getContext()
+                    .getAuthentication();
 
-        List<NotificationResponse> responses =
-                new ArrayList<>();
 
-        for (Notification notification : notifications) {
+    if (authentication == null ||
+            !authentication.isAuthenticated()) {
 
-            responses.add(
-                    convertToResponse(notification)
+        throw new ResponseStatusException(
+                HttpStatus.UNAUTHORIZED,
+                "User is not authenticated");
+    }
+
+
+    String email =
+            authentication.getName();
+
+
+    Student student =
+            studentRepository
+                    .findByCollegeEmail(email)
+                    .orElseThrow(() ->
+                            new ResponseStatusException(
+                                    HttpStatus.UNAUTHORIZED,
+                                    "Student not found"));
+
+
+    List<Notification> notifications =
+            notificationRepository
+                    .findByStudentOrderByCreatedAtDesc(
+                            student
+                    );
+
+
+    List<NotificationResponse> responses =
+            new ArrayList<>();
+
+
+    for (Notification notification : notifications) {
+
+        responses.add(
+                convertToResponse(notification)
+        );
+    }
+
+
+    return responses;
+}
+    @Override
+    @Transactional(readOnly = true)
+    public long getUnreadNotificationCount() {
+
+        // Get authentication
+        Authentication authentication =
+                SecurityContextHolder
+                        .getContext()
+                        .getAuthentication();
+
+
+        if (authentication == null ||
+                !authentication.isAuthenticated()) {
+
+            throw new ResponseStatusException(
+                    HttpStatus.UNAUTHORIZED,
+                    "User is not authenticated"
             );
         }
 
-        return responses;
-    }
 
-    // =========================
-    // Get Notification By ID
-    // =========================
+        // Get logged-in email
+        String email = authentication.getName();
 
-    @Override
-    public NotificationResponse getNotificationById(Long id) {
 
-        Notification notification =
-                notificationRepository.findById(id)
+        // Find logged-in student
+        Student student =
+                studentRepository
+                        .findByCollegeEmail(email)
                         .orElseThrow(() ->
                                 new ResponseStatusException(
-                                        HttpStatus.NOT_FOUND,
-                                        "Notification not found with id: "
-                                                + id
-                                ));
+                                        HttpStatus.UNAUTHORIZED,
+                                        "Student not found"
+                                )
+                        );
 
-        return convertToResponse(notification);
+
+        // Count unread notifications
+        return notificationRepository
+                .countByStudentAndIsReadFalse(student);
     }
-
-    // =========================
-    // Delete Notification
-    // =========================
-
+    
     @Override
-    public void deleteNotification(Long id) {
+    @Transactional
+    public void markAllNotificationsAsRead() {
 
-        Notification notification =
-                notificationRepository.findById(id)
-                        .orElseThrow(() ->
-                                new ResponseStatusException(
-                                        HttpStatus.NOT_FOUND,
-                                        "Notification not found with id: "
-                                                + id
-                                ));
+        // Get logged-in student
+        Authentication authentication =
+                SecurityContextHolder
+                        .getContext()
+                        .getAuthentication();
 
-        notificationRepository.delete(notification);
-    }
+        if (authentication == null ||
+                !authentication.isAuthenticated()) {
 
-    // =========================
-    // Convert Entity → Response
-    // =========================
-
-    private NotificationResponse convertToResponse(
-            Notification notification) {
-
-        Long studentId = null;
-        String studentName = null;
-
-        if (notification.getStudent() != null) {
-
-            studentId =
-                    notification.getStudent().getStudentId();
-
-            studentName =
-                    notification.getStudent().getFullName();
+            throw new ResponseStatusException(
+                    HttpStatus.UNAUTHORIZED,
+                    "User is not authenticated"
+            );
         }
 
-        return new NotificationResponse(
+        String email = authentication.getName();
 
-                notification.getId(),
+        Student student =
+                studentRepository
+                        .findByCollegeEmail(email)
+                        .orElseThrow(() ->
+                                new ResponseStatusException(
+                                        HttpStatus.UNAUTHORIZED,
+                                        "Student not found"
+                                )
+                        );
 
-                studentId,
+        // Get all notifications of logged-in student
+        List<Notification> notifications =
+                notificationRepository
+                        .findByStudentOrderByCreatedAtDesc(student);
 
-                studentName,
+        // Mark all as read
+        for (Notification notification : notifications) {
 
-                notification.getRecipientType(),
+            if (!notification.getIsRead()) {
+                notification.setIsRead(true);
+            }
+        }
 
-                notification.getNotifyType(),
-
-                notification.getRelatedId(),
-
-                notification.isRead(),
-
-                notification.getCreatedAt()
-        );
+        // Save changes
+        notificationRepository.saveAll(notifications);
     }
+    
+ // =========================================================
+ // CONVERT TO RESPONSE
+ // =========================================================
+
+ private NotificationResponse convertToResponse(
+         Notification notification) {
+
+     return new NotificationResponse(
+
+             notification.getNotifyId(),
+
+             notification.getStudent() != null
+                     ? notification.getStudent().getStudentId()
+                     : null,
+
+             notification.getNotifyType(),
+
+             notification.getRecipientType(),
+
+             notification.getRelatedId(),
+
+             notification.getIsRead(),
+
+             notification.getCreatedAt()
+     );
+ }   
+ @Override
+ @Transactional
+ public NotificationResponse markAsRead(Long notificationId) {
+
+     // Find notification
+     Notification notification =
+             notificationRepository
+                     .findById(notificationId)
+                     .orElseThrow(() ->
+                             new ResponseStatusException(
+                                     HttpStatus.NOT_FOUND,
+                                     "Notification not found"
+                             )
+                     );
+
+
+     // Get logged-in student
+     Authentication authentication =
+             SecurityContextHolder
+                     .getContext()
+                     .getAuthentication();
+
+
+     if (authentication == null ||
+             !authentication.isAuthenticated()) {
+
+         throw new ResponseStatusException(
+                 HttpStatus.UNAUTHORIZED,
+                 "User is not authenticated"
+         );
+     }
+
+
+     String email = authentication.getName();
+
+
+     Student loggedInStudent =
+             studentRepository
+                     .findByCollegeEmail(email)
+                     .orElseThrow(() ->
+                             new ResponseStatusException(
+                                     HttpStatus.UNAUTHORIZED,
+                                     "Student not found"
+                             )
+                     );
+
+
+     // Check notification belongs to logged-in student
+     if (!notification.getStudent()
+             .getStudentId()
+             .equals(loggedInStudent.getStudentId())) {
+
+         throw new ResponseStatusException(
+                 HttpStatus.FORBIDDEN,
+                 "You are not allowed to update this notification"
+         );
+     }
+
+
+     // Mark as read
+     notification.setIsRead(true);
+
+
+     // Save
+     Notification savedNotification =
+             notificationRepository.save(notification);
+
+
+     return convertToResponse(savedNotification);
+ }
+ 
 }
