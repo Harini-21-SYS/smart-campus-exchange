@@ -318,15 +318,27 @@ public RequestResponse addRequest(CreateRequestRequest requestDto) {
 
 
      // =====================================
-     // OFFERED PRODUCT MUST BE AVAILABLE
+     // OFFERED PRODUCT MUST BE ELIGIBLE TO OFFER
+     //
+     // FIX: this used to require status == AVAILABLE, but every
+     // product a buyer actually owns — everything My Purchases
+     // offers up as exchange collateral — has status
+     // SOLD/EXCHANGED/DONATED after confirmProductReceived()
+     // transfers ownership to them, and can never go back to
+     // AVAILABLE. That made every exchange request built from My
+     // Purchases fail here with a 400 before the request (and its
+     // notification to the seller) was ever created. The only
+     // state that should actually block an offer is RESERVED —
+     // meaning it's already committed to a different in-flight
+     // transaction right now.
      // =====================================
 
-     if (!"AVAILABLE".equalsIgnoreCase(
+     if ("RESERVED".equalsIgnoreCase(
              offeredProduct.getStatus())) {
 
          throw new ResponseStatusException(
                  HttpStatus.BAD_REQUEST,
-                 "Your offered product is not available"
+                 "Your offered product is currently reserved in another transaction"
          );
      }
 
@@ -725,13 +737,17 @@ public RequestResponse acceptRequest(
         }
 
 
-        // Offered product must still be available
-        if (!"AVAILABLE".equalsIgnoreCase(
+        // FIX: same reasoning as addRequest() above — only RESERVED
+        // (locked in a different transaction) should block
+        // acceptance. Requiring AVAILABLE here made it impossible to
+        // ever accept an exchange offer built from something the
+        // buyer already owns.
+        if ("RESERVED".equalsIgnoreCase(
                 offeredProduct.getStatus())) {
 
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
-                    "Offered product is no longer available"
+                    "Offered product is currently reserved in another transaction"
             );
         }
     }
@@ -1007,6 +1023,13 @@ private RequestResponse convertToResponse(Request request) {
 
     String pickupStatus = null;
 
+    // Only populated when pickup is in RESCHEDULE_REQUESTED — the
+    // buyer's explanation, saved into deliveryIssueDescription by
+    // requestReschedule() in PickupScheduleServiceImpl. That field is
+    // reused for two different meanings depending on pickup status,
+    // so it's only surfaced here under that one specific status.
+    String rescheduleReason = null;
+
 
     if (pickup != null) {
 
@@ -1021,6 +1044,10 @@ private RequestResponse convertToResponse(Request request) {
 
         pickupStatus =
                 pickup.getStatus();
+
+        if ("RESCHEDULE_REQUESTED".equalsIgnoreCase(pickupStatus)) {
+            rescheduleReason = pickup.getDeliveryIssueDescription();
+        }
     }
 
 
@@ -1128,11 +1155,6 @@ private RequestResponse convertToResponse(Request request) {
                     ? requester.getFullName()
                     : null;
 
-    // FIX: department already existed on Student — it just was never
-    // pulled into this response before. registerNumber is included
-    // too so the frontend can derive "year" using the same parsing
-    // logic already used at registration, since year itself is never
-    // stored anywhere in the database.
     String requesterDepartment =
             requester != null
                     ? requester.getDepartment()
@@ -1184,7 +1206,8 @@ private RequestResponse convertToResponse(Request request) {
             pickupLocation,
             pickupDate,
             pickupTime,
-            pickupStatus
+            pickupStatus,
+            rescheduleReason
     );
 }
 

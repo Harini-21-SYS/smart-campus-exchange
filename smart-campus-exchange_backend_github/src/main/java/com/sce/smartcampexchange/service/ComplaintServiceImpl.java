@@ -17,12 +17,14 @@ import com.sce.smartcampexchange.dto.CreateComplaintRequest;
 
 import com.sce.smartcampexchange.entity.Complaint;
 import com.sce.smartcampexchange.entity.ComplaintReply;
+import com.sce.smartcampexchange.entity.PickupSchedule;
 import com.sce.smartcampexchange.entity.Product;
 import com.sce.smartcampexchange.entity.Request;
 import com.sce.smartcampexchange.entity.Student;
 
 import com.sce.smartcampexchange.repository.ComplaintReplyRepository;
 import com.sce.smartcampexchange.repository.ComplaintRepository;
+import com.sce.smartcampexchange.repository.PickupScheduleRepository;
 import com.sce.smartcampexchange.repository.ProductRepository;
 import com.sce.smartcampexchange.repository.RequestRepository;
 import com.sce.smartcampexchange.repository.StudentRepository;
@@ -41,6 +43,8 @@ public class ComplaintServiceImpl
 
     private final StudentRepository studentRepository;
 
+    private final PickupScheduleRepository pickupScheduleRepository;
+
 
     public ComplaintServiceImpl(
 
@@ -52,7 +56,9 @@ public class ComplaintServiceImpl
 
             RequestRepository requestRepository,
 
-            StudentRepository studentRepository
+            StudentRepository studentRepository,
+
+            PickupScheduleRepository pickupScheduleRepository
     ) {
 
         this.complaintRepository =
@@ -69,6 +75,9 @@ public class ComplaintServiceImpl
 
         this.studentRepository =
                 studentRepository;
+
+        this.pickupScheduleRepository =
+                pickupScheduleRepository;
     }
 
 
@@ -163,14 +172,36 @@ public ComplaintResponse createComplaint(
 
     // =========================================
     // CHECK TRANSACTION IS COMPLETED
+    // OR THE PICKUP HAS AN OPEN DELIVERY ISSUE
+    //
+    // FIX: a buyer reporting "product not received" via
+    // reportDeliveryIssue() calls into this method while the
+    // Request itself is still ACCEPTED (it only becomes COMPLETED
+    // once the buyer later confirms receipt). Only checking the
+    // Request status meant that legitimate mid-handover complaints
+    // were always rejected with "can only be raised after a
+    // completed transaction". A complaint is now also allowed when
+    // the associated pickup schedule is in DELIVERY_ISSUE status.
     // =========================================
 
-    if (!"COMPLETED".equalsIgnoreCase(
-            transactionRequest.getStatus())) {
+    boolean isRequestCompleted =
+            "COMPLETED".equalsIgnoreCase(
+                    transactionRequest.getStatus()
+            );
+
+    boolean hasOpenDeliveryIssue =
+            pickupScheduleRepository
+                    .findByRequest(transactionRequest)
+                    .map(PickupSchedule::getStatus)
+                    .map(status -> "DELIVERY_ISSUE"
+                            .equalsIgnoreCase(status))
+                    .orElse(false);
+
+    if (!isRequestCompleted && !hasOpenDeliveryIssue) {
 
         throw new ResponseStatusException(
                 HttpStatus.BAD_REQUEST,
-                "Complaint can only be raised after a completed transaction"
+                "Complaint can only be raised after a completed transaction or a reported delivery issue"
         );
     }
 
@@ -711,7 +742,18 @@ public ComplaintResponse createComplaint(
 
                 complaint.getCreatedAt(),
 
-                complaint.getResolvedAt()
+                complaint.getResolvedAt(),
+
+                // FIX: these two fields didn't exist on ComplaintResponse
+                // at all before — the admin's resolveComplaint() had
+                // been writing resolutionNote/warningNote onto Complaint
+                // for two turns now, but nothing ever read them back out
+                // to the student. This is what actually lets the
+                // complainant see the resolution note, and the student
+                // a warning was issued against see the warning text.
+                complaint.getResolutionNote(),
+
+                complaint.getWarningNote()
         );
     }
 

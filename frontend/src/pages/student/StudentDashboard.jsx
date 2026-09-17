@@ -24,7 +24,11 @@ import {
 
 import {
   getPickupByRequestId,
+  confirmSchedule,
+  requestReschedule,
   confirmProductReceived,
+  reportDeliveryIssue,
+  rateSeller,
 } from "../../services/pickupService";
 
 import {
@@ -81,11 +85,28 @@ import ProductFormPage from "./sections/ProductFormPage";
             + date/time in the same step  -> Request stays ACCEPTED,
             a PickupSchedule is created with pickupStatus SCHEDULED
           - Reject -> Request becomes REJECTED
-     3. Buyer reviews the proposed pickup details, in My Requests,
-        and confirms -> pickupStatus becomes COMPLETED (this is what
-        makes it show up in My Purchases). See handleBuyerConfirmPickup
-        and the myPurchases filter below — both now call/check the
-        REAL backend pickup status, not a mock Request.status value.
+     3. Buyer reviews the proposed pickup, in My Requests:
+          - Confirm  -> pickupStatus becomes CONFIRMED
+          - Request a different time -> pickupStatus becomes
+            RESCHEDULE_REQUESTED (with a reason the seller can see);
+            seller re-proposes, which resets pickupStatus back to
+            SCHEDULED for the buyer to review again
+     4. On the day of, the seller marks it handed over at the meetup
+        (only allowed once pickupStatus is CONFIRMED) ->
+        pickupStatus becomes BUYER_CONFIRMATION_PENDING
+     5. Buyer confirms receipt -> pickupStatus becomes COMPLETED
+        (this is what makes it show up in My Purchases), or reports
+        a delivery issue -> pickupStatus becomes DELIVERY_ISSUE and
+        a complaint is auto-filed against the seller.
+     6. Once COMPLETED, the buyer can rate the seller (once) from My
+        Purchases, and/or click "Report a problem" there, which
+        routes into the same Raise Complaint flow used everywhere
+        else (see handleGoToComplaint / raiseComplaintTarget below)
+        rather than a separate modal.
+     See handleConfirmSchedule / handleRequestReschedule /
+     handleConfirmReceived / handleReportDeliveryIssue below, and the
+     myPurchases filter — all check the REAL backend pickup status,
+     not a mock Request.status value.
 --------------------------------------------------------- */
 
 // Every id that renderMain()'s switch actually knows how to render.
@@ -181,9 +202,6 @@ const mapBackendRequest = (r) => ({
     r.pickupLocation ??
     null,
 
-  // FIX: this was never mapped before, even though RequestResponse
-  // sends it. My Requests needs it (alongside pickupTime) to display
-  // a real date, not just a time.
   pickupDate:
     r.pickupDate ??
     null,
@@ -192,13 +210,19 @@ const mapBackendRequest = (r) => ({
     r.pickupTime ??
     null,
 
-  // FIX: also never mapped before. This is the real signal for
-  // "transaction completed" — it becomes "COMPLETED" once the buyer
-  // calls confirmProductReceived on the pickup. myPurchases filters
-  // on this now instead of a Request.status value ("CONFIRMED") that
-  // the backend never actually sets.
+  // Real signal for where the pickup is in its lifecycle:
+  // SCHEDULED / RESCHEDULE_REQUESTED / CONFIRMED /
+  // BUYER_CONFIRMATION_PENDING / DELIVERY_ISSUE / COMPLETED.
+  // myPurchases filters on this reaching COMPLETED.
   pickupStatus:
     r.pickupStatus ??
+    null,
+
+  // Only populated while pickupStatus === RESCHEDULE_REQUESTED — the
+  // buyer's explanation for why the proposed time didn't work, shown
+  // to the seller in Incoming Requests.
+  rescheduleReason:
+    r.rescheduleReason ??
     null,
 
   time:
@@ -263,6 +287,20 @@ const mapBackendComplaint = (complaint) => ({
 
   againstStudentName:
     complaint.againstStudentName,
+
+  // Visible once status is RESOLVED — the admin's note, shown to the
+  // student who filed the complaint.
+  resolutionNote:
+    complaint.resolutionNote ??
+    null,
+
+  // Only set when the admin issued a warning alongside resolving —
+  // shown to the student the complaint was raised against, i.e. this
+  // only ever has content on ComplaintsAgainstMeSection cards, never
+  // on MyComplaintsSection ones.
+  warningNote:
+    complaint.warningNote ??
+    null,
 });
 const getNotificationMessage = (type) => {
 
@@ -280,6 +318,27 @@ const getNotificationMessage = (type) => {
     case "REQUEST_CANCELLED":
       return "A request has been cancelled.";
 
+    case "PICKUP_SCHEDULED":
+      return "A pickup schedule has been proposed.";
+
+    case "PICKUP_CONFIRMED":
+      return "The buyer confirmed the pickup schedule.";
+
+    case "RESCHEDULE_REQUESTED":
+      return "The buyer requested a different pickup time.";
+
+    case "PICKUP_RESCHEDULED":
+      return "The seller proposed a new pickup time.";
+
+    case "BUYER_CONFIRMATION_REQUIRED":
+      return "The seller marked the item as handed over — please confirm.";
+
+    case "TRANSACTION_COMPLETED":
+      return "A transaction was completed.";
+
+    case "DELIVERY_ISSUE_REPORTED":
+      return "A delivery issue was reported.";
+
     case "COMPLAINT_RECEIVED":
       return "A new complaint has been raised against you.";
 
@@ -288,6 +347,9 @@ const getNotificationMessage = (type) => {
 
     case "COMPLAINT_RESOLVED":
       return "Your complaint has been resolved.";
+
+    case "SELLER_WARNING":
+      return "An admin has issued a warning on your account — check Complaints Raised on Me for details.";
 
     default:
       return "You have a new notification.";
@@ -367,6 +429,18 @@ function StudentDashboard() {
   const [products, setProducts] = useState([]);
   const [myProducts, setMyProducts] = useState([]);
   const [myRequests, setMyRequests] = useState([]);
+
+  // Ratings the buyer has submitted this session, keyed by request id.
+  // The backend doesn't echo `myRating` back on RequestResponse, so
+  // once rateSeller() succeeds we remember it here to switch that
+  // purchase card from "Rate Seller" to the read-only star display
+  // without needing a page reload.
+  const [myRatings, setMyRatings] = useState({});
+
+  // Which purchase "Report a problem" was clicked on, so
+  // RaiseComplaintSection can jump straight to step 2 for it instead
+  // of making the person pick the transaction again.
+  const [raiseComplaintTarget, setRaiseComplaintTarget] = useState(null);
 
   const [
   incomingRequests,
@@ -691,23 +765,21 @@ const loadMyProducts =
   }, [products, myProducts, viewedSeller]);
 
   // "Purchases" = requests where the pickup was actually confirmed as
-  // received by the buyer. This is also the pool Exchange offers are
-  // picked from — you can only offer something you've actually
-  // received.
-  //
-  // FIX: was filtering on Request.status === "CONFIRMED" — a status
-  // the backend never sets (Request.status only ever becomes PENDING /
-  // ACCEPTED / REJECTED). The real "transaction completed" signal is
-  // the pickup schedule's own status reaching "COMPLETED", which is
-  // now mapped onto each request as pickupStatus (see
-  // mapBackendRequest above) and set for real by
-  // handleBuyerConfirmPickup below.
+  // received by the buyer (pickupStatus === COMPLETED). Also the pool
+  // Exchange offers are picked from — you can only offer something
+  // you've actually received. Enriched with myRating so
+  // MyPurchasesSection can show the read-only stars once rated.
   const myPurchases = useMemo(
     () =>
-      myRequests.filter(
-        (r) => (r.pickupStatus || "").toUpperCase() === "COMPLETED"
-      ),
-    [myRequests]
+      myRequests
+        .filter(
+          (r) => (r.pickupStatus || "").toUpperCase() === "COMPLETED"
+        )
+        .map((r) => ({
+          ...r,
+          myRating: myRatings[r.id] ?? null,
+        })),
+    [myRequests, myRatings]
   );
 
   const unreadNotifCount = useMemo(() => notifications.filter((n) => !n.read).length, [notifications]);
@@ -823,15 +895,14 @@ const loadMyProducts =
   
 const createOutgoingRequest = async (product, offeredProduct) => {
   try {
-    // NOTE: was "BUY" — changed to "SELL" as the best-guess match for
-    // the backend's RequestType enum. A 400 with no field-level detail
-    // on the very first non-Exchange/non-Donate request is the classic
-    // symptom of Jackson failing to deserialize an enum literal the
-    // backend doesn't recognize (it fails before any @Valid checks run,
-    // so you get a generic Bad Request instead of a specific message).
-    // CONFIRM this against the actual RequestType enum on the backend —
-    // if it's neither BUY nor SELL, swap in whatever the real value is.
-    let requestType = "SELL";
+    // CONFIRMED against RequestServiceImpl.addRequest() — the backend
+    // maps product type -> the only allowed request type:
+    //   Sell product     -> "BUY"     ("Sell products can only receive BUY requests")
+    //   Exchange product -> "EXCHANGE"
+    //   Donate product   -> "DONATE"
+    // It's a plain String on CreateRequestRequest (not an enum), and
+    // defaults to "BUY" server-side when blank.
+    let requestType = "BUY";
 
     if (product.type === "Exchange") {
       requestType = "EXCHANGE";
@@ -866,6 +937,7 @@ const createOutgoingRequest = async (product, offeredProduct) => {
       pickupDate: null,
       pickupTime: null,
       pickupStatus: null,
+      rescheduleReason: null,
       time: savedRequest.createdAt
         ? new Date(savedRequest.createdAt).getTime()
         : Date.now(),
@@ -942,16 +1014,48 @@ const handleConfirmRequest = async () => {
   setExchangeTarget(null);
 };
 
-  // ---------- Step 3: buyer confirms pickup, or cancels a pending request ----------
+  // ---------- Step 3: buyer reviews the proposed schedule ----------
 
-  // FIX: this was pure mock state — it never called any backend
-  // endpoint at all, just flipped a local status that doesn't exist
-  // server-side. RequestResponse doesn't carry a pickupId directly, so
-  // this looks the PickupSchedule up by request id first, then calls
-  // the real confirm-received endpoint, then reloads real request data
-  // so myPurchases (and the "confirmed" badge in My Requests) reflect
-  // the actual backend state.
-  const handleBuyerConfirmPickup = async (request) => {
+  const handleConfirmSchedule = async (request) => {
+    try {
+      const pickup = await getPickupByRequestId(request.id);
+      const pickupId = pickup.pickupId ?? pickup.id;
+
+      await confirmSchedule(pickupId);
+
+      await loadMyRequests();
+
+      addNotification(
+        `You confirmed the pickup schedule with ${request.sellerName}.`
+      );
+      showToast("Schedule confirmed.");
+    } catch (error) {
+      showToast(
+        extractErrorMessage(error, "Failed to confirm the schedule. Please try again.")
+      );
+    }
+  };
+
+  const handleRequestReschedule = async (request, reason) => {
+    try {
+      const pickup = await getPickupByRequestId(request.id);
+      const pickupId = pickup.pickupId ?? pickup.id;
+
+      await requestReschedule(pickupId, reason);
+
+      await loadMyRequests();
+
+      showToast("Reschedule requested — waiting for the seller.");
+    } catch (error) {
+      showToast(
+        extractErrorMessage(error, "Failed to request a reschedule. Please try again.")
+      );
+    }
+  };
+
+  // ---------- Step 5: buyer confirms receipt, or reports an issue ----------
+
+  const handleConfirmReceived = async (request) => {
     try {
       const pickup = await getPickupByRequestId(request.id);
       const pickupId = pickup.pickupId ?? pickup.id;
@@ -969,6 +1073,54 @@ const handleConfirmRequest = async () => {
         extractErrorMessage(error, "Failed to confirm pickup. Please try again.")
       );
     }
+  };
+
+  const handleReportDeliveryIssue = async (request, issueDetails) => {
+    try {
+      const pickup = await getPickupByRequestId(request.id);
+      const pickupId = pickup.pickupId ?? pickup.id;
+
+      await reportDeliveryIssue(pickupId, issueDetails);
+
+      await loadMyRequests();
+
+      showToast("Issue reported — a complaint has been filed against the seller.");
+    } catch (error) {
+      showToast(
+        extractErrorMessage(error, "Failed to report the issue. Please try again.")
+      );
+    }
+  };
+
+  // ---------- Step 6: buyer rates the seller, from My Purchases,
+  // after the pickup is COMPLETED ----------
+
+  const handleRateSeller = async (purchase, { rating, comment }) => {
+    try {
+      const pickup = await getPickupByRequestId(purchase.id);
+      const pickupId = pickup.pickupId ?? pickup.id;
+
+      await rateSeller(pickupId, { rating, comment });
+
+      setMyRatings((prev) => ({
+        ...prev,
+        [purchase.id]: rating,
+      }));
+
+      showToast(`You rated ${purchase.sellerName} ${rating}/5.`);
+    } catch (error) {
+      showToast(
+        extractErrorMessage(error, "Failed to submit rating. Please try again.")
+      );
+    }
+  };
+
+  // "Report a problem" on a purchase card sends the person into the
+  // existing Raise Complaint flow with that transaction preselected,
+  // instead of a separate modal — one complaint path for the whole app.
+  const handleGoToComplaint = (purchase) => {
+    setRaiseComplaintTarget(purchase);
+    goToSection("raiseComplaint");
   };
 
 const handleCancelMyRequest = async (request) => {
@@ -1018,6 +1170,10 @@ const handleCancelMyRequest = async (request) => {
   showToast(
     "Complaint submitted successfully."
   );
+
+  // Clear so returning to Raise Complaint later starts at the picker
+  // again instead of re-jumping to the same transaction.
+  setRaiseComplaintTarget(null);
 };
 
   const handleProductSubmit = async (
@@ -1037,14 +1193,28 @@ const handleCancelMyRequest = async (request) => {
         // 1. Update product details
         await updateProduct(productId, productData);
 
-        // 2. Delete removed old images
-        for (const imageId of deletedImageIds) {
-          await deleteProductImage(productId, imageId);
-        }
-
-        // 3. Upload newly selected images
+        // 2. Upload newly selected images FIRST.
+        //
+        // FIX: this used to run AFTER the deletions below, which broke
+        // any edit that removed every existing image and replaced them
+        // with new ones. ProductService.deleteProductImage() refuses to
+        // delete when it would leave the product with zero images
+        // ("A product must have at least 1 image", 400) — and it has no
+        // way to know replacements are about to be uploaded. Uploading
+        // first means the product never dips to zero, so the deletes
+        // that follow always pass that check.
+        //
+        // NOTE: the backend also caps a product at 4 images total, and
+        // that check now runs before the deletions too — so removing 3
+        // of 4 images while adding 3 new ones (4 + 3 = 7) would fail on
+        // the cap instead. Replacing within the cap works fine.
         if (imageFiles.length > 0) {
           await uploadProductImages(productId, imageFiles, primaryImageIndex);
+        }
+
+        // 3. Delete removed old images
+        for (const imageId of deletedImageIds) {
+          await deleteProductImage(productId, imageId);
         }
 
         // 4. Set existing image as primary
@@ -1141,108 +1311,124 @@ const handleMarkNotificationAsRead = async (notification) => {
     // REFRESH REQUEST DATA
     // ========================================
 
-   // ========================================
-// REFRESH REQUEST DATA
-// ========================================
+    if (
+      notification.notifyType === "REQUEST_ACCEPTED" ||
+      notification.notifyType === "REQUEST_REJECTED" ||
+      notification.notifyType === "PICKUP_SCHEDULED" ||
+      notification.notifyType === "PICKUP_CONFIRMED" ||
+      notification.notifyType === "RESCHEDULE_REQUESTED" ||
+      notification.notifyType === "PICKUP_RESCHEDULED" ||
+      notification.notifyType === "BUYER_CONFIRMATION_REQUIRED" ||
+      notification.notifyType === "TRANSACTION_COMPLETED" ||
+      notification.notifyType === "DELIVERY_ISSUE_REPORTED"
+    ) {
+      await loadMyRequests();
+      await loadIncomingRequests();
+    }
 
-if (
-  notification.notifyType === "REQUEST_ACCEPTED" ||
-  notification.notifyType === "REQUEST_REJECTED"
-) {
-  await loadMyRequests();
-}
+    // ========================================
+    // REFRESH COMPLAINT DATA
+    // ========================================
 
-// ========================================
-// REFRESH COMPLAINT DATA
-// ========================================
+    if (
+      notification.notifyType === "COMPLAINT_RECEIVED" ||
+      notification.notifyType === "SELLER_WARNING"
+    ) {
+      await loadComplaintsAgainstMe();
+    }
 
-if (notification.notifyType === "COMPLAINT_RECEIVED") {
-  await loadComplaintsAgainstMe();
-}
+    if (
+      notification.notifyType === "COMPLAINT_UPDATED" ||
+      notification.notifyType === "COMPLAINT_RESOLVED"
+    ) {
+      await loadMyComplaints();
+    }
 
-if (
-  notification.notifyType === "COMPLAINT_UPDATED" ||
-  notification.notifyType === "COMPLAINT_RESOLVED"
-) {
-  await loadMyComplaints();
-}
     // ========================================
     // NOTIFICATION NAVIGATION
     // ========================================
 
-   switch (notification.notifyType) {
+    switch (notification.notifyType) {
 
-  case "REQUEST_RECEIVED":
+      case "REQUEST_RECEIVED":
+      case "PICKUP_CONFIRMED":
+      case "RESCHEDULE_REQUESTED":
 
-    goToSection(
-      "incomingRequests",
-      {
-        type: notification.notifyType,
-        relatedId: notification.relatedId,
-      }
-    );
+        goToSection(
+          "incomingRequests",
+          {
+            type: notification.notifyType,
+            relatedId: notification.relatedId,
+          }
+        );
 
-    break;
-
-
-  case "REQUEST_ACCEPTED":
-  case "REQUEST_REJECTED":
-
-    goToSection(
-      "myRequests",
-      {
-        type: notification.notifyType,
-        relatedId: notification.relatedId,
-      }
-    );
-
-    break;
+        break;
 
 
-  case "REQUEST_CANCELLED":
+      case "REQUEST_ACCEPTED":
+      case "REQUEST_REJECTED":
+      case "PICKUP_SCHEDULED":
+      case "PICKUP_RESCHEDULED":
+      case "BUYER_CONFIRMATION_REQUIRED":
 
-    goToSection(
-      "incomingRequests",
-      {
-        type: notification.notifyType,
-        relatedId: notification.relatedId,
-      }
-    );
+        goToSection(
+          "myRequests",
+          {
+            type: notification.notifyType,
+            relatedId: notification.relatedId,
+          }
+        );
 
-    break;
-
-
-  case "COMPLAINT_RECEIVED":
-
-    goToSection(
-      "complaintsAgainstMe",
-      {
-        type: notification.notifyType,
-        relatedId: notification.relatedId,
-      }
-    );
-
-    break;
+        break;
 
 
-  case "COMPLAINT_UPDATED":
-  case "COMPLAINT_RESOLVED":
+      case "REQUEST_CANCELLED":
+      case "TRANSACTION_COMPLETED":
+      case "DELIVERY_ISSUE_REPORTED":
 
-    goToSection(
-      "myComplaints",
-      {
-        type: notification.notifyType,
-        relatedId: notification.relatedId,
-      }
-    );
+        goToSection(
+          "incomingRequests",
+          {
+            type: notification.notifyType,
+            relatedId: notification.relatedId,
+          }
+        );
 
-    break;
+        break;
 
 
-  default:
+      case "COMPLAINT_RECEIVED":
+      case "SELLER_WARNING":
 
-    break;
-}
+        goToSection(
+          "complaintsAgainstMe",
+          {
+            type: notification.notifyType,
+            relatedId: notification.relatedId,
+          }
+        );
+
+        break;
+
+
+      case "COMPLAINT_UPDATED":
+      case "COMPLAINT_RESOLVED":
+
+        goToSection(
+          "myComplaints",
+          {
+            type: notification.notifyType,
+            relatedId: notification.relatedId,
+          }
+        );
+
+        break;
+
+
+      default:
+
+        break;
+    }
 
   } catch (error) {
 
@@ -1401,14 +1587,23 @@ const handleMarkAllNotificationsAsRead = async () => {
     <MyRequestsSection
       requests={myRequests}
       onCancel={handleCancelMyRequest}
-      onConfirmPickup={handleBuyerConfirmPickup}
+      onConfirmSchedule={handleConfirmSchedule}
+      onRequestReschedule={handleRequestReschedule}
+      onConfirmReceived={handleConfirmReceived}
+      onReportDeliveryIssue={handleReportDeliveryIssue}
       notificationTargetId={
         notificationTarget?.relatedId
       }
     />
   );
       case "myPurchases":
-        return <MyPurchasesSection purchases={myPurchases} />;
+        return (
+          <MyPurchasesSection
+            purchases={myPurchases}
+            onRateSeller={handleRateSeller}
+            onGoToComplaint={handleGoToComplaint}
+          />
+        );
      case "myComplaints":
   return (
     <MyComplaintsSection
@@ -1417,8 +1612,21 @@ const handleMarkAllNotificationsAsRead = async () => {
     />
   );
   case "raiseComplaint":
+        // FIX: no `key` before meant this never remounted when a new
+        // purchase was targeted via "Report a problem" — the
+        // component's own initial-state comment calls this out
+        // explicitly. Keying on the target id (falling back to a
+        // stable string for the plain picker view) forces a fresh
+        // mount each time, so `selected` is recomputed from the
+        // current `preselected` instead of holding onto whatever was
+        // there from the last visit.
         return (
-          <RaiseComplaintSection completedTransactions={myPurchases} onSubmit={handleRaiseComplaint} />
+          <RaiseComplaintSection
+            key={raiseComplaintTarget?.id ?? "picker"}
+            completedTransactions={myPurchases}
+            onSubmit={handleRaiseComplaint}
+            preselected={raiseComplaintTarget}
+          />
         );
       case "complaintsAgainstMe":
   return (

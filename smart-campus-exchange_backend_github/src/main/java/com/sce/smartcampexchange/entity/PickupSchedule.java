@@ -53,7 +53,7 @@ public class PickupSchedule {
 
     private LocalDateTime updatedAt;
 
-    private boolean reminderSent1 = false;
+    
 
     @PrePersist
     protected void onCreate() {

@@ -5,8 +5,14 @@ import EmptyState from "../components/EmptyState";
 import { TYPE_INFO } from "../constants";
 import { timeAgo, deriveYearFromRegisterNumber } from "../utils/DashboardUtils";
 import { getIncomingRequests, acceptRequest, rejectRequest } from "../../../services/requestService";
+import {
+  getPickupByRequestId,
+  markAsHandedOver,
+  reschedulePickup,
+} from "../../../services/pickupService";
 import "./RequestList.css";
 import PickupDetailsModal from "../components/PickupDetailsModal";
+import ProposeNewTimeModal from "../components/ProposeNewTimeModal";
 
 const API_ORIGIN = "http://localhost:8081";
 
@@ -54,11 +60,6 @@ function mapRequest(r) {
       r.requester?.department ??
       "—",
 
-    // FIX: this was still reading a `requesterYear`/`requester.year`
-    // field that never existed on the backend response — year is
-    // never stored anywhere, it's derived from the register number.
-    // Now uses the shared util against the register number the
-    // backend actually sends.
     year: deriveYearFromRegisterNumber(
       r.requesterRegisterNumber ?? r.requester?.registerNumber
     ),
@@ -89,8 +90,25 @@ pickupLocation:
   r.pickupLocation ??
   null,
 
+pickupDate:
+  r.pickupDate ??
+  null,
+
 pickupTime:
   r.pickupTime ??
+  null,
+
+pickupStatus:
+  r.pickupStatus ??
+  null,
+
+// FIX: this is the buyer's explanation for asking for a different
+// time (RequestServiceImpl.convertToResponse() only fills it in
+// while pickupStatus is RESCHEDULE_REQUESTED). Without mapping it
+// here, the seller had no way to see why the buyer objected to the
+// proposed pickup.
+rescheduleReason:
+  r.rescheduleReason ??
   null,
 };
 }
@@ -107,6 +125,7 @@ function IncomingRequestsSection({
   const [actingId, setActingId] = useState(null);
   const [expandedId, setExpandedId] = useState(null);
   const [selectedRequest, setSelectedRequest] = useState(null);
+  const [reschedulingRequest, setReschedulingRequest] = useState(null);
   useEffect(() => {
   if (!notificationTargetId) return;
 
@@ -192,9 +211,19 @@ const handlePickupAccept = async ({ location, date, time }) => {
                 response.pickupLocation ??
                 location,
 
+              pickupDate:
+                response.pickupDate ??
+                date,
+
               pickupTime:
                 response.pickupTime ??
                 time,
+
+              pickupStatus:
+                response.pickupStatus ??
+                "SCHEDULED",
+
+              rescheduleReason: null,
             }
           : r
       )
@@ -275,6 +304,130 @@ const handlePickupAccept = async ({ location, date, time }) => {
 
 };
 
+  // ========================================
+  // SELLER MARKS THE PRODUCT AS HANDED OVER
+  // ========================================
+  const handleMarkHandedOver = async (request) => {
+
+    setActingId(request.id);
+
+    try {
+
+      const pickup = await getPickupByRequestId(request.id);
+      const pickupId = pickup.pickupId ?? pickup.id;
+
+      const updatedPickup = await markAsHandedOver(pickupId);
+
+      setRequests((prev) =>
+        prev.map((r) =>
+          String(r.id) === String(request.id)
+            ? {
+                ...r,
+                pickupStatus:
+                  updatedPickup.status ??
+                  "BUYER_CONFIRMATION_PENDING",
+              }
+            : r
+        )
+      );
+
+      await onRequestUpdated?.();
+
+      notify(
+        `Marked "${request.productName}" as handed over to ${request.requesterName}. Waiting for their confirmation.`
+      );
+
+    } catch (error) {
+
+      console.error(
+        "Failed to mark as handed over:",
+        error
+      );
+
+      notify(
+        error.response?.data?.message ||
+        "Couldn't mark this as handed over. Please try again."
+      );
+
+    } finally {
+
+      setActingId(null);
+
+    }
+  };
+
+  // ========================================
+  // SELLER RE-PROPOSES A NEW TIME/LOCATION
+  // ========================================
+  const handleProposeNewTime = async ({ location, date, time }) => {
+
+    if (!reschedulingRequest) return;
+
+    const requestId = reschedulingRequest.id;
+
+    setActingId(requestId);
+
+    try {
+
+      const pickup = await getPickupByRequestId(requestId);
+      const pickupId = pickup.pickupId ?? pickup.id;
+
+      const updatedPickup = await reschedulePickup(pickupId, {
+        location,
+        pickupDate: date,
+        pickupTime: time,
+      });
+
+      setRequests((prev) =>
+        prev.map((r) =>
+          String(r.id) === String(requestId)
+            ? {
+                ...r,
+                pickupLocation:
+                  updatedPickup.pickupLocation ??
+                  location,
+                pickupDate:
+                  updatedPickup.pickupDate ??
+                  date,
+                pickupTime:
+                  updatedPickup.pickupTime ??
+                  time,
+                pickupStatus:
+                  updatedPickup.status ??
+                  "SCHEDULED",
+                rescheduleReason: null,
+              }
+            : r
+        )
+      );
+
+      await onRequestUpdated?.();
+
+      notify(
+        `Proposed a new pickup time to ${reschedulingRequest.requesterName} for "${reschedulingRequest.productName}".`
+      );
+
+      setReschedulingRequest(null);
+
+    } catch (error) {
+
+      console.error(
+        "Failed to propose a new pickup time:",
+        error
+      );
+
+      notify(
+        error.response?.data?.message ||
+        "Couldn't send the new time. Please try again."
+      );
+
+    } finally {
+
+      setActingId(null);
+
+    }
+  };
+
   if (loading) {
     return (
       <div className="dash-section">
@@ -313,6 +466,26 @@ const handlePickupAccept = async ({ location, date, time }) => {
             const isActing = actingId === r.id;
             const isExpanded = expandedId === r.id;
 
+            const pickupStatus = (r.pickupStatus || "").toUpperCase();
+
+            const isAwaitingBuyerReview =
+              r.status === "accepted" && pickupStatus === "SCHEDULED";
+
+            const isRescheduleRequested =
+              r.status === "accepted" && pickupStatus === "RESCHEDULE_REQUESTED";
+
+            const isAwaitingHandover =
+              r.status === "accepted" && pickupStatus === "CONFIRMED";
+
+            const isAwaitingBuyerConfirmation =
+              r.status === "accepted" && pickupStatus === "BUYER_CONFIRMATION_PENDING";
+
+            const isDeliveryIssue =
+              r.status === "accepted" && pickupStatus === "DELIVERY_ISSUE";
+
+            const isPickupCompleted =
+              r.status === "accepted" && pickupStatus === "COMPLETED";
+
             return (
             <div
               key={r.id}
@@ -320,10 +493,6 @@ const handlePickupAccept = async ({ location, date, time }) => {
               className="request-card"
             >
                 <div className="request-card-top">
-                  {/* FIX: constrained size directly via inline style so
-                      it's guaranteed regardless of RequestList.css's
-                      current rules — the oversized thumbnail was also
-                      what pushed the pickup modal layout down. */}
                   <div
                     className="request-thumb"
                     style={{
@@ -353,7 +522,7 @@ const handlePickupAccept = async ({ location, date, time }) => {
                     <p>
                       From {r.requesterName} &middot; {r.department}
                     </p>
-                    {r.message && <p className="request-message">“{r.message}”</p>}
+                    {r.message && <p className="request-message">"{r.message}"</p>}
 
                     <button
                       type="button"
@@ -401,6 +570,37 @@ const handlePickupAccept = async ({ location, date, time }) => {
                         </div>
                       </div>
                     )}
+
+                    {isAwaitingBuyerReview && (
+                      <p className="request-message" style={{ fontStyle: "normal" }}>
+                        Waiting for {r.requesterName} to confirm the proposed pickup.
+                      </p>
+                    )}
+
+                    {isRescheduleRequested && (
+                      <div
+                        style={{
+                          background: "#fdf6e8",
+                          border: "1px solid #ecd9a8",
+                          borderRadius: 10,
+                          padding: "10px 12px",
+                          marginTop: 6,
+                        }}
+                      >
+                        <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "#7a5a10" }}>
+                          {r.requesterName} asked for a different time:
+                        </p>
+                        <p style={{ margin: "4px 0 0", fontSize: 13, color: "#4d4326", fontStyle: "italic" }}>
+                          "{r.rescheduleReason || "No reason given."}"
+                        </p>
+                      </div>
+                    )}
+
+                    {isDeliveryIssue && (
+                      <p className="request-message" style={{ fontStyle: "normal" }}>
+                        {r.requesterName} reported a delivery issue — a complaint is under review.
+                      </p>
+                    )}
                   </div>
                 </div>
 
@@ -426,6 +626,39 @@ const handlePickupAccept = async ({ location, date, time }) => {
                   ) : (
                     <span className={`request-status request-status-${r.status}`}>{r.status}</span>
                   )}
+
+                  {isRescheduleRequested && (
+                    <button
+                      className="dash-btn dash-btn-primary dash-btn-sm"
+                      disabled={isActing}
+                      onClick={() => setReschedulingRequest(r)}
+                    >
+                      {isActing ? "..." : "Propose New Time"}
+                    </button>
+                  )}
+
+                  {isAwaitingHandover && (
+                    <button
+                      className="dash-btn dash-btn-primary dash-btn-sm"
+                      disabled={isActing}
+                      onClick={() => handleMarkHandedOver(r)}
+                    >
+                      {isActing ? "..." : "Mark as Handed Over"}
+                    </button>
+                  )}
+
+                  {isAwaitingBuyerConfirmation && (
+                    <span className="request-status">Awaiting buyer confirmation</span>
+                  )}
+
+                  {isDeliveryIssue && (
+                    <span className="request-status request-status-rejected">Delivery issue</span>
+                  )}
+
+                  {isPickupCompleted && (
+                    <span className="request-status request-status-completed">Completed</span>
+                  )}
+
                   <span className="request-time" title={new Date(r.time).toLocaleString()}>
                     {timeAgo(r.time)}
                   </span>
@@ -446,6 +679,14 @@ const handlePickupAccept = async ({ location, date, time }) => {
     }}
   />
 )}
+
+      {reschedulingRequest && (
+        <ProposeNewTimeModal
+          request={reschedulingRequest}
+          onCancel={() => setReschedulingRequest(null)}
+          onSubmit={handleProposeNewTime}
+        />
+      )}
     </div>
   );
 }

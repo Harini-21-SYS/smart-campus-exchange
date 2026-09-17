@@ -2,17 +2,15 @@ import { useState, useEffect } from "react";
 import { FaBan } from "react-icons/fa";
 import EmptyState from "../components/EmptyState";
 import ImagePlaceholder from "../components/ImagePlaceholder";
-import ConfirmPickupModal from "../components/ConfirmPickupModal";
+import ConfirmScheduleModal from "../components/ConfirmScheduleModal";
+import DeliveryIssueModal from "../components/DeliveryIssueModal";
 import ConfirmDialog from "../components/ConfirmDialog";
 import { TYPE_INFO } from "../constants";
 import { timeAgo } from "../utils/DashboardUtils";
 import "./RequestList.css";
 
 // Combines the backend's separate pickupDate ("2026-09-13") and
-// pickupTime ("11:00:00") into one readable string. Previously this
-// tried `new Date(r.pickupTime).toLocaleString()` on just the time
-// value alone, which isn't a valid date and would render "Invalid
-// Date" or similar.
+// pickupTime ("11:00:00") into one readable string.
 function formatPickupDateTime(pickupDate, pickupTime) {
   if (!pickupDate && !pickupTime) return "—";
 
@@ -32,15 +30,23 @@ function formatPickupDateTime(pickupDate, pickupTime) {
 function MyRequestsSection({
   requests,
   onCancel,
-  onConfirmPickup,
+  onConfirmSchedule,
+  onRequestReschedule,
+  onConfirmReceived,
+  onReportDeliveryIssue,
   notificationTargetId,
 }) {
 
-  const [confirmingPickupFor, setConfirmingPickupFor] =
-    useState(null);
+  // Buyer reviewing the seller's proposed schedule (confirm / ask to reschedule)
+  const [schedulingFor, setSchedulingFor] = useState(null);
 
-  const [cancelTarget, setCancelTarget] =
-    useState(null);
+  // Buyer confirming they actually received the item (simple yes/no confirm)
+  const [confirmingReceiptFor, setConfirmingReceiptFor] = useState(null);
+
+  // Buyer reporting a delivery issue instead
+  const [reportingIssueFor, setReportingIssueFor] = useState(null);
+
+  const [cancelTarget, setCancelTarget] = useState(null);
 
 
   // ========================================
@@ -72,14 +78,25 @@ function MyRequestsSection({
   }, [notificationTargetId, requests]);
 
 
-  const handleConfirmPickup = () => {
-
-    onConfirmPickup(confirmingPickupFor);
-
-    setConfirmingPickupFor(null);
-
+  const handleScheduleConfirm = async () => {
+    await onConfirmSchedule(schedulingFor);
+    setSchedulingFor(null);
   };
 
+  const handleScheduleReschedule = async (reason) => {
+    await onRequestReschedule(schedulingFor, reason);
+    setSchedulingFor(null);
+  };
+
+  const handleReceiptConfirm = async () => {
+    await onConfirmReceived(confirmingReceiptFor);
+    setConfirmingReceiptFor(null);
+  };
+
+  const handleIssueSubmit = async (issueDetails) => {
+    await onReportDeliveryIssue(reportingIssueFor, issueDetails);
+    setReportingIssueFor(null);
+  };
 
   const handleConfirmCancel = () => {
 
@@ -118,17 +135,36 @@ function MyRequestsSection({
                 TYPE_INFO[r.type] ||
                 TYPE_INFO.Sell;
 
-              // FIX: real backend statuses are PENDING / ACCEPTED /
-              // REJECTED on the request itself, and SCHEDULED /
-              // COMPLETED on the separate pickup schedule — there is
-              // no AWAITING_CONFIRMATION or CONFIRMED request status
-              // on the backend at all (those were mock-only values).
+              // Real backend statuses: PENDING / ACCEPTED / REJECTED
+              // on the request itself, and on the separate pickup
+              // schedule: SCHEDULED -> CONFIRMED ->
+              // BUYER_CONFIRMATION_PENDING -> COMPLETED, with
+              // RESCHEDULE_REQUESTED and DELIVERY_ISSUE as branches.
               const status = (r.status || "").toUpperCase();
               const pickupStatus = (r.pickupStatus || "").toUpperCase();
 
               const isPending = status === "PENDING";
-              const needsPickupConfirmation =
+
+              // Seller proposed a time — buyer hasn't acted yet.
+              const needsScheduleReview =
                 status === "ACCEPTED" && pickupStatus === "SCHEDULED";
+
+              // Buyer asked for a different time, waiting on seller.
+              const rescheduleRequested =
+                status === "ACCEPTED" && pickupStatus === "RESCHEDULE_REQUESTED";
+
+              // Buyer confirmed — waiting for the in-person handover.
+              const awaitingHandover =
+                status === "ACCEPTED" && pickupStatus === "CONFIRMED";
+
+              // Seller marked it handed over — buyer must say yes/no.
+              const needsReceiptConfirmation =
+                status === "ACCEPTED" && pickupStatus === "BUYER_CONFIRMATION_PENDING";
+
+              // Buyer reported a problem — under review via complaint.
+              const deliveryIssueReported =
+                status === "ACCEPTED" && pickupStatus === "DELIVERY_ISSUE";
+
               const pickupConfirmed =
                 status === "ACCEPTED" && pickupStatus === "COMPLETED";
 
@@ -218,7 +254,7 @@ function MyRequestsSection({
                     )}
 
 
-                    {needsPickupConfirmation && (
+                    {needsScheduleReview && (
 
                       <div className="request-pickup-info">
 
@@ -228,6 +264,87 @@ function MyRequestsSection({
 
                         <span>
                           🕓 {formatPickupDateTime(r.pickupDate, r.pickupTime)}
+                        </span>
+
+                        <span>
+                          {r.sellerName} proposed this pickup — review and confirm.
+                        </span>
+
+                      </div>
+
+                    )}
+
+
+                    {rescheduleRequested && (
+
+                      <div className="request-pickup-info">
+
+                        <span>
+                          📍 {r.pickupLocation || "—"}
+                        </span>
+
+                        <span>
+                          🕓 {formatPickupDateTime(r.pickupDate, r.pickupTime)}
+                        </span>
+
+                        <span>
+                          You asked for a different time. Waiting for {r.sellerName} to
+                          propose a new one.
+                        </span>
+
+                      </div>
+
+                    )}
+
+
+                    {awaitingHandover && (
+
+                      <div className="request-pickup-info">
+
+                        <span>
+                          📍 {r.pickupLocation || "—"}
+                        </span>
+
+                        <span>
+                          🕓 {formatPickupDateTime(r.pickupDate, r.pickupTime)}
+                        </span>
+
+                        <span>
+                          Waiting for the seller to hand over the item at the scheduled time.
+                        </span>
+
+                      </div>
+
+                    )}
+
+
+                    {needsReceiptConfirmation && (
+
+                      <div className="request-pickup-info">
+
+                        <span>
+                          📍 {r.pickupLocation || "—"}
+                        </span>
+
+                        <span>
+                          🕓 {formatPickupDateTime(r.pickupDate, r.pickupTime)}
+                        </span>
+
+                        <span>
+                          The seller marked this as handed over. Did you receive it?
+                        </span>
+
+                      </div>
+
+                    )}
+
+
+                    {deliveryIssueReported && (
+
+                      <div className="request-pickup-info">
+
+                        <span>
+                          Issue reported — a complaint has been filed and is under review.
                         </span>
 
                       </div>
@@ -291,18 +408,35 @@ function MyRequestsSection({
                     )}
 
 
-                    {needsPickupConfirmation && (
+                    {needsScheduleReview && (
 
                       <button
                         className="dash-btn dash-btn-primary dash-btn-sm"
-                        onClick={() =>
-                          setConfirmingPickupFor(r)
-                        }
+                        onClick={() => setSchedulingFor(r)}
                       >
-
-                        Confirm Pickup
-
+                        Review Schedule
                       </button>
+
+                    )}
+
+
+                    {needsReceiptConfirmation && (
+
+                      <>
+                        <button
+                          className="dash-btn dash-btn-primary dash-btn-sm"
+                          onClick={() => setConfirmingReceiptFor(r)}
+                        >
+                          Yes, Received
+                        </button>
+
+                        <button
+                          className="dash-btn dash-btn-outline dash-btn-sm"
+                          onClick={() => setReportingIssueFor(r)}
+                        >
+                          Report an Issue
+                        </button>
+                      </>
 
                     )}
 
@@ -319,14 +453,37 @@ function MyRequestsSection({
       )}
 
 
-      {confirmingPickupFor && (
+      {schedulingFor && (
 
-        <ConfirmPickupModal
-          request={confirmingPickupFor}
-          onCancel={() =>
-            setConfirmingPickupFor(null)
-          }
-          onConfirm={handleConfirmPickup}
+        <ConfirmScheduleModal
+          request={schedulingFor}
+          onCancel={() => setSchedulingFor(null)}
+          onConfirm={handleScheduleConfirm}
+          onRequestReschedule={handleScheduleReschedule}
+        />
+
+      )}
+
+
+      {confirmingReceiptFor && (
+
+        <ConfirmDialog
+          title="Confirm you received the item?"
+          message={`This marks "${confirmingReceiptFor.productName}" as received and moves it to My Purchases.`}
+          confirmLabel="Yes, I Received It"
+          onCancel={() => setConfirmingReceiptFor(null)}
+          onConfirm={handleReceiptConfirm}
+        />
+
+      )}
+
+
+      {reportingIssueFor && (
+
+        <DeliveryIssueModal
+          request={reportingIssueFor}
+          onCancel={() => setReportingIssueFor(null)}
+          onSubmit={handleIssueSubmit}
         />
 
       )}

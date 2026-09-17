@@ -43,6 +43,22 @@ export const AdminApi = {
 
     deleteProduct(id) {
         return api.delete(`/products/${id}`).then(res => res.data);
+    },
+
+    getComplaints() {
+        return api.get("/complaints").then(res => res.data);
+    },
+
+    resolveComplaint(id, note) {
+        return api.put(`/complaints/${id}/resolve`, { note: note || null }).then(res => res.data);
+    },
+
+    deleteComplaint(id) {
+        return api.delete(`/complaints/${id}`).then(res => res.data);
+    },
+
+    getRequests() {
+        return api.get("/requests").then(res => res.data);
     }
 
 };

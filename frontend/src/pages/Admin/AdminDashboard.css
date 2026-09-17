@@ -894,3 +894,281 @@
         transition: none !important;
     }
 }
+/* ================================================
+   NEW: Requests / Complaints management, extra stat
+   icon colors, textarea, and stat sublabel — appended
+   without touching anything above.
+================================================ */
+
+.adm-stat-icon-requests { background: var(--dash-blue); }
+.adm-stat-icon-complaints { background: var(--dash-red); }
+.adm-stat-icon-notifications { background: var(--dash-green-light); }
+
+.adm-stat-sublabel {
+    color: var(--dash-red);
+    font-weight: 700;
+}
+
+.adm-textarea {
+    width: 100%;
+    border: 1px solid #e5e0d8;
+    border-radius: 10px;
+    padding: 10px 12px;
+    font-family: inherit;
+    font-size: 14px;
+    color: #1a1a1a;
+    resize: vertical;
+    margin-top: 4px;
+}
+
+.adm-textarea:focus {
+    outline: none;
+    border-color: var(--dash-green);
+}
+
+/* ---------- Requests table ---------- */
+.adm-request-row {
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr 1fr 1fr;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 18px;
+    border-bottom: 1px solid #f0ede4;
+}
+
+.adm-request-row:last-child { border-bottom: none; }
+
+@media (max-width: 800px) {
+    .adm-request-row {
+        grid-template-columns: 1fr;
+        gap: 8px;
+    }
+}
+
+/* ---------- Complaint cards ---------- */
+.adm-complaint-list {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.adm-complaint-card {
+    background: #fff;
+    border-radius: 16px;
+    padding: 16px;
+    display: flex;
+    gap: 14px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+.adm-complaint-card-thumb {
+    width: 64px;
+    height: 64px;
+    border-radius: 10px;
+    background: var(--dash-cream);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    flex-shrink: 0;
+    color: #c9c2b2;
+    font-size: 22px;
+}
+
+.adm-complaint-card-thumb img { width: 100%; height: 100%; object-fit: cover; }
+
+.adm-complaint-card-main {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.adm-complaint-card-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+}
+
+.adm-complaint-card-top strong {
+    color: #1a1a1a;
+    font-size: 15px;
+}
+
+.adm-complaint-type {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--dash-blue);
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+}
+
+.adm-complaint-desc {
+    font-size: 13.5px;
+    color: #444;
+    line-height: 1.5;
+}
+
+.adm-complaint-parties {
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+    font-size: 12.5px;
+    color: #999;
+    margin-top: 4px;
+}
+
+.adm-complaint-parties strong { color: #444; }
+
+.adm-complaint-resolution-note {
+    background: #f2efe6;
+    border-radius: 8px;
+    padding: 8px 10px;
+    font-size: 12.5px;
+    color: #555;
+    margin-top: 6px;
+}
+
+.adm-complaint-card-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+@media (max-width: 600px) {
+    .adm-complaint-card { flex-direction: column; }
+    .adm-complaint-card-actions { flex-direction: row; }
+}
+/* ================================================
+   NEW: table styling for Requests/Complaints, detail
+   icon badges, admin-actions row, and extra stat icon
+   colors. Appended without touching anything above.
+================================================ */
+
+.adm-stat-icon-requests { background: var(--dash-blue); }
+.adm-stat-icon-complaints { background: var(--dash-red); }
+.adm-stat-icon-notifications { background: var(--dash-green-light); }
+
+.adm-stat-sublabel {
+    color: var(--dash-red);
+    font-weight: 700;
+}
+
+.adm-textarea {
+    width: 100%;
+    border: 1px solid #e5e0d8;
+    border-radius: 10px;
+    padding: 10px 12px;
+    font-family: inherit;
+    font-size: 14px;
+    color: #1a1a1a;
+    resize: vertical;
+    margin-top: 4px;
+}
+
+.adm-textarea:focus {
+    outline: none;
+    border-color: var(--dash-green);
+}
+
+/* ---------- Generic data table (Requests, Complaints) ---------- */
+.adm-table-wrap {
+    background: #fff;
+    border-radius: 16px;
+    overflow-x: auto;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+.adm-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13.5px;
+    white-space: nowrap;
+}
+
+.adm-table thead th {
+    background: #faf8f2;
+    font-size: 11.5px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: #999;
+    text-align: left;
+    padding: 12px 16px;
+}
+
+.adm-table tbody td {
+    padding: 12px 16px;
+    border-top: 1px solid #f0ede4;
+    color: #1a1a1a;
+}
+
+.adm-table tbody tr:hover {
+    background: #fbfaf6;
+}
+
+@media (max-width: 800px) {
+    .adm-table thead { display: none; }
+    .adm-table, .adm-table tbody, .adm-table tr, .adm-table td {
+        display: block;
+        width: 100%;
+    }
+    .adm-table tr {
+        border-top: 1px solid #f0ede4;
+        padding: 10px 14px;
+    }
+    .adm-table td {
+        border: none;
+        padding: 4px 0;
+        display: flex;
+        justify-content: space-between;
+        white-space: normal;
+        text-align: right;
+    }
+    .adm-table td::before {
+        content: attr(data-label);
+        font-weight: 700;
+        color: #999;
+        text-align: left;
+    }
+}
+
+/* ---------- Detail-view icon badge (Requests / Complaints) ---------- */
+.adm-detail-icon-badge {
+    width: 56px;
+    height: 56px;
+    border-radius: 14px;
+    background: var(--dash-blue);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+    flex-shrink: 0;
+}
+
+.adm-detail-icon-badge-red { background: var(--dash-red); }
+
+/* ---------- Complaint detail: admin actions ---------- */
+.adm-admin-actions-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.adm-admin-actions-row .adm-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.adm-complaint-resolution-note {
+    background: #f2efe6;
+    border-radius: 8px;
+    padding: 8px 10px;
+    font-size: 12.5px;
+    color: #555;
+}
