@@ -54,12 +54,25 @@ export const getMyRequests = async () => {
 
 export const getIncomingRequests = async () => {
 
-  const response = await axios.get(
-    `${BASE_URL}/incoming`,
-    getAuthHeaders()
-  );
+  try {
 
-  return response.data;
+    const response = await axios.get(
+      `${BASE_URL}/incoming`,
+      getAuthHeaders()
+    );
+
+    return response.data;
+
+  } catch (error) {
+
+    console.error(
+      "Incoming requests API error:",
+      error.response?.status,
+      error.response?.data
+    );
+
+    throw error;
+  }
 };
 
 
@@ -138,13 +151,13 @@ export const cancelRequest = async (requestId) => {
 // Returns 204 No Content — response.data will be undefined, which is
 // expected here, not a bug.
 // ==========================================
-
+   
 export const deleteRequest = async (requestId) => {
-
+  
   const response = await axios.delete(
     `${BASE_URL}/${requestId}`,
     getAuthHeaders()
   );
-
+   
   return response.data;
 };

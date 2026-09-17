@@ -23,7 +23,6 @@ import com.sce.smartcampexchange.entity.PickupSchedule;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import com.sce.smartcampexchange.repository.PickupScheduleRepository;
-
 @Service
 public class RequestServiceImpl implements RequestService {
 
@@ -485,39 +484,48 @@ public RequestResponse addRequest(CreateRequestRequest requestDto) {
     }
 
 
-    // =========================================================
-    // INCOMING REQUESTS
-    // =========================================================
+ // =========================================================
+// INCOMING REQUESTS
+// =========================================================
 
-    @Override
-    @Transactional(readOnly = true)
-    public List<RequestResponse> getIncomingRequests() {
+@Override
+@Transactional(readOnly = true)
+public List<RequestResponse> getIncomingRequests() {
 
-        Student seller =
-                getLoggedInStudent();
+    System.out.println(
+            "========== GETTING INCOMING REQUESTS =========="
+    );
 
+    Student currentStudent =
+            getLoggedInStudent();
 
-        List<Request> requests =
-                requestRepository
-                        .findBySellerOrderByCreatedAtDesc(
-                                seller
-                        );
+    System.out.println(
+            "Logged-in student: " +
+            currentStudent.getFullName()
+    );
 
+    System.out.println(
+            "Student ID: " +
+            currentStudent.getStudentId()
+    );
 
-        List<RequestResponse> responses =
-                new ArrayList<>();
+    List<Request> requests =
+            requestRepository
+                    .findBySellerOrderByCreatedAtDesc(
+                            currentStudent
+                    );
 
+    System.out.println(
+            "Incoming requests found: " +
+            requests.size()
+    );
 
-        for (Request request : requests) {
-
-            responses.add(
-                    convertToResponse(request)
-            );
-        }
-
-
-        return responses;
-    }
+    return requests
+            .stream()
+            .map(this::convertToResponse)
+            .toList();
+}
+    
 
 
     // =========================================================
@@ -1193,13 +1201,12 @@ private RequestResponse convertToResponse(Request request) {
     // LOGGED IN STUDENT
     // =========================================================
 
-    private Student getLoggedInStudent() {
+  private Student getLoggedInStudent() {
 
     Authentication authentication =
             SecurityContextHolder
                     .getContext()
                     .getAuthentication();
-
 
     if (authentication == null ||
             !authentication.isAuthenticated()) {
@@ -1210,10 +1217,12 @@ private RequestResponse convertToResponse(Request request) {
         );
     }
 
-
     String email =
             authentication.getName();
 
+    System.out.println(
+            "Authenticated user = " + email
+    );
 
     if (email == null ||
             email.isBlank() ||
@@ -1225,7 +1234,6 @@ private RequestResponse convertToResponse(Request request) {
         );
     }
 
-
     return studentRepository
             .findByCollegeEmail(email)
             .orElseThrow(() ->
@@ -1236,4 +1244,6 @@ private RequestResponse convertToResponse(Request request) {
                     )
             );
 }
+   
+   
 }

@@ -96,12 +96,13 @@ pickupTime:
 }
 
 function IncomingRequestsSection({
+  requests,
   onToast,
-  notificationTargetId,
-  onRequestUpdated
+  onRequestUpdated,
+  notificationTargetId
 }) {
   
-  const [requests, setRequests] = useState([]);
+ // const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
   const [actingId, setActingId] = useState(null);

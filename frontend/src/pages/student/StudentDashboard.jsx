@@ -421,14 +421,15 @@ const loadIncomingRequests =
 
     } catch (error) {
 
-      console.error(
-        "Failed to load incoming requests:",
-        error
-      );
+  console.error(
+    "Failed to load incoming requests:",
+    error.response?.status,
+    error.response?.data || error.message
+  );
 
-      return [];
+  return [];
 
-    }
+}
 
   }, []);
 
@@ -831,13 +832,13 @@ const createOutgoingRequest = async (product, offeredProduct) => {
     // so you get a generic Bad Request instead of a specific message).
     // CONFIRM this against the actual RequestType enum on the backend —
     // if it's neither BUY nor SELL, swap in whatever the real value is.
-    let requestType = "SELL";
+    let requestType = "BUY";
 
-    if (product.type === "Exchange") {
-      requestType = "EXCHANGE";
-    } else if (product.type === "Donate") {
-      requestType = "DONATE";
-    }
+if (product.type === "Exchange") {
+  requestType = "EXCHANGE";
+} else if (product.type === "Donate") {
+  requestType = "DONATE";
+}
 
     const savedRequest = await createRequest({
       productId: product.id,
@@ -1354,9 +1355,10 @@ const handleMarkAllNotificationsAsRead = async () => {
             recommendations={recommendations}
           />
         );
-  case "incomingRequests":
+ case "incomingRequests":
   return (
     <IncomingRequestsSection
+      requests={incomingRequests}
       onToast={showToast}
 
       notificationTargetId={
@@ -1376,7 +1378,7 @@ const handleMarkAllNotificationsAsRead = async () => {
       }}
     />
   );
-     case "notifications":
+  case "notifications":
   return (
     <NotificationsSection
       notifications={notifications}

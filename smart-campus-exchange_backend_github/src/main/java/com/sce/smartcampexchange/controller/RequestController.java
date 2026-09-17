@@ -66,6 +66,10 @@ public class RequestController {
     @GetMapping("/incoming")
     public ResponseEntity<List<RequestResponse>> getIncomingRequests() {
 
+        System.out.println(
+                "========== INCOMING REQUEST API =========="
+        );
+
         return ResponseEntity.ok(
                 requestService.getIncomingRequests()
         );
