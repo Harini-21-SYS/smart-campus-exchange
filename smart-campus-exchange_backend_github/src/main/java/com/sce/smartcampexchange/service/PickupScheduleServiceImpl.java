@@ -15,17 +15,21 @@ import com.sce.smartcampexchange.dto.CreateComplaintRequest;
 import com.sce.smartcampexchange.dto.DeliveryIssueRequest;
 import com.sce.smartcampexchange.dto.PickupScheduleRequest;
 import com.sce.smartcampexchange.dto.PickupScheduleResponse;
-
+import com.sce.smartcampexchange.dto.RescheduleReasonRequest;
+import com.sce.smartcampexchange.dto.RatingRequest;
+import com.sce.smartcampexchange.dto.PurchaseComplaintRequest;
 import com.sce.smartcampexchange.entity.PickupSchedule;
 import com.sce.smartcampexchange.entity.Product;
 import com.sce.smartcampexchange.entity.ProductImage;
 import com.sce.smartcampexchange.entity.Request;
 import com.sce.smartcampexchange.entity.Student;
+import com.sce.smartcampexchange.entity.Review;
 
 import com.sce.smartcampexchange.repository.PickupScheduleRepository;
 import com.sce.smartcampexchange.repository.ProductRepository;
 import com.sce.smartcampexchange.repository.RequestRepository;
 import com.sce.smartcampexchange.repository.StudentRepository;
+import com.sce.smartcampexchange.repository.ReviewRepository;
 
 
 @Service
@@ -39,28 +43,33 @@ public class PickupScheduleServiceImpl
     private final StudentRepository studentRepository;
 
     private final NotificationService notificationService;
-    
+
     private final ProductRepository productRepository;
-    
+
     private final ComplaintService complaintService;
-    
-   public PickupScheduleServiceImpl(
+
+    private final ReviewRepository reviewRepository;
+
+    public PickupScheduleServiceImpl(
         PickupScheduleRepository pickupScheduleRepository,
         RequestRepository requestRepository,
         StudentRepository studentRepository,
         ProductRepository productRepository,
         NotificationService notificationService,
-        ComplaintService complaintService
-) {
-    this.pickupScheduleRepository = pickupScheduleRepository;
-    this.requestRepository = requestRepository;
-    this.studentRepository = studentRepository;
-    this.productRepository = productRepository;
-    this.notificationService = notificationService;
-    this.complaintService = complaintService;
-}
+        ComplaintService complaintService,
+        ReviewRepository reviewRepository
+    ) {
+        this.pickupScheduleRepository = pickupScheduleRepository;
+        this.requestRepository = requestRepository;
+        this.studentRepository = studentRepository;
+        this.productRepository = productRepository;
+        this.notificationService = notificationService;
+        this.complaintService = complaintService;
+        this.reviewRepository = reviewRepository;
+    }
+
     // =========================================================
-    // CREATE PICKUP
+    // CREATE PICKUP (seller proposes time/location)
     // =========================================================
 
     @Override
@@ -70,41 +79,33 @@ public class PickupScheduleServiceImpl
             PickupScheduleRequest request) {
 
         if (request == null) {
-
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
                     "Pickup details are required"
             );
         }
 
-
         if (request.getLocation() == null ||
                 request.getLocation().isBlank()) {
-
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
                     "Pickup location is required"
             );
         }
 
-
         if (request.getPickupDate() == null) {
-
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
                     "Pickup date is required"
             );
         }
 
-
         if (request.getPickupTime() == null) {
-
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
                     "Pickup time is required"
             );
         }
-
 
         Request existingRequest =
                 requestRepository.findById(requestId)
@@ -116,78 +117,53 @@ public class PickupScheduleServiceImpl
                                 )
                         );
 
-
         if (!"ACCEPTED".equalsIgnoreCase(
                 existingRequest.getStatus())) {
-
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
                     "Pickup can be created only for an accepted request"
             );
         }
 
-
-        Student loggedInStudent =
-                getLoggedInStudent();
-
+        Student loggedInStudent = getLoggedInStudent();
 
         // Only seller can create pickup
         if (!existingRequest.getSeller()
                 .getStudentId()
-                .equals(
-                        loggedInStudent.getStudentId())) {
-
+                .equals(loggedInStudent.getStudentId())) {
             throw new ResponseStatusException(
                     HttpStatus.FORBIDDEN,
                     "Only the seller can create the pickup schedule"
             );
         }
 
-
         if (pickupScheduleRepository
                 .existsByRequest(existingRequest)) {
-
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
                     "Pickup schedule already exists for this request"
             );
         }
 
-
-        PickupSchedule pickup =
-                new PickupSchedule();
-
+        PickupSchedule pickup = new PickupSchedule();
 
         pickup.setRequest(existingRequest);
-
-        pickup.setLocation(
-                request.getLocation()
-        );
-
-        pickup.setPickupDate(
-                request.getPickupDate()
-        );
-
-        pickup.setPickupTime(
-                request.getPickupTime()
-        );
-
+        pickup.setLocation(request.getLocation());
+        pickup.setPickupDate(request.getPickupDate());
+        pickup.setPickupTime(request.getPickupTime());
         pickup.setStatus("SCHEDULED");
-
+        pickup.setReminderSent(false);
 
         PickupSchedule savedPickup =
                 pickupScheduleRepository.save(pickup);
 
-     // Notify buyer/requester
+        // Notify buyer/requester — "please confirm this schedule"
         notificationService.createNotification(
                 new StudentNotificationData(
                         existingRequest.getRequester()
                                 .getStudentId(),
-
                         "STUDENT",
-
                         "PICKUP_SCHEDULED",
-
                         savedPickup.getPickupId()
                 )
         );
@@ -202,12 +178,10 @@ public class PickupScheduleServiceImpl
 
     @Override
     @Transactional(readOnly = true)
-    public PickupScheduleResponse getPickupById(
-            Long pickupId) {
+    public PickupScheduleResponse getPickupById(Long pickupId) {
 
         PickupSchedule pickup =
-                pickupScheduleRepository
-                        .findById(pickupId)
+                pickupScheduleRepository.findById(pickupId)
                         .orElseThrow(() ->
                                 new ResponseStatusException(
                                         HttpStatus.NOT_FOUND,
@@ -215,9 +189,7 @@ public class PickupScheduleServiceImpl
                                 )
                         );
 
-
         checkAccess(pickup);
-
 
         return convertToResponse(pickup);
     }
@@ -229,8 +201,7 @@ public class PickupScheduleServiceImpl
 
     @Override
     @Transactional(readOnly = true)
-    public PickupScheduleResponse getPickupByRequestId(
-            Long requestId) {
+    public PickupScheduleResponse getPickupByRequestId(Long requestId) {
 
         Request request =
                 requestRepository.findById(requestId)
@@ -241,10 +212,8 @@ public class PickupScheduleServiceImpl
                                 )
                         );
 
-
         PickupSchedule pickup =
-                pickupScheduleRepository
-                        .findByRequest(request)
+                pickupScheduleRepository.findByRequest(request)
                         .orElseThrow(() ->
                                 new ResponseStatusException(
                                         HttpStatus.NOT_FOUND,
@@ -252,9 +221,7 @@ public class PickupScheduleServiceImpl
                                 )
                         );
 
-
         checkAccess(pickup);
-
 
         return convertToResponse(pickup);
     }
@@ -266,246 +233,342 @@ public class PickupScheduleServiceImpl
 
     @Override
     @Transactional(readOnly = true)
-    public List<PickupScheduleResponse>
-            getAllPickups() {
+    public List<PickupScheduleResponse> getAllPickups() {
 
         List<PickupSchedule> pickups =
                 pickupScheduleRepository.findAll();
 
-
-        List<PickupScheduleResponse> responses =
-                new ArrayList<>();
-
+        List<PickupScheduleResponse> responses = new ArrayList<>();
 
         for (PickupSchedule pickup : pickups) {
-
-            responses.add(
-                    convertToResponse(pickup)
-            );
+            responses.add(convertToResponse(pickup));
         }
-
 
         return responses;
     }
 
 
     // =========================================================
-    // MARK DELIVERED
+    // BUYER CONFIRMS THE PROPOSED SCHEDULE (agrees to meet)
+    //
+    // This is a DIFFERENT action from confirmProductReceived — that
+    // one confirms the item was physically handed over, this one just
+    // confirms the buyer is OK with the proposed time/location. The
+    // frontend must call this endpoint first, separately, before the
+    // day-of reminder/handover logic applies.
     // =========================================================
 
-@Override
-@Transactional
-public PickupScheduleResponse markAsHandedOver(
-        Long pickupId) {
+    @Override
+    @Transactional
+    public PickupScheduleResponse confirmSchedule(Long pickupId) {
 
-    // =========================================
-    // GET PICKUP
-    // =========================================
+        PickupSchedule pickup =
+                pickupScheduleRepository.findById(pickupId)
+                        .orElseThrow(() ->
+                                new ResponseStatusException(
+                                        HttpStatus.NOT_FOUND,
+                                        "Pickup schedule not found"
+                                )
+                        );
 
-    PickupSchedule pickup =
-            pickupScheduleRepository
-                    .findById(pickupId)
-                    .orElseThrow(() ->
-                            new ResponseStatusException(
-                                    HttpStatus.NOT_FOUND,
-                                    "Pickup schedule not found"
-                            )
-                    );
+        Request request = pickup.getRequest();
 
+        Student loggedInStudent = getLoggedInStudent();
 
-    // =========================================
-    // GET REQUEST
-    // =========================================
-
-    Request request =
-            pickup.getRequest();
-
-
-    // =========================================
-    // LOGGED-IN STUDENT
-    // =========================================
-
-    Student loggedInStudent =
-            getLoggedInStudent();
-
-
-    // =========================================
-    // ONLY SELLER CAN CONFIRM HANDOVER
-    // =========================================
-
-    if (!request.getSeller()
-            .getStudentId()
-            .equals(loggedInStudent.getStudentId())) {
-
-        throw new ResponseStatusException(
-                HttpStatus.FORBIDDEN,
-                "Only the seller can confirm handover"
-        );
-    }
-
-
-    // =========================================
-    // ONLY SCHEDULED PICKUP
-    // =========================================
-
-    if (!"SCHEDULED".equalsIgnoreCase(
-            pickup.getStatus())) {
-
-        throw new ResponseStatusException(
-                HttpStatus.BAD_REQUEST,
-                "Only scheduled pickups can be marked as handed over"
-        );
-    }
-
-
-    // =========================================
-    // HANDOVER TIME
-    // =========================================
-
-    pickup.setDeliveredAt(
-            LocalDateTime.now()
-    );
-
-
-    // =========================================
-    // WAIT FOR BUYER CONFIRMATION
-    // =========================================
-
-    pickup.setStatus(
-            "BUYER_CONFIRMATION_PENDING"
-    );
-
-
-    // =========================================
-    // SAVE PICKUP
-    // =========================================
-
-    PickupSchedule savedPickup =
-            pickupScheduleRepository.save(
-                    pickup
+        if (!request.getRequester()
+                .getStudentId()
+                .equals(loggedInStudent.getStudentId())) {
+            throw new ResponseStatusException(
+                    HttpStatus.FORBIDDEN,
+                    "Only the buyer can confirm the schedule"
             );
+        }
+
+        if (!"SCHEDULED".equalsIgnoreCase(pickup.getStatus())) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Only a proposed schedule can be confirmed"
+            );
+        }
+
+        pickup.setStatus("CONFIRMED");
+
+        PickupSchedule savedPickup = pickupScheduleRepository.save(pickup);
+
+        notificationService.createNotification(
+                new StudentNotificationData(
+                        request.getSeller().getStudentId(),
+                        "STUDENT",
+                        "PICKUP_CONFIRMED",
+                        savedPickup.getPickupId()
+                )
+        );
+
+        return convertToResponse(savedPickup);
+    }
 
 
-    // =========================================
-    // NOTIFY BUYER
-    // =========================================
+    // =========================================================
+    // BUYER REQUESTS A DIFFERENT TIME/LOCATION
+    // =========================================================
 
-    notificationService.createNotification(
-            new StudentNotificationData(
+    @Override
+    @Transactional
+    public PickupScheduleResponse requestReschedule(
+            Long pickupId,
+            RescheduleReasonRequest request) {
 
-                    request.getRequester()
-                            .getStudentId(),
+        if (request == null ||
+                request.getReason() == null ||
+                request.getReason().isBlank()) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "A reason is required to request a reschedule"
+            );
+        }
 
-                    "STUDENT",
+        PickupSchedule pickup =
+                pickupScheduleRepository.findById(pickupId)
+                        .orElseThrow(() ->
+                                new ResponseStatusException(
+                                        HttpStatus.NOT_FOUND,
+                                        "Pickup schedule not found"
+                                )
+                        );
 
-                    "BUYER_CONFIRMATION_REQUIRED",
+        Request pickupRequest = pickup.getRequest();
 
-                    savedPickup.getPickupId()
-            )
-    );
+        Student loggedInStudent = getLoggedInStudent();
+
+        if (!pickupRequest.getRequester()
+                .getStudentId()
+                .equals(loggedInStudent.getStudentId())) {
+            throw new ResponseStatusException(
+                    HttpStatus.FORBIDDEN,
+                    "Only the buyer can request a reschedule"
+            );
+        }
+
+        if (!"SCHEDULED".equalsIgnoreCase(pickup.getStatus())) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Only a proposed schedule can be rescheduled"
+            );
+        }
+
+        pickup.setStatus("RESCHEDULE_REQUESTED");
+        pickup.setDeliveryIssueDescription(request.getReason());
+
+        PickupSchedule savedPickup = pickupScheduleRepository.save(pickup);
+
+        notificationService.createNotification(
+                new StudentNotificationData(
+                        pickupRequest.getSeller().getStudentId(),
+                        "STUDENT",
+                        "RESCHEDULE_REQUESTED",
+                        savedPickup.getPickupId()
+                )
+        );
+
+        return convertToResponse(savedPickup);
+    }
 
 
-    return convertToResponse(
-            savedPickup
-    );
-}
+    // =========================================================
+    // SELLER RE-PROPOSES A NEW TIME/LOCATION
+    // =========================================================
+
+    @Override
+    @Transactional
+    public PickupScheduleResponse reschedulePickup(
+            Long pickupId,
+            PickupScheduleRequest request) {
+
+        if (request == null ||
+                request.getLocation() == null ||
+                request.getLocation().isBlank() ||
+                request.getPickupDate() == null ||
+                request.getPickupTime() == null) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Location, date, and time are all required"
+            );
+        }
+
+        PickupSchedule pickup =
+                pickupScheduleRepository.findById(pickupId)
+                        .orElseThrow(() ->
+                                new ResponseStatusException(
+                                        HttpStatus.NOT_FOUND,
+                                        "Pickup schedule not found"
+                                )
+                        );
+
+        Request pickupRequest = pickup.getRequest();
+
+        Student loggedInStudent = getLoggedInStudent();
+
+        if (!pickupRequest.getSeller()
+                .getStudentId()
+                .equals(loggedInStudent.getStudentId())) {
+            throw new ResponseStatusException(
+                    HttpStatus.FORBIDDEN,
+                    "Only the seller can reschedule"
+            );
+        }
+
+        if (!"RESCHEDULE_REQUESTED".equalsIgnoreCase(pickup.getStatus())
+                && !"SCHEDULED".equalsIgnoreCase(pickup.getStatus())) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "This pickup cannot be rescheduled right now"
+            );
+        }
+
+        pickup.setLocation(request.getLocation());
+        pickup.setPickupDate(request.getPickupDate());
+        pickup.setPickupTime(request.getPickupTime());
+        pickup.setStatus("SCHEDULED");
+        pickup.setReminderSent(false); // reset so the 30-min job re-fires for the new time
+
+        PickupSchedule savedPickup = pickupScheduleRepository.save(pickup);
+
+        notificationService.createNotification(
+                new StudentNotificationData(
+                        pickupRequest.getRequester().getStudentId(),
+                        "STUDENT",
+                        "PICKUP_RESCHEDULED",
+                        savedPickup.getPickupId()
+                )
+        );
+
+        return convertToResponse(savedPickup);
+    }
+
+
+    // =========================================================
+    // MARK HANDED OVER (physical handover, seller confirms at the meetup)
+    //
+    // Only allowed once the BUYER has confirmed the schedule
+    // (status == CONFIRMED). This is what makes the day-of flow work:
+    // SCHEDULED -> buyer confirms -> CONFIRMED -> seller hands over
+    // at the meetup -> BUYER_CONFIRMATION_PENDING.
+    // =========================================================
+
+    @Override
+    @Transactional
+    public PickupScheduleResponse markAsHandedOver(Long pickupId) {
+
+        PickupSchedule pickup =
+                pickupScheduleRepository.findById(pickupId)
+                        .orElseThrow(() ->
+                                new ResponseStatusException(
+                                        HttpStatus.NOT_FOUND,
+                                        "Pickup schedule not found"
+                                )
+                        );
+
+        Request request = pickup.getRequest();
+
+        Student loggedInStudent = getLoggedInStudent();
+
+        if (!request.getSeller()
+                .getStudentId()
+                .equals(loggedInStudent.getStudentId())) {
+            throw new ResponseStatusException(
+                    HttpStatus.FORBIDDEN,
+                    "Only the seller can confirm handover"
+            );
+        }
+
+        if (!"CONFIRMED".equalsIgnoreCase(pickup.getStatus())) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Only a buyer-confirmed schedule can be marked as handed over"
+            );
+        }
+
+        pickup.setDeliveredAt(LocalDateTime.now());
+        pickup.setStatus("BUYER_CONFIRMATION_PENDING");
+
+        PickupSchedule savedPickup = pickupScheduleRepository.save(pickup);
+
+        notificationService.createNotification(
+                new StudentNotificationData(
+                        request.getRequester().getStudentId(),
+                        "STUDENT",
+                        "BUYER_CONFIRMATION_REQUIRED",
+                        savedPickup.getPickupId()
+                )
+        );
+
+        return convertToResponse(savedPickup);
+    }
 
 
     // =========================================================
     // CANCEL
     // =========================================================
-@Override
-@Transactional
-public PickupScheduleResponse cancelPickup(
-        Long pickupId) {
 
-    PickupSchedule pickup =
-            pickupScheduleRepository
-                    .findById(pickupId)
-                    .orElseThrow(() ->
-                            new ResponseStatusException(
-                                    HttpStatus.NOT_FOUND,
-                                    "Pickup schedule not found"
-                            )
-                    );
+    @Override
+    @Transactional
+    public PickupScheduleResponse cancelPickup(Long pickupId) {
 
+        PickupSchedule pickup =
+                pickupScheduleRepository.findById(pickupId)
+                        .orElseThrow(() ->
+                                new ResponseStatusException(
+                                        HttpStatus.NOT_FOUND,
+                                        "Pickup schedule not found"
+                                )
+                        );
 
-    checkAccess(pickup);
+        checkAccess(pickup);
 
+        if (!"SCHEDULED".equalsIgnoreCase(pickup.getStatus())
+                && !"CONFIRMED".equalsIgnoreCase(pickup.getStatus())
+                && !"RESCHEDULE_REQUESTED".equalsIgnoreCase(pickup.getStatus())) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "This pickup can no longer be cancelled"
+            );
+        }
 
-    if (!"SCHEDULED".equalsIgnoreCase(
-            pickup.getStatus())) {
+        pickup.setStatus("CANCELLED");
 
-        throw new ResponseStatusException(
-                HttpStatus.BAD_REQUEST,
-                "Only scheduled pickups can be cancelled"
-        );
+        Request request = pickup.getRequest();
+        request.setStatus("CANCELLED");
+        requestRepository.save(request);
+
+        Product product = request.getProduct();
+        product.setStatus("AVAILABLE");
+        productRepository.save(product);
+
+        PickupSchedule savedPickup = pickupScheduleRepository.save(pickup);
+
+        return convertToResponse(savedPickup);
     }
-
-
-    // Pickup -> CANCELLED
-    pickup.setStatus("CANCELLED");
-
-
-    // Request -> CANCELLED
-    Request request =
-            pickup.getRequest();
-
-    request.setStatus("CANCELLED");
-
-    requestRepository.save(request);
-
-
-    // Product -> AVAILABLE again
-    Product product =
-            request.getProduct();
-
-    product.setStatus("AVAILABLE");
-
-    productRepository.save(product);
-
-
-    PickupSchedule savedPickup =
-            pickupScheduleRepository.save(pickup);
-
-
-    return convertToResponse(savedPickup);
-}
 
 
     // =========================================================
     // ACCESS CHECK
     // =========================================================
 
-    private void checkAccess(
-            PickupSchedule pickup) {
+    private void checkAccess(PickupSchedule pickup) {
 
-        Student loggedInStudent =
-                getLoggedInStudent();
+        Student loggedInStudent = getLoggedInStudent();
 
-
-        Request request =
-                pickup.getRequest();
-
+        Request request = pickup.getRequest();
 
         boolean isSeller =
-                request.getSeller()
-                        .getStudentId()
-                        .equals(
-                                loggedInStudent.getStudentId()
-                        );
-
+                request.getSeller().getStudentId()
+                        .equals(loggedInStudent.getStudentId());
 
         boolean isRequester =
-                request.getRequester()
-                        .getStudentId()
-                        .equals(
-                                loggedInStudent.getStudentId()
-                        );
-
+                request.getRequester().getStudentId()
+                        .equals(loggedInStudent.getStudentId());
 
         if (!isSeller && !isRequester) {
-
             throw new ResponseStatusException(
                     HttpStatus.FORBIDDEN,
                     "You are not allowed to access this pickup"
@@ -518,37 +581,15 @@ public PickupScheduleResponse cancelPickup(
     // CONVERT
     // =========================================================
 
-    private PickupScheduleResponse
-            convertToResponse(
-                    PickupSchedule pickup) {
+    private PickupScheduleResponse convertToResponse(PickupSchedule pickup) {
 
-        Request request =
-                pickup.getRequest();
+        Request request = pickup.getRequest();
+        Product product = request.getProduct();
+        Student seller = request.getSeller();
+        Student requester = request.getRequester();
 
-
-        Product product =
-                request.getProduct();
-
-
-        Student seller =
-                request.getSeller();
-
-
-        Student requester =
-                request.getRequester();
-
-
-        Long productId =
-                product != null
-                        ? product.getId()
-                        : null;
-
-
-        String productTitle =
-                product != null
-                        ? product.getTitle()
-                        : null;
-
+        Long productId = product != null ? product.getId() : null;
+        String productTitle = product != null ? product.getTitle() : null;
 
         String productImage = null;
 
@@ -556,102 +597,44 @@ public PickupScheduleResponse cancelPickup(
                 product.getImages() != null &&
                 !product.getImages().isEmpty()) {
 
-            // First try to find primary image
             for (ProductImage image : product.getImages()) {
-
                 if (image.isPrimary()) {
-
-                    productImage =
-                            image.getImageUrl();
-
+                    productImage = image.getImageUrl();
                     break;
                 }
             }
 
-
-            // If no primary image found,
-            // use first image
             if (productImage == null) {
-
-                productImage =
-                        product.getImages()
-                                .get(0)
-                                .getImageUrl();
+                productImage = product.getImages().get(0).getImageUrl();
             }
         }
 
-        Long sellerId =
-                seller != null
-                        ? seller.getStudentId()
-                        : null;
+        Long sellerId = seller != null ? seller.getStudentId() : null;
+        String sellerName = seller != null ? seller.getFullName() : null;
+        String sellerDepartment = seller != null ? seller.getDepartment() : null;
 
-
-        String sellerName =
-                seller != null
-                        ? seller.getFullName()
-                        : null;
-
-
-        String sellerDepartment =
-                seller != null
-                        ? seller.getDepartment()
-                        : null;
-
-
-        Long requesterId =
-                requester != null
-                        ? requester.getStudentId()
-                        : null;
-
-
-        String requesterName =
-                requester != null
-                        ? requester.getFullName()
-                        : null;
-
-
-        String requesterDepartment =
-                requester != null
-                        ? requester.getDepartment()
-                        : null;
-
+        Long requesterId = requester != null ? requester.getStudentId() : null;
+        String requesterName = requester != null ? requester.getFullName() : null;
+        String requesterDepartment = requester != null ? requester.getDepartment() : null;
 
         return new PickupScheduleResponse(
-
                 pickup.getPickupId(),
-
                 request.getId(),
-
                 productId,
-
                 productTitle,
-
                 productImage,
-
                 sellerId,
-
                 sellerName,
-
                 sellerDepartment,
-
                 requesterId,
-
                 requesterName,
-
                 requesterDepartment,
-
                 pickup.getLocation(),
-
                 pickup.getPickupDate(),
-
                 pickup.getPickupTime(),
-
                 pickup.getStatus(),
-
                 pickup.getDeliveredAt(),
-
                 pickup.getCreatedAt(),
-
                 pickup.getUpdatedAt()
         );
     }
@@ -664,27 +647,18 @@ public PickupScheduleResponse cancelPickup(
     private Student getLoggedInStudent() {
 
         Authentication authentication =
-                SecurityContextHolder
-                        .getContext()
-                        .getAuthentication();
+                SecurityContextHolder.getContext().getAuthentication();
 
-
-        if (authentication == null ||
-                !authentication.isAuthenticated()) {
-
+        if (authentication == null || !authentication.isAuthenticated()) {
             throw new ResponseStatusException(
                     HttpStatus.UNAUTHORIZED,
                     "User is not authenticated"
             );
         }
 
+        String email = authentication.getName();
 
-        String email =
-                authentication.getName();
-
-
-        return studentRepository
-                .findByCollegeEmail(email)
+        return studentRepository.findByCollegeEmail(email)
                 .orElseThrow(() ->
                         new ResponseStatusException(
                                 HttpStatus.UNAUTHORIZED,
@@ -692,589 +666,360 @@ public PickupScheduleResponse cancelPickup(
                         )
                 );
     }
-    
- // =========================================================
- // BUYER CONFIRMS PRODUCT RECEIVED
- // =========================================================
 
- @Override
- @Transactional
- public PickupScheduleResponse confirmProductReceived(
-         Long pickupId) {
 
-     // =========================================
-     // GET PICKUP
-     // =========================================
-
-     PickupSchedule pickup =
-             pickupScheduleRepository
-                     .findById(pickupId)
-                     .orElseThrow(() ->
-                             new ResponseStatusException(
-                                     HttpStatus.NOT_FOUND,
-                                     "Pickup schedule not found"
-                             )
-                     );
-
-
-     // =========================================
-     // GET REQUEST
-     // =========================================
-
-     Request request =
-             pickup.getRequest();
-
-
-     // =========================================
-     // LOGGED-IN STUDENT
-     // =========================================
-
-     Student loggedInStudent =
-             getLoggedInStudent();
-
-
-     // =========================================
-     // ONLY BUYER CAN CONFIRM
-     // =========================================
-
-     if (!request.getRequester()
-             .getStudentId()
-             .equals(
-                     loggedInStudent.getStudentId()
-             )) {
-
-         throw new ResponseStatusException(
-                 HttpStatus.FORBIDDEN,
-                 "Only the buyer can confirm product receipt"
-         );
-     }
-
-
-     // =========================================
-     // MUST BE WAITING FOR BUYER
-     // =========================================
-
-     if (!"BUYER_CONFIRMATION_PENDING"
-             .equalsIgnoreCase(
-                     pickup.getStatus()
-             )) {
-
-         throw new ResponseStatusException(
-                 HttpStatus.BAD_REQUEST,
-                 "Buyer confirmation is not pending"
-         );
-     }
-
-
-     // =========================================
-     // PICKUP = COMPLETED
-     // =========================================
-
-     pickup.setStatus("COMPLETED");
-
-
-     // =========================================
-     // REQUEST = COMPLETED
-     // =========================================
-
-     request.setStatus("COMPLETED");
-
-     requestRepository.save(request);
-
-
-     // =========================================
-     // GET REQUEST TYPE
-     // =========================================
-
-     String requestType =
-             request.getRequestType();
-
-
-     // =========================================
-     // REQUESTED PRODUCT
-     // =========================================
-
-     Product requestedProduct =
-             request.getProduct();
-
-
-     // =========================================
-     // BUY PRODUCT
-     // =========================================
-
-     if ("BUY".equalsIgnoreCase(
-             requestType)) {
-
-         requestedProduct.setStatus(
-                 "SOLD"
-         );
-
-         productRepository.save(
-                 requestedProduct
-         );
-     }
-
-
-     // =========================================
-     // EXCHANGE PRODUCTS
-     // =========================================
-
-     else if ("EXCHANGE".equalsIgnoreCase(
-             requestType)) {
-
-         // Requested product
-         requestedProduct.setStatus(
-                 "EXCHANGED"
-         );
-
-         productRepository.save(
-                 requestedProduct
-         );
-
-
-         // Offered product
-         Product offeredProduct =
-                 request.getOfferedProduct();
-
-
-         if (offeredProduct != null) {
-
-             offeredProduct.setStatus(
-                     "EXCHANGED"
-             );
-
-             productRepository.save(
-                     offeredProduct
-             );
-         }
-     }
-
-
-     // =========================================
-     // DONATE PRODUCT
-     // =========================================
-
-     else if ("DONATE".equalsIgnoreCase(
-             requestType)) {
-
-         requestedProduct.setStatus(
-                 "DONATED"
-         );
-
-         productRepository.save(
-                 requestedProduct
-         );
-     }
-
-
-     // =========================================
-     // SAVE PICKUP
-     // =========================================
-
-     PickupSchedule savedPickup =
-             pickupScheduleRepository.save(
-                     pickup
-             );
-
-
-     // =========================================
-     // OPTIONAL: NOTIFY SELLER
-     // =========================================
-
-     notificationService.createNotification(
-             new StudentNotificationData(
-                     request.getSeller()
-                             .getStudentId(),
-
-                     "STUDENT",
-
-                     "TRANSACTION_COMPLETED",
-
-                     request.getId()
-             )
-     );
-
-
-     return convertToResponse(
-             savedPickup
-     );
- }
- 
-//=========================================================
-//BUYER REPORTS PRODUCT NOT RECEIVED
-//=========================================================
-
-@Override
-@Transactional
-public PickupScheduleResponse reportProductNotReceived(
-      Long pickupId) {
-
-  // =========================================
-  // GET PICKUP
-  // =========================================
-
-  PickupSchedule pickup =
-          pickupScheduleRepository
-                  .findById(pickupId)
-                  .orElseThrow(() ->
-                          new ResponseStatusException(
-                                  HttpStatus.NOT_FOUND,
-                                  "Pickup schedule not found"
-                          )
-                  );
-
-
-  Request request =
-          pickup.getRequest();
-
-
-  // =========================================
-  // LOGGED-IN STUDENT
-  // =========================================
-
-  Student loggedInStudent =
-          getLoggedInStudent();
-
-
-  // =========================================
-  // ONLY BUYER
-  // =========================================
-
-  if (!request.getRequester()
-          .getStudentId()
-          .equals(
-                  loggedInStudent.getStudentId()
-          )) {
-
-      throw new ResponseStatusException(
-              HttpStatus.FORBIDDEN,
-              "Only the buyer can report a delivery issue"
-      );
-  }
-
-
-  // =========================================
-  // MUST BE WAITING FOR CONFIRMATION
-  // =========================================
-
-  if (!"BUYER_CONFIRMATION_PENDING"
-          .equalsIgnoreCase(
-                  pickup.getStatus()
-          )) {
-
-      throw new ResponseStatusException(
-              HttpStatus.BAD_REQUEST,
-              "Buyer confirmation is not pending"
-      );
-  }
-
-
-  // =========================================
-  // PICKUP = DELIVERY ISSUE
-  // =========================================
-
-  pickup.setStatus(
-          "DELIVERY_ISSUE"
-  );
-
-
-  PickupSchedule savedPickup =
-          pickupScheduleRepository.save(
-                  pickup
-          );
-
-
-  // =========================================
-  // NOTIFY SELLER
-  // =========================================
-
-  notificationService.createNotification(
-          new StudentNotificationData(
-                  request.getSeller()
-                          .getStudentId(),
-
-                  "STUDENT",
-
-                  "DELIVERY_ISSUE_REPORTED",
-
-                  request.getId()
-          )
-  );
-
-
-  /*
-   * ADMIN NOTIFICATION
-   *
-   * We will connect this with your Complaint
-   * and Admin Notification system in the
-   * Complaint Management module.
-   */
-
-
-  return convertToResponse(
-          savedPickup
-  );
-}
-@Override
-@Transactional
-public PickupScheduleResponse reportDeliveryIssue(
-        Long pickupId,
-        DeliveryIssueRequest deliveryIssueRequest) {
-
-    // =========================================
-    // VALIDATE REQUEST
-    // =========================================
-
-    if (deliveryIssueRequest == null ||
-            deliveryIssueRequest.getIssueReason() == null ||
-            deliveryIssueRequest.getIssueReason().isBlank()) {
-
-        throw new ResponseStatusException(
-                HttpStatus.BAD_REQUEST,
-                "Delivery issue reason is required"
-        );
-    }
-
-
-    // =========================================
-    // GET PICKUP
-    // =========================================
-
-    PickupSchedule pickup =
-            pickupScheduleRepository
-                    .findById(pickupId)
-                    .orElseThrow(() ->
-                            new ResponseStatusException(
-                                    HttpStatus.NOT_FOUND,
-                                    "Pickup schedule not found"
-                            )
-                    );
-
-
-    Request request =
-            pickup.getRequest();
-
-
-    // =========================================
-    // GET LOGGED-IN STUDENT
-    // =========================================
-
-    Student loggedInStudent =
-            getLoggedInStudent();
-
-
-    // =========================================
-    // ONLY BUYER CAN REPORT
-    // =========================================
-
-    if (!request.getRequester()
-            .getStudentId()
-            .equals(
-                    loggedInStudent.getStudentId()
-            )) {
-
-        throw new ResponseStatusException(
-                HttpStatus.FORBIDDEN,
-                "Only the buyer can report a delivery issue"
-        );
-    }
-
-
-    // =========================================
-    // VALID STATUS
-    // =========================================
-
-    if (!"BUYER_CONFIRMATION_PENDING"
-            .equalsIgnoreCase(
-                    pickup.getStatus())) {
-
-        throw new ResponseStatusException(
-                HttpStatus.BAD_REQUEST,
-                "Delivery issue can only be reported after handover"
-        );
-    }
-
-
-    // =========================================
-    // VALIDATE ISSUE REASON
-    // =========================================
-
-    String reason =
-            deliveryIssueRequest
-                    .getIssueReason()
-                    .toUpperCase();
-
-
-    List<String> validReasons =
-            List.of(
-
-                    "PRODUCT_NOT_RECEIVED",
-
-                    "SELLER_DID_NOT_COME",
-
-                    "WRONG_PRODUCT",
-
-                    "DAMAGED_PRODUCT",
-
-                    "SELLER_NOT_RESPONDING",
-
-                    "OTHER"
+    // =========================================================
+    // BUYER CONFIRMS PRODUCT RECEIVED
+    // =========================================================
+
+    @Override
+    @Transactional
+    public PickupScheduleResponse confirmProductReceived(Long pickupId) {
+
+        PickupSchedule pickup =
+                pickupScheduleRepository.findById(pickupId)
+                        .orElseThrow(() ->
+                                new ResponseStatusException(
+                                        HttpStatus.NOT_FOUND,
+                                        "Pickup schedule not found"
+                                )
+                        );
+
+        Request request = pickup.getRequest();
+
+        Student loggedInStudent = getLoggedInStudent();
+
+        if (!request.getRequester()
+                .getStudentId()
+                .equals(loggedInStudent.getStudentId())) {
+            throw new ResponseStatusException(
+                    HttpStatus.FORBIDDEN,
+                    "Only the buyer can confirm product receipt"
             );
+        }
 
+        if (!"BUYER_CONFIRMATION_PENDING".equalsIgnoreCase(pickup.getStatus())) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Buyer confirmation is not pending"
+            );
+        }
 
-    if (!validReasons.contains(reason)) {
+        pickup.setStatus("COMPLETED");
 
-        throw new ResponseStatusException(
-                HttpStatus.BAD_REQUEST,
-                "Invalid delivery issue reason"
+        request.setStatus("COMPLETED");
+        requestRepository.save(request);
+
+        String requestType = request.getRequestType();
+        Product requestedProduct = request.getProduct();
+
+        // FIX: this used to only flip status (SOLD/EXCHANGED/DONATED) and
+        // never actually transferred ownership. The product's `owner`
+        // field kept pointing at the original seller forever, even
+        // though the app showed it in the buyer's My Purchases. That
+        // meant re-offering a "purchased" item in a later Exchange
+        // always failed RequestServiceImpl's
+        // "You can only offer your own product" ownership check —
+        // silently rolling back the whole new request (and its
+        // notification) inside that other @Transactional method, since
+        // the DB never agreed it was really yours.
+        if ("BUY".equalsIgnoreCase(requestType)) {
+            requestedProduct.setStatus("SOLD");
+            requestedProduct.setOwner(request.getRequester());
+            productRepository.save(requestedProduct);
+        } else if ("EXCHANGE".equalsIgnoreCase(requestType)) {
+            requestedProduct.setStatus("EXCHANGED");
+            requestedProduct.setOwner(request.getRequester());
+            productRepository.save(requestedProduct);
+
+            Product offeredProduct = request.getOfferedProduct();
+            if (offeredProduct != null) {
+                offeredProduct.setStatus("EXCHANGED");
+                offeredProduct.setOwner(request.getSeller());
+                productRepository.save(offeredProduct);
+            }
+        } else if ("DONATE".equalsIgnoreCase(requestType)) {
+            requestedProduct.setStatus("DONATED");
+            requestedProduct.setOwner(request.getRequester());
+            productRepository.save(requestedProduct);
+        }
+
+        PickupSchedule savedPickup = pickupScheduleRepository.save(pickup);
+
+        // Notify seller — also the trigger point for "leave a rating" on the buyer side
+        notificationService.createNotification(
+                new StudentNotificationData(
+                        request.getSeller().getStudentId(),
+                        "STUDENT",
+                        "TRANSACTION_COMPLETED",
+                        request.getId()
+                )
         );
+
+        return convertToResponse(savedPickup);
     }
 
 
-    // =========================================
-    // PICKUP = DELIVERY ISSUE
-    // =========================================
+    // =========================================================
+    // BUYER RATES THE SELLER (once, after COMPLETED)
+    //
+    // One Review per Request, enforced both here (existsByRequest check)
+    // and at the DB level (Review.request has a unique constraint).
+    // Student has no stored trustScore column, so a seller's rating is
+    // always computed on demand from ReviewRepository rather than kept
+    // as a running total that could drift out of sync — see
+    // getSellerAverageRating below for how a caller would read it back.
+    // =========================================================
 
-    pickup.setStatus(
-            "DELIVERY_ISSUE"
-    );
+    @Override
+    @Transactional
+    public PickupScheduleResponse rateSeller(Long pickupId, RatingRequest ratingRequest) {
 
+        if (ratingRequest == null || ratingRequest.getRating() == null) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "A rating is required"
+            );
+        }
 
-    pickup.setDeliveryIssueReason(
-            reason
-    );
+        int ratingValue = ratingRequest.getRating();
 
+        if (ratingValue < 1 || ratingValue > 5) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Rating must be between 1 and 5"
+            );
+        }
 
-    pickup.setDeliveryIssueDescription(
-            deliveryIssueRequest
-                    .getDescription()
-    );
+        PickupSchedule pickup =
+                pickupScheduleRepository.findById(pickupId)
+                        .orElseThrow(() ->
+                                new ResponseStatusException(
+                                        HttpStatus.NOT_FOUND,
+                                        "Pickup schedule not found"
+                                )
+                        );
 
+        Request request = pickup.getRequest();
 
-    PickupSchedule savedPickup =
-            pickupScheduleRepository
-                    .save(pickup);
+        Student loggedInStudent = getLoggedInStudent();
 
+        if (!request.getRequester()
+                .getStudentId()
+                .equals(loggedInStudent.getStudentId())) {
+            throw new ResponseStatusException(
+                    HttpStatus.FORBIDDEN,
+                    "Only the buyer can rate the seller"
+            );
+        }
 
- // =========================================
- // CREATE COMPLAINT AUTOMATICALLY
- // =========================================
+        if (!"COMPLETED".equalsIgnoreCase(pickup.getStatus())) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "You can only rate a completed transaction"
+            );
+        }
 
- // =========================================
- // CREATE COMPLAINT AUTOMATICALLY
- // =========================================
- // =========================================
- // CREATE COMPLAINT AUTOMATICALLY
- // =========================================
- // =========================================
- // CREATE COMPLAINT AUTOMATICALLY
- // =========================================
+        if (reviewRepository.existsByRequest(request)) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "You have already rated this transaction"
+            );
+        }
 
- CreateComplaintRequest complaintRequest =
-         new CreateComplaintRequest();
+        Review review = new Review();
+        review.setRequest(request);
+        review.setReviewer(request.getRequester());
+        review.setReviewee(request.getSeller());
+        review.setRating(ratingValue);
+        review.setComment(ratingRequest.getComment());
 
+        reviewRepository.save(review);
 
- // Related transaction request
- complaintRequest.setRequestId(
-         request.getId()
- );
+        notificationService.createNotification(
+                new StudentNotificationData(
+                        request.getSeller().getStudentId(),
+                        "STUDENT",
+                        "SELLER_RATED",
+                        request.getId()
+                )
+        );
 
-
- // =========================================
- // MAP DELIVERY ISSUE TO COMPLAINT TYPE
- // =========================================
-
- String complaintType;
-
- switch (reason) {
-
-     case "PRODUCT_NOT_RECEIVED":
-         complaintType = "ITEM_NOT_RECEIVED";
-         break;
-
-     case "DAMAGED_PRODUCT":
-     case "WRONG_PRODUCT":
-         complaintType = "DAMAGED_ITEM";
-         break;
-
-     default:
-         complaintType = "OTHER";
- }
-
-
- // Complaint type
- complaintRequest.setComplaintType(
-         complaintType
- );
-
-
- // =========================================
- // DESCRIPTION
- // =========================================
-
- String description =
-         deliveryIssueRequest.getDescription();
-
- if (description == null ||
-         description.isBlank()) {
-
-     description =
-             "Buyer reported delivery issue: "
-                     + reason;
- }
-
- complaintRequest.setDescription(
-         description
- );
+        return convertToResponse(pickup);
+    }
 
 
- // =========================================
- // CREATE COMPLAINT
- // =========================================
+    // =========================================================
+    // BUYER REPORTS A DELIVERY ISSUE (product not received / wrong / damaged etc.)
+    // =========================================================
 
- complaintService.createComplaint(
-         complaintRequest
- );  
-    // =========================================
-    // NOTIFY SELLER
-    // =========================================
+    @Override
+    @Transactional
+    public PickupScheduleResponse reportDeliveryIssue(
+            Long pickupId,
+            DeliveryIssueRequest deliveryIssueRequest) {
 
-    notificationService.createNotification(
-            new StudentNotificationData(
+        if (deliveryIssueRequest == null ||
+                deliveryIssueRequest.getIssueReason() == null ||
+                deliveryIssueRequest.getIssueReason().isBlank()) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Delivery issue reason is required"
+            );
+        }
 
-                    request.getSeller()
-                            .getStudentId(),
+        PickupSchedule pickup =
+                pickupScheduleRepository.findById(pickupId)
+                        .orElseThrow(() ->
+                                new ResponseStatusException(
+                                        HttpStatus.NOT_FOUND,
+                                        "Pickup schedule not found"
+                                )
+                        );
 
-                    "STUDENT",
+        Request request = pickup.getRequest();
 
-                    "DELIVERY_ISSUE_REPORTED",
+        Student loggedInStudent = getLoggedInStudent();
 
-                    request.getId()
-            )
-    );
+        if (!request.getRequester()
+                .getStudentId()
+                .equals(loggedInStudent.getStudentId())) {
+            throw new ResponseStatusException(
+                    HttpStatus.FORBIDDEN,
+                    "Only the buyer can report a delivery issue"
+            );
+        }
 
+        if (!"BUYER_CONFIRMATION_PENDING".equalsIgnoreCase(pickup.getStatus())) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Delivery issue can only be reported after handover"
+            );
+        }
 
-    // =========================================
-    // BUYER NOTIFICATION
-    // =========================================
+        String reason = deliveryIssueRequest.getIssueReason().toUpperCase();
 
-    notificationService.createNotification(
-            new StudentNotificationData(
+        List<String> validReasons = List.of(
+                "PRODUCT_NOT_RECEIVED",
+                "SELLER_DID_NOT_COME",
+                "WRONG_PRODUCT",
+                "DAMAGED_PRODUCT",
+                "SELLER_NOT_RESPONDING",
+                "OTHER"
+        );
 
-                    request.getRequester()
-                            .getStudentId(),
+        if (!validReasons.contains(reason)) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Invalid delivery issue reason"
+            );
+        }
 
-                    "STUDENT",
+        pickup.setStatus("DELIVERY_ISSUE");
+        pickup.setDeliveryIssueReason(reason);
+        pickup.setDeliveryIssueDescription(deliveryIssueRequest.getDescription());
 
-                    "DELIVERY_ISSUE_REPORTED",
+        PickupSchedule savedPickup = pickupScheduleRepository.save(pickup);
 
-                    request.getId()
-            )
-    );
+        // Auto-create a complaint against the seller
+        CreateComplaintRequest complaintRequest = new CreateComplaintRequest();
+        complaintRequest.setRequestId(request.getId());
 
+        String complaintType;
+        switch (reason) {
+            case "PRODUCT_NOT_RECEIVED":
+                complaintType = "ITEM_NOT_RECEIVED";
+                break;
+            case "DAMAGED_PRODUCT":
+            case "WRONG_PRODUCT":
+                complaintType = "DAMAGED_ITEM";
+                break;
+            default:
+                complaintType = "OTHER";
+        }
+        complaintRequest.setComplaintType(complaintType);
 
-    return convertToResponse(
-            savedPickup
-    );
-}
+        String description = deliveryIssueRequest.getDescription();
+        if (description == null || description.isBlank()) {
+            description = "Buyer reported delivery issue: " + reason;
+        }
+        complaintRequest.setDescription(description);
+
+        complaintService.createComplaint(complaintRequest);
+
+        notificationService.createNotification(
+                new StudentNotificationData(
+                        request.getSeller().getStudentId(),
+                        "STUDENT",
+                        "DELIVERY_ISSUE_REPORTED",
+                        request.getId()
+                )
+        );
+
+        notificationService.createNotification(
+                new StudentNotificationData(
+                        request.getRequester().getStudentId(),
+                        "STUDENT",
+                        "DELIVERY_ISSUE_REPORTED",
+                        request.getId()
+                )
+        );
+
+        return convertToResponse(savedPickup);
+    }
+    // =========================================================
+    // RAISE A COMPLAINT AFTER A COMPLETED TRANSACTION
+    //
+    // Distinct from reportDeliveryIssue — that one only fires during
+    // BUYER_CONFIRMATION_PENDING, before the pickup reaches COMPLETED.
+    // This covers either party wanting to flag a problem on a
+    // transaction that already finished (e.g. a buyer who confirmed
+    // receipt but discovered damage afterward). Delegates to
+    // ComplaintService, which requires the request to be COMPLETED
+    // and figures out who the complaint is against.
+    // =========================================================
+
+    @Override
+    @Transactional
+    public void raiseComplaint(
+            Long pickupId,
+            PurchaseComplaintRequest complaintRequest) {
+
+        if (complaintRequest == null ||
+                complaintRequest.getComplaintType() == null ||
+                complaintRequest.getComplaintType().isBlank() ||
+                complaintRequest.getDescription() == null ||
+                complaintRequest.getDescription().isBlank()) {
+
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Complaint type and description are required"
+            );
+        }
+
+        PickupSchedule pickup =
+                pickupScheduleRepository.findById(pickupId)
+                        .orElseThrow(() ->
+                                new ResponseStatusException(
+                                        HttpStatus.NOT_FOUND,
+                                        "Pickup schedule not found"
+                                )
+                        );
+
+        // checkAccess confirms the logged-in student is buyer or seller
+        checkAccess(pickup);
+
+        Request request = pickup.getRequest();
+
+        CreateComplaintRequest createComplaintRequest =
+                new CreateComplaintRequest();
+
+        createComplaintRequest.setRequestId(request.getId());
+        createComplaintRequest.setComplaintType(
+                complaintRequest.getComplaintType());
+        createComplaintRequest.setDescription(
+                complaintRequest.getDescription());
+
+        complaintService.createComplaint(createComplaintRequest);
+    }
 }

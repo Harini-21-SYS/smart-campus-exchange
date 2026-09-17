@@ -6,7 +6,9 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 import org.springframework.http.HttpStatus;
@@ -20,12 +22,16 @@ import org.springframework.web.server.ResponseStatusException;
 import com.sce.smartcampexchange.dto.ProductImageResponse;
 import com.sce.smartcampexchange.dto.ProductRequest;
 import com.sce.smartcampexchange.dto.ProductResponse;
+import com.sce.smartcampexchange.entity.PickupSchedule;
 import com.sce.smartcampexchange.entity.Product;
 import com.sce.smartcampexchange.entity.ProductImage;
+import com.sce.smartcampexchange.entity.Request;
 import com.sce.smartcampexchange.entity.Student;
 import com.sce.smartcampexchange.entity.TrustScore;
+import com.sce.smartcampexchange.repository.PickupScheduleRepository;
 import com.sce.smartcampexchange.repository.ProductImageRepository;
 import com.sce.smartcampexchange.repository.ProductRepository;
+import com.sce.smartcampexchange.repository.RequestRepository;
 import com.sce.smartcampexchange.repository.StudentRepository;
 import com.sce.smartcampexchange.repository.TrustScoreRepository;
 
@@ -36,6 +42,8 @@ public class ProductService {
     private final ProductImageRepository productImageRepository;
     private final StudentRepository studentRepository;
     private final TrustScoreRepository trustScoreRepository;
+    private final RequestRepository requestRepository;
+    private final PickupScheduleRepository pickupScheduleRepository;
 
     // Upload folder
     private final Path uploadPath = Paths.get("uploads/products");
@@ -44,12 +52,16 @@ public class ProductService {
             ProductRepository productRepository,
             ProductImageRepository productImageRepository,
             StudentRepository studentRepository,
-            TrustScoreRepository trustScoreRepository) {
+            TrustScoreRepository trustScoreRepository,
+            RequestRepository requestRepository,
+            PickupScheduleRepository pickupScheduleRepository) {
 
         this.productRepository = productRepository;
         this.productImageRepository = productImageRepository;
         this.studentRepository = studentRepository;
         this.trustScoreRepository = trustScoreRepository;
+        this.requestRepository = requestRepository;
+        this.pickupScheduleRepository = pickupScheduleRepository;
     }
 
     // =========================================================
@@ -448,7 +460,18 @@ public class ProductService {
 
     // =========================================================
     // Delete Product
+    //
+    // FIX: was a bare productRepository.delete(product), which threw a
+    // raw MySQL FK-constraint error ("Cannot delete or update a parent
+    // row... CONSTRAINT FK9b7l56...") whenever a Request row still
+    // referenced this product — either as the main requested product,
+    // or as the offeredProduct in an exchange. Deleting a product now
+    // cascades: for every affected request, its PickupSchedule (if any)
+    // is removed first, then the request itself, then finally the
+    // product. Order matters — child rows must go before their parents,
+    // or the same FK error just resurfaces one level up.
     // =========================================================
+    @Transactional
     public void deleteProduct(Long id) {
         Student loggedInStudent = getLoggedInStudent();
         Product product = productRepository.findById(id)
@@ -457,6 +480,21 @@ public class ProductService {
         if (!product.getOwner().getStudentId().equals(loggedInStudent.getStudentId())) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You are not allowed to delete this product");
         }
+
+        // Collect every request that references this product, either as
+        // the main requested product or as the offered (exchange) item.
+        // A Set avoids double-handling a request that somehow matched
+        // both (shouldn't normally happen, but safe either way).
+        Set<Request> affectedRequests = new HashSet<>();
+        affectedRequests.addAll(requestRepository.findByProduct(product));
+        affectedRequests.addAll(requestRepository.findByOfferedProduct(product));
+
+        for (Request request : affectedRequests) {
+            pickupScheduleRepository.findByRequest(request)
+                    .ifPresent(pickupScheduleRepository::delete);
+        }
+
+        requestRepository.deleteAll(affectedRequests);
 
         productRepository.delete(product);
     }

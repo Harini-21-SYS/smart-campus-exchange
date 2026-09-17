@@ -5,78 +5,38 @@ import java.util.List;
 import com.sce.smartcampexchange.dto.DeliveryIssueRequest;
 import com.sce.smartcampexchange.dto.PickupScheduleRequest;
 import com.sce.smartcampexchange.dto.PickupScheduleResponse;
+import com.sce.smartcampexchange.dto.RescheduleReasonRequest;
+import com.sce.smartcampexchange.dto.RatingRequest;
+import com.sce.smartcampexchange.dto.PurchaseComplaintRequest;
 
 public interface PickupScheduleService {
 
-    // =========================================
-    // CREATE PICKUP
-    // =========================================
+    PickupScheduleResponse createPickupSchedule(Long requestId, PickupScheduleRequest request);
 
-    PickupScheduleResponse createPickupSchedule(
-            Long requestId,
-            PickupScheduleRequest request
-    );
+    PickupScheduleResponse getPickupById(Long pickupId);
 
-
-    // =========================================
-    // GET PICKUP
-    // =========================================
-
-    PickupScheduleResponse getPickupById(
-            Long pickupId
-    );
-
-
-    PickupScheduleResponse getPickupByRequestId(
-            Long requestId
-    );
-
+    PickupScheduleResponse getPickupByRequestId(Long requestId);
 
     List<PickupScheduleResponse> getAllPickups();
 
+    PickupScheduleResponse markAsHandedOver(Long pickupId);
 
-    // =========================================
-    // SELLER HANDOVER
-    // =========================================
+    PickupScheduleResponse cancelPickup(Long pickupId);
 
-    PickupScheduleResponse markAsHandedOver(
-            Long pickupId
-    );
+    PickupScheduleResponse confirmProductReceived(Long pickupId);
 
+    PickupScheduleResponse reportDeliveryIssue(Long pickupId, DeliveryIssueRequest request);
 
-    // =========================================
-    // BUYER CONFIRM RECEIVED
-    // =========================================
+    PickupScheduleResponse confirmSchedule(Long pickupId);
 
-    PickupScheduleResponse confirmProductReceived(
-            Long pickupId
-    );
+    PickupScheduleResponse requestReschedule(Long pickupId, RescheduleReasonRequest request);
 
+    PickupScheduleResponse reschedulePickup(Long pickupId, PickupScheduleRequest request);
 
-    // =========================================
-    // BUYER REPORTS NOT RECEIVED
-    // =========================================
+    // Buyer rates the seller after a COMPLETED pickup.
+    PickupScheduleResponse rateSeller(Long pickupId, RatingRequest request);
 
-    PickupScheduleResponse reportProductNotReceived(
-            Long pickupId
-    );
-
-
-    // =========================================
-    // BUYER REPORTS DELIVERY ISSUE
-    // =========================================
-
-    PickupScheduleResponse reportDeliveryIssue(
-            Long pickupId,
-            DeliveryIssueRequest deliveryIssueRequest
-    );
-
-
-    // =========================================
-    // CANCEL PICKUP
-    // =========================================
-
-    PickupScheduleResponse cancelPickup(
-            Long pickupId
-    );
+    // Either party can raise a complaint tied to a COMPLETED pickup —
+    // separate from reportDeliveryIssue, which only fires mid-handover.
+    void raiseComplaint(Long pickupId, PurchaseComplaintRequest request);
 }

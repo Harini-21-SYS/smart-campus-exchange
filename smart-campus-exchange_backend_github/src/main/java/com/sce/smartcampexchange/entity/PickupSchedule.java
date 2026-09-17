@@ -31,10 +31,10 @@ public class PickupSchedule {
     @Column(name = "pickup_time", nullable = false)
     private LocalTime pickupTime;
 
-    @Column(name = "reminder_sent")
+    @Column(name = "reminder_sent", nullable = false)
     private boolean reminderSent = false;
     
-    @Column(name = "buyer_confirmation_sent")
+    @Column(name = "buyer_confirmation_sent", nullable = false)
     private boolean buyerConfirmationSent = false;
 
     private String deliveryIssueReason;
@@ -53,7 +53,7 @@ public class PickupSchedule {
 
     private LocalDateTime updatedAt;
 
-    private boolean reminderSent1 = false;
+    
 
     @PrePersist
     protected void onCreate() {

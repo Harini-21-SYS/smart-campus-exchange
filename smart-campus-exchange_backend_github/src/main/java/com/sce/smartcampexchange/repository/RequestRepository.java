@@ -26,6 +26,15 @@ public interface RequestRepository
             Product product
     );
 
+    // FIX: needed for cascading product deletion — a product can also
+    // be referenced as the OFFERED item in an exchange request, not
+    // just as the main requested product. Without also cleaning these
+    // up, deleting a product that was ever offered in an exchange would
+    // hit the same FK constraint error.
+    List<Request> findByOfferedProduct(
+            Product offeredProduct
+    );
+
     // Check completed BUY or DONATE transaction
     boolean existsByRequesterAndRequestTypeAndStatus(
             Student requester,

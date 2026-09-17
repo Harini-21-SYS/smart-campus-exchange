@@ -3,6 +3,14 @@ import ImagePlaceholder from "../components/ImagePlaceholder";
 import { timeAgo } from "../utils/DashboardUtils";
 import "./ComplaintList.css";
 
+const API_ORIGIN = "http://localhost:8081";
+
+function resolveImageUrl(path) {
+  if (!path) return null;
+  if (path.startsWith("http://") || path.startsWith("https://")) return path;
+  return `${API_ORIGIN}${path}`;
+}
+
 /* Complaints raised by the currently logged-in student */
 function MyComplaintsSection({
   complaints = [],
@@ -25,54 +33,79 @@ function MyComplaintsSection({
 
         <div className="complaint-list">
 
-          {complaints.map((c) => (
+          {complaints.map((c) => {
+            const imageUrl = resolveImageUrl(c.productImage);
 
-  <div
-    key={c.complaintId}
-    className="complaint-card"
-  >
+            // FIX: the backend now sends resolutionNote on a RESOLVED
+            // complaint (previously it was written by the admin but
+            // never surfaced back to the student at all — the card had
+            // nothing to show even once resolved).
+            const isResolved =
+              (c.status || "").toUpperCase() === "RESOLVED";
+            const hasResolutionNote =
+              isResolved && c.resolutionNote && c.resolutionNote.trim();
 
-    <div className="complaint-card-thumb">
-      <ImagePlaceholder />
-    </div>
+            return (
+              <div
+                key={c.id}
+                className={`complaint-card ${
+                  String(c.id) === String(notificationTargetId)
+                    ? "complaint-card-highlight"
+                    : ""
+                }`}
+              >
 
-    <div className="complaint-card-main">
+                <div className="complaint-card-thumb">
+                  {imageUrl ? (
+                    <img src={imageUrl} alt={c.productName} />
+                  ) : (
+                    <ImagePlaceholder />
+                  )}
+                </div>
 
-      <span className="complaint-card-type">
-        {c.complaintType}
-      </span>
+                <div className="complaint-card-main">
 
-      <h4>
-        {c.productTitle}
-      </h4>
+                  <span className="complaint-card-type">
+                    {c.complaintType}
+                  </span>
 
-    </div>
+                  <h4>
+                    {c.productName}
+                  </h4>
 
-    <div className="complaint-card-side">
+                  {hasResolutionNote && (
+                    <p className="complaint-resolution-note">
+                      <strong>Resolution:</strong> {c.resolutionNote}
+                    </p>
+                  )}
 
-      <span
-        className={
-          `complaint-status complaint-status-${c.status}`
-        }
-      >
-        {c.status
-          ? c.status.replace(/_/g, " ")
-          : "PENDING"}
-      </span>
+                </div>
 
-      <span className="complaint-time">
+                <div className="complaint-card-side">
 
-        {c.createdAt
-          ? timeAgo(c.createdAt)
-          : ""}
+                  <span
+                    className={
+                      `complaint-status complaint-status-${(c.status || "pending").toLowerCase()}`
+                    }
+                  >
+                    {c.status
+                      ? c.status.replace(/_/g, " ")
+                      : "PENDING"}
+                  </span>
 
-      </span>
+                  <span className="complaint-time">
 
-    </div>
+                    {c.createdAt
+                      ? timeAgo(c.createdAt)
+                      : ""}
 
-  </div>
+                  </span>
 
-))}
+                </div>
+
+              </div>
+            );
+          })}
 
         </div>
 

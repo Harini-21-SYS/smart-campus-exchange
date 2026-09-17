@@ -10,6 +10,9 @@ import org.springframework.web.bind.annotation.*;
 import com.sce.smartcampexchange.dto.AdminDashboardResponse;
 import com.sce.smartcampexchange.dto.AdminStudentResponse;
 import com.sce.smartcampexchange.dto.AdminProductResponse;
+import com.sce.smartcampexchange.dto.AdminComplaintResponse;
+import com.sce.smartcampexchange.dto.AdminRequestSummaryResponse;
+import com.sce.smartcampexchange.dto.ResolveComplaintRequest;
 import com.sce.smartcampexchange.service.AdminService;
 
 
@@ -122,6 +125,54 @@ public ResponseEntity<String> deleteProduct(
           adminService.deleteProduct(id)
   );
 }
+
+
+    // =================================
+    // COMPLAINT MANAGEMENT
+    // =================================
+
+    @GetMapping("/complaints")
+    public ResponseEntity<List<AdminComplaintResponse>> getAllComplaints() {
+
+        return ResponseEntity.ok(
+                adminService.getAllComplaints()
+        );
+    }
+
+    // FIX: this used to unpack just `note` and drop the rest of the
+    // request body. The new warningRequired/warningNote fields need to
+    // reach AdminService too, so the whole body is passed through now
+    // instead of only its note field.
+    @PutMapping("/complaints/{id}/resolve")
+    public ResponseEntity<AdminComplaintResponse> resolveComplaint(
+            @PathVariable Long id,
+            @RequestBody(required = false) ResolveComplaintRequest body) {
+
+        return ResponseEntity.ok(
+                adminService.resolveComplaint(id, body)
+        );
+    }
+
+    @DeleteMapping("/complaints/{id}")
+    public ResponseEntity<String> deleteComplaint(@PathVariable Long id) {
+
+        return ResponseEntity.ok(
+                adminService.deleteComplaint(id)
+        );
+    }
+
+
+    // =================================
+    // REQUEST MANAGEMENT
+    // =================================
+
+    @GetMapping("/requests")
+    public ResponseEntity<List<AdminRequestSummaryResponse>> getAllRequests() {
+
+        return ResponseEntity.ok(
+                adminService.getAllRequests()
+        );
+    }
 
 
 }

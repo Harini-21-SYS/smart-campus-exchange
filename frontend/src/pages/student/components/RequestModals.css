@@ -1,188 +1,328 @@
+.dash-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(20, 24, 20, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  z-index: 1000;
+}
+
 .request-modal {
-  text-align: left;
+  width: 100%;
+  max-width: 420px;
+  max-height: 92vh;
+  overflow-y: auto;
+  background: #fff;
+  border-radius: 16px;
+  padding: 18px 20px 20px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.18);
 }
 
 .request-modal h2 {
-  text-align: center;
+  margin: 0 0 6px;
+  font-size: 17px;
+  color: #1f3d2b;
 }
 
-.request-modal-fields {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-  margin: 18px 0 22px;
-}
-
-.request-modal-fields .dash-field-group label {
-  display: flex;
-  align-items: center;
-  gap: 6px;
+.dash-modal-desc {
+  margin: 0 0 12px;
   font-size: 13px;
-  font-weight: 600;
-  color: #444;
-}
-
-.request-modal-fields input {
-  width: 100%;
-  padding: 11px 13px;
-  border: 1.5px solid #ddd;
-  border-radius: 10px;
-  outline: none;
-  font-size: 14px;
-  font-family: inherit;
-  background: #fff;
-  color: #222;
-}
-
-.request-modal-fields input:focus {
-  border-color: var(--dash-gold);
-  box-shadow: 0 0 0 4px rgba(227, 167, 43, 0.18);
+  line-height: 1.4;
+  color: #5b6b5e;
 }
 
 .request-modal-message {
-  background: var(--dash-cream);
-  border-radius: 10px;
-  padding: 10px 14px;
-  font-size: 13.5px;
-  color: #555;
+  font-size: 13px;
   font-style: italic;
+  color: #4d5a4f;
+  background: #faf8f2;
+  padding: 8px 10px;
+  border-radius: 8px;
+  margin-bottom: 12px;
+}
+
+/* ---- offered item card (Exchange) ---- */
+.offered-item-card {
+  background: #faf8f2;
+  border: 1px solid #e5e0d8;
+  border-radius: 10px;
+  padding: 10px 12px;
+  margin-bottom: 12px;
+}
+.offered-item-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: #8a8a7d;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+.offered-item-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 6px;
+}
+.offered-item-thumb {
+  width: 42px;
+  height: 42px;
+  border-radius: 8px;
+  overflow: hidden;
+  flex-shrink: 0;
+  background: #efece2;
+}
+.offered-item-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.offered-item-row strong {
+  display: block;
+  font-size: 13px;
+}
+.offered-item-row span {
+  font-size: 11px;
+  color: #8a8a7d;
+}
+
+/* ---- fields ---- */
+.request-modal-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
   margin-bottom: 14px;
+}
+.request-modal-fields-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.dash-field-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.dash-field-group label,
+.dash-field-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #3f4f42;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin: 0;
+}
+
+.dash-input,
+.dash-select,
+.request-modal input[type="text"],
+.request-modal input[type="date"],
+.request-modal input[type="time"],
+.request-modal input[type="datetime-local"] {
+  height: 38px;
+  padding: 0 10px;
+  border-radius: 9px;
+  border: 1px solid #dcd6c8;
+  font-size: 13px;
+  background: #fff;
+}
+
+.dash-textarea {
+  padding: 8px 10px;
+  border-radius: 9px;
+  border: 1px solid #dcd6c8;
+  font-size: 13px;
+  resize: vertical;
+  min-height: 52px;
+}
+
+.pickup-details-card {
+  background: #faf8f2;
+  border: 1px solid #e5e0d8;
+  border-radius: 10px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 12px;
+  font-size: 13px;
+}
+
+.field-error-msg {
+  color: #c0392b;
+  font-size: 12px;
+}
+
+/* ---- issue reason chips ---- */
+.issue-reason-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.issue-reason-chip {
+  border: 1px solid #dcd6c8;
+  border-radius: 9px;
+  padding: 9px 8px;
+  font-size: 12px;
+  text-align: left;
+  background: #fff;
+  cursor: pointer;
+  line-height: 1.25;
+}
+.issue-reason-chip-active {
+  border-color: #1f3d2b;
+  background: #eef3ea;
+  font-weight: 600;
+  color: #1f3d2b;
+}
+
+.optional-details-toggle {
+  background: none;
+  border: none;
+  color: #1f3d2b;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 4px 0 10px;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+/* ---- rating ---- */
+.rating-stars {
+  display: flex;
+  gap: 4px;
+  margin: 4px 0 10px;
+}
+.rating-stars button {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  font-size: 22px;
+  color: #d8d2c2;
+  line-height: 1;
+}
+.rating-stars button.rated {
+  color: #e0a72c;
+}
+.rating-readonly {
+  display: flex;
+  gap: 2px;
+  font-size: 13px;
+  color: #e0a72c;
+}
+
+/* ---- buttons ---- */
+.confirm-btn-row {
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+}
+.confirm-btn-row .dash-btn {
+  flex: 1;
+  justify-content: center;
+  padding: 9px 0;
+  font-size: 13px;
 }
 
 .request-modal-cancel {
   display: block;
-  margin: 14px auto 0;
+  margin: 10px auto 0;
   background: none;
   border: none;
-  color: #999;
-  font-family: inherit;
-  font-size: 13px;
+  color: #8a8a8a;
+  font-size: 12px;
   cursor: pointer;
 }
 
-.request-modal-cancel:hover {
-  text-decoration: underline;
+/* keep everything on-screen on very short viewports (e.g. 546px) */
+@media (max-height: 640px) {
+  .request-modal {
+    padding: 14px 16px 16px;
+  }
+  .request-modal h2 {
+    font-size: 16px;
+  }
+  .dash-textarea {
+    min-height: 40px;
+  }
+}
+.exchange-picker-modal {
+  max-width: 420px;
 }
 
-/* ---------- Offered item (Exchange) preview ---------- */
-.offered-item-card {
-  background: var(--dash-cream);
-  border-radius: 12px;
-  padding: 14px;
-  margin-bottom: 14px;
-}
-
-.offered-item-label {
-  font-size: 11.5px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
-  color: var(--dash-green);
-}
-
-.offered-item-row {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-top: 8px;
-}
-
-.offered-item-thumb {
-  width: 48px;
-  height: 48px;
-  border-radius: 8px;
-  overflow: hidden;
-  flex-shrink: 0;
-  background: #fff;
-}
-
-.offered-item-thumb img,
-.offered-item-thumb .pcard-image {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.offered-item-row div {
-  display: flex;
-  flex-direction: column;
-  font-size: 13px;
-  color: #444;
-}
-
-/* ---------- Pickup details (buyer confirm view) ---------- */
-.pickup-details-card {
-  background: var(--dash-cream);
-  border-radius: 12px;
-  padding: 16px;
-  margin-bottom: 20px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.pickup-details-card p {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 14px;
-  color: #333;
-}
-
-/* ---------- Exchange item picker ---------- */
 .exchange-picker-list {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  max-height: 280px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 12px;
+  margin: 16px 0;
+  max-height: 320px;
   overflow-y: auto;
-  margin-bottom: 18px;
 }
 
 .exchange-picker-item {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
   padding: 10px;
-  border: 1.5px solid #eee;
-  border-radius: 10px;
+  border: 2px solid #e5e0d8;
+  border-radius: 12px;
   background: #fff;
   cursor: pointer;
-  font-family: inherit;
-  font-size: 13.5px;
-  color: #333;
-  text-align: left;
-  transition: border-color 0.2s ease, background 0.2s ease;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
 .exchange-picker-item:hover {
-  background: var(--dash-cream);
+  border-color: #c9c2b2;
 }
 
-.exchange-picker-item.selected {
-  border-color: var(--dash-gold);
-  background: rgba(227, 167, 43, 0.08);
+.exchange-picker-item-selected {
+  border-color: #1f3d2b;
+  box-shadow: 0 0 0 2px rgba(31, 61, 43, 0.12);
 }
 
 .exchange-picker-thumb {
-  width: 44px;
-  height: 44px;
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1 / 1;
   border-radius: 8px;
   overflow: hidden;
-  flex-shrink: 0;
-  background: var(--dash-cream);
+  background: #f2efe6;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-.exchange-picker-thumb img,
-.exchange-picker-thumb .pcard-image {
+.exchange-picker-thumb img {
   width: 100%;
   height: 100%;
   object-fit: cover;
 }
 
-@media (max-width: 640px) {
-  .offered-item-row,
-  .exchange-picker-item {
-    flex-wrap: wrap;
-  }
+.exchange-picker-check {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  color: #1f3d2b;
+  background: #fff;
+  border-radius: 50%;
+  font-size: 18px;
+  line-height: 0;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.exchange-picker-name {
+  font-size: 13px;
+  font-weight: 600;
+  text-align: center;
+  color: #22281f;
+  line-height: 1.3;
+  display: -webkit-box;
+  /* -webkit-line-clamp: 2; */
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }

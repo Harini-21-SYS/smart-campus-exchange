@@ -123,6 +123,24 @@ public class Complaint {
 
 
     // =========================================================
+    // ADMIN RESOLUTION NOTE (visible to the complainant/buyer)
+    // =========================================================
+
+    @Column(name = "resolution_note", columnDefinition = "TEXT")
+    private String resolutionNote;
+
+
+    // =========================================================
+    // ADMIN WARNING NOTE (visible to the student the complaint was
+    // raised against — only set when the admin issues a warning
+    // alongside resolving the complaint)
+    // =========================================================
+
+    @Column(name = "warning_note", columnDefinition = "TEXT")
+    private String warningNote;
+
+
+    // =========================================================
     // AUTO SET DEFAULT VALUES
     // =========================================================
 
@@ -239,5 +257,21 @@ public class Complaint {
 
         this.resolvedAt =
                 resolvedAt;
+    }
+
+    public String getResolutionNote() {
+        return resolutionNote;
+    }
+
+    public void setResolutionNote(String resolutionNote) {
+        this.resolutionNote = resolutionNote;
+    }
+
+    public String getWarningNote() {
+        return warningNote;
+    }
+
+    public void setWarningNote(String warningNote) {
+        this.warningNote = warningNote;
     }
 }
