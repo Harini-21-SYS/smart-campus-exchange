@@ -40,6 +40,14 @@ public class RequestResponse {
     // seller in Incoming Requests.
     private String rescheduleReason;
 
+    // FIX: this field didn't exist before, which is why a submitted
+    // rating disappeared on every refresh — the frontend only ever
+    // remembered it in local component state, with nothing from the
+    // backend to restore it from. One Review exists per completed
+    // request (made by the requester, per PickupScheduleServiceImpl.
+    // rateSeller), so this is unambiguous — null until rated.
+    private Integer myRating;
+
 
     public RequestResponse(
 
@@ -71,7 +79,8 @@ public class RequestResponse {
             LocalDate pickupDate,
             LocalTime pickupTime,
             String pickupStatus,
-            String rescheduleReason
+            String rescheduleReason,
+            Integer myRating
 
     ) {
 
@@ -104,6 +113,7 @@ public class RequestResponse {
         this.pickupTime = pickupTime;
         this.pickupStatus = pickupStatus;
         this.rescheduleReason = rescheduleReason;
+        this.myRating = myRating;
     }
 
 
@@ -193,5 +203,9 @@ public class RequestResponse {
 
     public String getRescheduleReason() {
         return rescheduleReason;
+    }
+
+    public Integer getMyRating() {
+        return myRating;
     }
 }

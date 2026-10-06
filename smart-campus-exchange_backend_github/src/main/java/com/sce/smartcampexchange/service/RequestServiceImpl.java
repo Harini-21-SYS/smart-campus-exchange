@@ -14,9 +14,11 @@ import com.sce.smartcampexchange.dto.RequestResponse;
 import com.sce.smartcampexchange.dto.CreateRequestRequest;
 import com.sce.smartcampexchange.entity.Product;
 import com.sce.smartcampexchange.entity.Request;
+import com.sce.smartcampexchange.entity.Review;
 import com.sce.smartcampexchange.entity.Student;
 import com.sce.smartcampexchange.repository.ProductRepository;
 import com.sce.smartcampexchange.repository.RequestRepository;
+import com.sce.smartcampexchange.repository.ReviewRepository;
 import com.sce.smartcampexchange.repository.StudentRepository;
 import com.sce.smartcampexchange.dto.AcceptRequestRequest;
 import com.sce.smartcampexchange.entity.PickupSchedule;
@@ -33,6 +35,11 @@ public class RequestServiceImpl implements RequestService {
 
     private final PickupScheduleRepository pickupScheduleRepository;
 
+    // FIX: needed so convertToResponse() can populate the new
+    // myRating field on RequestResponse — one Review per completed
+    // request, keyed by request (see ReviewRepository.findByRequest).
+    private final ReviewRepository reviewRepository;
+
 
    public RequestServiceImpl(
 
@@ -44,6 +51,8 @@ public class RequestServiceImpl implements RequestService {
 
         PickupScheduleRepository pickupScheduleRepository,
 
+        ReviewRepository reviewRepository,
+
         NotificationService notificationService) {
 
     this.requestRepository = requestRepository;
@@ -54,6 +63,9 @@ public class RequestServiceImpl implements RequestService {
 
     this.pickupScheduleRepository =
             pickupScheduleRepository;
+
+    this.reviewRepository =
+            reviewRepository;
 
     this.notificationService =
             notificationService;
@@ -1175,6 +1187,25 @@ private RequestResponse convertToResponse(Request request) {
 
 
     // =========================================
+    // MY RATING
+    //
+    // FIX: this is what RequestResponse.myRating actually comes from —
+    // one Review row per completed request (unique on request_id, per
+    // Review's @JoinColumn), created only by rateSeller() in
+    // PickupScheduleServiceImpl, which only lets the requester of this
+    // exact request create it. So there's no ownership check needed
+    // here: if a Review exists for this request at all, its rating IS
+    // this requester's rating. null until they've actually rated.
+    // =========================================
+
+    Integer myRating =
+            reviewRepository
+                    .findByRequest(request)
+                    .map(Review::getRating)
+                    .orElse(null);
+
+
+    // =========================================
     // RESPONSE
     // =========================================
 
@@ -1215,7 +1246,8 @@ private RequestResponse convertToResponse(Request request) {
             pickupDate,
             pickupTime,
             pickupStatus,
-            rescheduleReason
+            rescheduleReason,
+            myRating
     );
 }
 

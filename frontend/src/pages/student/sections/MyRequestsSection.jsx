@@ -7,6 +7,7 @@ import DeliveryIssueModal from "../components/DeliveryIssueModal";
 import ConfirmDialog from "../components/ConfirmDialog";
 import { TYPE_INFO } from "../constants";
 import { timeAgo } from "../utils/DashboardUtils";
+import ZoomableImage from "../components/ZoomableImage";
 import "./RequestList.css";
 
 // Combines the backend's separate pickupDate ("2026-09-13") and
@@ -39,9 +40,6 @@ function MyRequestsSection({
 
   // Buyer reviewing the seller's proposed schedule (confirm / ask to reschedule)
   const [schedulingFor, setSchedulingFor] = useState(null);
-
-  // Buyer confirming they actually received the item (simple yes/no confirm)
-  const [confirmingReceiptFor, setConfirmingReceiptFor] = useState(null);
 
   // Buyer reporting a delivery issue instead
   const [reportingIssueFor, setReportingIssueFor] = useState(null);
@@ -88,9 +86,12 @@ function MyRequestsSection({
     setSchedulingFor(null);
   };
 
-  const handleReceiptConfirm = async () => {
-    await onConfirmReceived(confirmingReceiptFor);
-    setConfirmingReceiptFor(null);
+  // FIX: clicking "Yes, Received" used to only open a ConfirmDialog
+  // ("Confirm you received the item?") and wait for a second click —
+  // an unnecessary extra step for something the button label already
+  // asks the user to confirm. It now calls onConfirmReceived directly.
+  const handleReceiptConfirm = async (request) => {
+    await onConfirmReceived(request);
   };
 
   const handleIssueSubmit = async (issueDetails) => {
@@ -106,6 +107,18 @@ function MyRequestsSection({
 
   };
 
+  // FIX: this used to be `requests.slice().reverse()`, which assumes
+  // the incoming array is always oldest-first — but the backend
+  // returns newest-first (findByRequesterOrderByCreatedAtDesc), and a
+  // freshly-created request also gets prepended locally in
+  // StudentDashboard (createOutgoingRequest). Reversing an
+  // already-newest-first array put the newest request at the BOTTOM
+  // of the visible list instead of the top. Sorting explicitly by
+  // `time` descending is correct regardless of how the array arrived,
+  // and stays correct after any future change to how it's built.
+  const sortedRequests = requests
+    .slice()
+    .sort((a, b) => b.time - a.time);
 
   return (
 
@@ -116,7 +129,7 @@ function MyRequestsSection({
       </div>
 
 
-      {requests.length === 0 ? (
+      {sortedRequests.length === 0 ? (
 
         <EmptyState
           subtitle="You haven't requested anything yet."
@@ -126,42 +139,30 @@ function MyRequestsSection({
 
         <div className="request-list">
 
-          {requests
-            .slice()
-            .reverse()
+          {sortedRequests
             .map((r) => {
 
               const info =
                 TYPE_INFO[r.type] ||
                 TYPE_INFO.Sell;
 
-              // Real backend statuses: PENDING / ACCEPTED / REJECTED
-              // on the request itself, and on the separate pickup
-              // schedule: SCHEDULED -> CONFIRMED ->
-              // BUYER_CONFIRMATION_PENDING -> COMPLETED, with
-              // RESCHEDULE_REQUESTED and DELIVERY_ISSUE as branches.
               const status = (r.status || "").toUpperCase();
               const pickupStatus = (r.pickupStatus || "").toUpperCase();
 
               const isPending = status === "PENDING";
 
-              // Seller proposed a time — buyer hasn't acted yet.
               const needsScheduleReview =
                 status === "ACCEPTED" && pickupStatus === "SCHEDULED";
 
-              // Buyer asked for a different time, waiting on seller.
               const rescheduleRequested =
                 status === "ACCEPTED" && pickupStatus === "RESCHEDULE_REQUESTED";
 
-              // Buyer confirmed — waiting for the in-person handover.
               const awaitingHandover =
                 status === "ACCEPTED" && pickupStatus === "CONFIRMED";
 
-              // Seller marked it handed over — buyer must say yes/no.
               const needsReceiptConfirmation =
                 status === "ACCEPTED" && pickupStatus === "BUYER_CONFIRMATION_PENDING";
 
-              // Buyer reported a problem — under review via complaint.
               const deliveryIssueReported =
                 status === "ACCEPTED" && pickupStatus === "DELIVERY_ISSUE";
 
@@ -214,7 +215,7 @@ function MyRequestsSection({
 
                           <div className="request-offered-item-thumb">
 
-                            <img
+                            <ZoomableImage
                               src={
                                 r.offeredProduct
                                   .productImage
@@ -254,7 +255,7 @@ function MyRequestsSection({
                     )}
 
 
-                    {needsScheduleReview && (
+                    {/* {needsScheduleReview && (
 
                       <div className="request-pickup-info">
 
@@ -272,7 +273,7 @@ function MyRequestsSection({
 
                       </div>
 
-                    )}
+                    )} */}
 
 
                     {rescheduleRequested && (
@@ -425,7 +426,7 @@ function MyRequestsSection({
                       <>
                         <button
                           className="dash-btn dash-btn-primary dash-btn-sm"
-                          onClick={() => setConfirmingReceiptFor(r)}
+                          onClick={() => handleReceiptConfirm(r)}
                         >
                           Yes, Received
                         </button>
@@ -460,19 +461,6 @@ function MyRequestsSection({
           onCancel={() => setSchedulingFor(null)}
           onConfirm={handleScheduleConfirm}
           onRequestReschedule={handleScheduleReschedule}
-        />
-
-      )}
-
-
-      {confirmingReceiptFor && (
-
-        <ConfirmDialog
-          title="Confirm you received the item?"
-          message={`This marks "${confirmingReceiptFor.productName}" as received and moves it to My Purchases.`}
-          confirmLabel="Yes, I Received It"
-          onCancel={() => setConfirmingReceiptFor(null)}
-          onConfirm={handleReceiptConfirm}
         />
 
       )}

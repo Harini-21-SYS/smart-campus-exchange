@@ -33,11 +33,18 @@
 
 /* No sidebar on the admin panel, so the page is just navbar + a single
    scrollable content column — same "locked viewport, content scrolls
-   internally" approach as the student dashboard, just one column. */
+   internally" approach as the student dashboard, just one column.
+   Background image path is relative to THIS file — adjust if
+   AdminDashboard.css ever moves relative to src/assets/admin.jpg. */
 .adm-page {
     height: 100vh;
     height: 100dvh;
-    background: var(--dash-cream);
+    background-color: var(--dash-cream); /* fallback while the image loads / if it fails */
+    background-image: url("../../assets/admin.jpg");
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    background-attachment: fixed;
     display: flex;
     flex-direction: column;
     width: 100%;
@@ -177,6 +184,29 @@
 .adm-nav-links button.active .adm-nav-badge {
     background: #fff;
     color: var(--dash-green);
+}
+
+/* Logout button — sits at the end of the nav-links row (so it also
+   appears inside the mobile dropdown alongside the tabs), styled in
+   the danger/red palette to set it apart from the tab pills, since
+   it's an action rather than a navigation destination. */
+.adm-nav-logout {
+    color: var(--dash-red) !important;
+    margin-left: 6px;
+}
+
+.adm-nav-logout:hover {
+    background: var(--dash-red) !important;
+    color: #fff !important;
+}
+
+@media (max-width: 900px) {
+    .adm-nav-logout {
+        margin-left: 0;
+        border-top: 1px solid #f0ede4;
+        margin-top: 6px;
+        padding-top: 12px !important;
+    }
 }
 
 /* ================================================
@@ -647,6 +677,14 @@
 .adm-status-blocked { background: #fbe9e7; color: var(--dash-red); }
 .adm-status-neutral { background: #f2efe6; color: #999; width: fit-content; }
 
+/* Request status colors — Pending (amber), Accepted (blue),
+   Completed (green, reuses the same look as adm-status-active).
+   Rejected/Cancelled reuse adm-status-blocked (red) via
+   REQUEST_STATUS_BADGE_CLASS in the JSX. */
+.adm-status-pending { background: #fdf1de; color: #a4750f; width: fit-content; }
+.adm-status-accepted { background: #e3edf7; color: var(--dash-blue); width: fit-content; }
+.adm-status-completed { background: #e5f4ea; color: var(--dash-green); width: fit-content; }
+
 .adm-type-badge {
     display: inline-block;
     font-size: 11px;
@@ -902,7 +940,6 @@
 
 .adm-stat-icon-requests { background: var(--dash-blue); }
 .adm-stat-icon-complaints { background: var(--dash-red); }
-.adm-stat-icon-notifications { background: var(--dash-green-light); }
 
 .adm-stat-sublabel {
     color: var(--dash-red);
@@ -1051,7 +1088,6 @@
 
 .adm-stat-icon-requests { background: var(--dash-blue); }
 .adm-stat-icon-complaints { background: var(--dash-red); }
-.adm-stat-icon-notifications { background: var(--dash-green-light); }
 
 .adm-stat-sublabel {
     color: var(--dash-red);
@@ -1171,4 +1207,65 @@
     padding: 8px 10px;
     font-size: 12.5px;
     color: #555;
+}
+
+/* ================================================
+   NEW: Transparent-table experiment reverted — solid
+   white backgrounds restored for legibility, plain text
+   color with no shadow needed.
+================================================ */
+
+.adm-table-wrap {
+    background: #fff;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+    border: none;
+}
+
+.adm-table thead th {
+    background: #faf8f2;
+    color: #999;
+    text-shadow: none;
+}
+
+.adm-table tbody td {
+    color: #1a1a1a;
+    text-shadow: none;
+    border-top: 1px solid #f0ede4;
+}
+
+.adm-table tbody tr:hover {
+    background: #fbfaf6;
+}
+
+/* Student list on the Dashboard tab is built the same way as a
+   table (header row + data rows), so it gets the same treatment. */
+.adm-student-list {
+    background: #fff;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+    border: none;
+}
+
+.adm-student-row {
+    border-bottom: 1px solid #f0ede4;
+}
+
+.adm-student-row-head {
+    background: #faf8f2;
+    color: #999;
+    text-shadow: none;
+}
+
+.adm-student-name-block strong {
+    color: #1a1a1a;
+    text-shadow: none;
+}
+
+.adm-student-email {
+    color: #999;
+    text-shadow: none;
+}
+
+.adm-cell-label {
+    color: #1a1a1a;
+    text-shadow: none;
 }

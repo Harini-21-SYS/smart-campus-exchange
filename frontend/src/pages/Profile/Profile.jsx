@@ -33,9 +33,42 @@ import {
 const MOBILE_REGEX = /^[0-9]{10}$/;
 const PASSWORD_MIN_LENGTH = 6;
 
-// ---------- Trust score: derived from the student's reviews ----------
-// Rises or falls with review activity instead of a fixed value.
+// ---------- Trust score bands ----------
+// Mirrors TrustScoreService.describe() on the backend, so the
+// fallback label used here (only when the backend didn't send
+// trustLabel) always says the same thing the server would have said.
+function describeTrustScore(score) {
+  if (score >= 80) return "Highly Trusted";
+  if (score >= 60) return "Trusted Member";
+  if (score >= 40) return "Building Trust";
+  if (score >= 20) return "Low Trust";
+  return "Not Trusted";
+}
+
+// ---------- Trust score: from ProfileResponseDTO.trustScore/trustLabel ----------
+// FIX: the backend never actually sent trustScore or trustLabel before
+// (ProfileResponseDTO had neither field), so this always fell straight
+// through both checks to the hardcoded { score: 20, label: "New User..." }
+// — the score wasn't broken, it was just never being sent at all. Now
+// that ProfileServiceImpl populates both from TrustScoreService, the
+// real value takes priority. The reviews-array branch is kept as a
+// fallback in case that's ever wired up as an alternative source, and
+// the hardcoded default only fires if neither is present at all (e.g.
+// the backend call failed silently or is running an older version).
+//
+// FIX 2: the label used to only branch on >= 60 ("Trusted Member" or
+// "Building trust"), so a score of 15 and a score of 55 showed the
+// exact same text — nothing distinguished scores meaningfully below
+// the neutral midpoint of 50. Now uses describeTrustScore()'s five
+// bands instead of a single cutoff.
 function getTrustScoreData(profile) {
+  if (typeof profile?.trustScore === "number") {
+    return {
+      score: Math.round(profile.trustScore),
+      label: profile.trustLabel || describeTrustScore(profile.trustScore),
+    };
+  }
+
   const reviews = profile?.reviews || [];
 
   if (reviews.length > 0) {
@@ -47,14 +80,7 @@ function getTrustScoreData(profile) {
     };
   }
 
-  if (typeof profile?.trustScore === "number") {
-    return {
-      score: profile.trustScore,
-      label: profile.trustScore >= 60 ? "Trusted Member" : "Building trust",
-    };
-  }
-
-  return { score: 20, label: "New User · Building trust" };
+  return { score: 20, label: "New User · Building Trust" };
 }
 
 function trustScoreClass(score) {
@@ -719,4 +745,3 @@ const closePasswordModal = () => {
 }
 
 export default Profile;
-

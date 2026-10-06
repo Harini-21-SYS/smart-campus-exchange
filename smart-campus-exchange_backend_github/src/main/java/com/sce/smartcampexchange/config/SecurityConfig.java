@@ -4,6 +4,7 @@ import java.util.List;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
@@ -39,7 +40,7 @@ public class SecurityConfig {
     public BCryptPasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
     }
-   
+
 
     @Bean
     public JwtAuthenticationFilter jwtAuthenticationFilter() {
@@ -51,7 +52,7 @@ public class SecurityConfig {
     // =========================
     // CORS CONFIGURATION
     // =========================
-    
+
 
     @Bean
     public SecurityFilterChain securityFilterChain(
@@ -75,6 +76,12 @@ public class SecurityConfig {
                     "/api/auth/**",
                     "/uploads/**"
                 )
+                .permitAll()
+
+                // Public contact form on the landing page (no login needed).
+                // Only POST is public — reading/deleting messages stays under
+                // /api/admin/contact-messages and requires a token.
+                .requestMatchers(HttpMethod.POST, "/api/contact")
                 .permitAll()
 
                 .anyRequest()

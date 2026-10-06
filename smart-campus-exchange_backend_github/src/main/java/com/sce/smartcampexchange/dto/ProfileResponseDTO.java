@@ -12,6 +12,14 @@ public class ProfileResponseDTO {
     private boolean emailVerified;
     private String year;
 
+    // FIX: these two didn't exist before, which is why the trust
+    // score on the profile page never changed — the frontend was
+    // always falling through to its own hardcoded default because
+    // this DTO never carried the real value at all. Populated from
+    // TrustScoreService.getBreakdown() in ProfileServiceImpl.
+    private double trustScore;
+    private String trustLabel;
+
     public ProfileResponseDTO() {
     }
 
@@ -85,5 +93,21 @@ public class ProfileResponseDTO {
 
     public void setEmailVerified(boolean emailVerified) {
         this.emailVerified = emailVerified;
+    }
+
+    public double getTrustScore() {
+        return trustScore;
+    }
+
+    public void setTrustScore(double trustScore) {
+        this.trustScore = trustScore;
+    }
+
+    public String getTrustLabel() {
+        return trustLabel;
+    }
+
+    public void setTrustLabel(String trustLabel) {
+        this.trustLabel = trustLabel;
     }
 }

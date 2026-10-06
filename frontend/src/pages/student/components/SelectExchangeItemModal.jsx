@@ -3,6 +3,7 @@ import { FaCheckCircle } from "react-icons/fa";
 import EmptyState from "./EmptyState";
 import ImagePlaceholder from "./ImagePlaceholder";
 import "./RequestModals.css";
+import ZoomableImage from "./ZoomableImage";
 
 const API_ORIGIN = "http://localhost:8081";
 
@@ -56,13 +57,10 @@ function SelectExchangeItemModal({ product, purchases, onCancel, onConfirm }) {
                   onClick={() => setSelectedId(p.id)}
                 >
                   <div className="exchange-picker-thumb">
-                    {showImage ? (
-                      <img
+                                        {showImage ? (
+                      <ZoomableImage
                         src={imageUrl}
                         alt={p.productName}
-                        onError={() =>
-                          setFailedImages((prev) => ({ ...prev, [p.id]: true }))
-                        }
                       />
                     ) : (
                       <ImagePlaceholder />

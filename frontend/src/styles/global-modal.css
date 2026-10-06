@@ -1,0 +1,55 @@
+/* Universal containment fix for every popup in the app. Import this
+   once, after all other stylesheets, so it overrides whatever any
+   individual modal's CSS file (RequestModals.css, ConfirmDialog's
+   own styles, etc.) already defines for these same shared class
+   names — without needing to edit every modal component's styling
+   one by one. */
+
+.dash-modal-overlay {
+  position: fixed !important;
+  inset: 0 !important;
+  width: 100vw !important;
+  /* dvh = the REAL visible height on mobile. vh can be taller than
+     what's actually on screen because it ignores the browser's
+     address bar, which is exactly what pushes popups below the fold. */
+  height: 100dvh !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 16px !important;
+  padding-top: calc(16px + env(safe-area-inset-top, 0px)) !important;
+  padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px)) !important;
+  /* Last-resort escape hatch: if a popup is ever still too tall after
+     the cap below, this scrolls the overlay itself rather than
+     silently clipping the popup with no way to reach the rest of it. */
+  overflow-y: auto !important;
+  z-index: 1000;
+}
+
+.dash-modal,
+.request-modal,
+.exchange-picker-modal,
+.confirm-modal {
+  max-height: min(88dvh, 720px) !important;
+  overflow-y: auto !important;
+  margin: auto !important; /* stays centered even if the overlay scrolls */
+  -webkit-overflow-scrolling: touch;
+  box-sizing: border-box !important;
+}
+
+/* Stops the page underneath from scrolling while a popup is open —
+   without this, a tall page can still scroll behind a "fixed" popup
+   on some mobile browsers. */
+body.modal-open {
+  overflow: hidden;
+}
+
+@media (max-width: 480px) {
+  .dash-modal,
+  .request-modal,
+  .exchange-picker-modal,
+  .confirm-modal {
+    max-height: min(92dvh, 640px) !important;
+    width: calc(100vw - 32px) !important;
+  }
+}
