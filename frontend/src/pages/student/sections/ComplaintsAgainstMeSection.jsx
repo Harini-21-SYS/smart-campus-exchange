@@ -1,8 +1,25 @@
 import { FaShieldAlt } from "react-icons/fa";
 import EmptyState from "../components/EmptyState";
 import ImagePlaceholder from "../components/ImagePlaceholder";
+import ZoomableImage from "../components/ZoomableImage";
 import { timeAgo } from "../utils/DashboardUtils";
 import "./ComplaintList.css";
+
+const API_ORIGIN = "http://localhost:8081";
+
+// FIX: this component rendered c.productImage directly, with no
+// fallback of its own — it silently relied on whatever built the
+// `complaints` prop having already prefixed the path with the
+// backend origin. If that upstream mapping was ever missing, out of
+// date, or this component gets reused somewhere that skips it, the
+// image just never showed. resolveImageUrl is idempotent (it checks
+// for an existing http:// prefix before adding one), so applying it
+// here too is always safe, whether or not the parent already did it.
+function resolveImageUrl(path) {
+  if (!path) return null;
+  if (path.startsWith("http://") || path.startsWith("https://")) return path;
+  return `${API_ORIGIN}${path}`;
+}
 
 function ComplaintsAgainstMeSection({ complaints = [] }) {
   return (
@@ -31,19 +48,23 @@ function ComplaintsAgainstMeSection({ complaints = [] }) {
 
           {complaints
             .slice()
-            .reverse()
-            .map((c) => (
+            .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0))
+            .map((c) => {
+
+              const imageUrl = resolveImageUrl(c.productImage);
+
+              return (
 
               <div
                 key={c.id}
                 className="complaint-card"
               >
 
-                {c.productImage ? (
+                {imageUrl ? (
 
                   <div className="complaint-card-thumb">
-                    <img
-                      src={c.productImage}
+                    <ZoomableImage
+                      src={imageUrl}
                       alt={c.productName}
                     />
                   </div>
@@ -102,7 +123,8 @@ function ComplaintsAgainstMeSection({ complaints = [] }) {
 
               </div>
 
-            ))}
+              );
+            })}
 
         </div>
 

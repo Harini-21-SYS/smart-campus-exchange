@@ -13,6 +13,7 @@ import com.sce.smartcampexchange.dto.AdminProductResponse;
 import com.sce.smartcampexchange.dto.AdminComplaintResponse;
 import com.sce.smartcampexchange.dto.AdminRequestSummaryResponse;
 import com.sce.smartcampexchange.dto.ResolveComplaintRequest;
+import com.sce.smartcampexchange.dto.BlockStudentRequest;
 import com.sce.smartcampexchange.service.AdminService;
 
 
@@ -22,16 +23,13 @@ import com.sce.smartcampexchange.service.AdminService;
 public class AdminController {
 
 
-
     private final AdminService adminService;
-
 
 
     public AdminController(AdminService adminService) {
 
         this.adminService = adminService;
     }
-
 
 
     // =================================
@@ -41,14 +39,10 @@ public class AdminController {
     @GetMapping("/dashboard")
     public ResponseEntity<AdminDashboardResponse> dashboard() {
 
-
         return ResponseEntity.ok(
                 adminService.getDashboardData()
         );
-
     }
-
-
 
 
     // =================================
@@ -58,15 +52,10 @@ public class AdminController {
     @GetMapping("/students")
     public ResponseEntity<List<AdminStudentResponse>> getAllStudents() {
 
-
         return ResponseEntity.ok(
                 adminService.getAllStudents()
         );
-
     }
-
-
-
 
 
     // =================================
@@ -76,55 +65,93 @@ public class AdminController {
     @GetMapping("/products")
     public ResponseEntity<List<AdminProductResponse>> getAllProducts() {
 
-
         return ResponseEntity.ok(
                 adminService.getAllProducts()
         );
-
     }
- // ==========================
- // BLOCK STUDENT
- // ==========================
-
- @PutMapping("/students/{id}/block")
- public ResponseEntity<String> blockStudent(
-         @PathVariable Long id) {
 
 
-     return ResponseEntity.ok(
-             adminService.blockStudent(id)
-     );
- }
+    // ==========================
+    // BLOCK STUDENT
+    //
+    // Now requires a reason in the request body — AdminService
+    // rejects a missing/blank one. The reason is stored on the
+    // student and surfaced to them at their next login attempt
+    // (see AuthService.login()).
+    // ==========================
+
+    @PutMapping("/students/{id}/block")
+    public ResponseEntity<String> blockStudent(
+            @PathVariable Long id,
+            @RequestBody(required = false) BlockStudentRequest body) {
+
+        String reason = body != null ? body.getReason() : null;
+
+        return ResponseEntity.ok(
+                adminService.blockStudent(id, reason)
+        );
+    }
 
 
+    // ==========================
+    // UNBLOCK STUDENT
+    // Also clears the stored block reason — see AdminService.
+    // ==========================
+
+    @PutMapping("/students/{id}/unblock")
+    public ResponseEntity<String> unblockStudent(
+            @PathVariable Long id) {
+
+        return ResponseEntity.ok(
+                adminService.unblockStudent(id)
+        );
+    }
 
 
- // ==========================
- // UNBLOCK STUDENT
- // ==========================
+    // ==========================
+    // BLOCK PRODUCT
+    // Only AVAILABLE products can be blocked. The seller is
+    // notified (PRODUCT_BLOCKED).
+    // ==========================
 
- @PutMapping("/students/{id}/unblock")
- public ResponseEntity<String> unblockStudent(
-         @PathVariable Long id) {
+    @PutMapping("/products/{id}/block")
+    public ResponseEntity<String> blockProduct(
+            @PathVariable Long id) {
 
-
-     return ResponseEntity.ok(
-             adminService.unblockStudent(id)
-     );
- }
-//==========================
-//DELETE PRODUCT
-//==========================
-
-@DeleteMapping("/products/{id}")
-public ResponseEntity<String> deleteProduct(
-      @PathVariable Long id) {
+        return ResponseEntity.ok(
+                adminService.blockProduct(id)
+        );
+    }
 
 
-  return ResponseEntity.ok(
-          adminService.deleteProduct(id)
-  );
-}
+    // ==========================
+    // UNBLOCK PRODUCT
+    // Only BLOCKED products can be unblocked. The seller is
+    // notified (PRODUCT_UNBLOCKED).
+    // ==========================
+
+    @PutMapping("/products/{id}/unblock")
+    public ResponseEntity<String> unblockProduct(
+            @PathVariable Long id) {
+
+        return ResponseEntity.ok(
+                adminService.unblockProduct(id)
+        );
+    }
+
+
+    // ==========================
+    // DELETE PRODUCT
+    // ==========================
+
+    @DeleteMapping("/products/{id}")
+    public ResponseEntity<String> deleteProduct(
+            @PathVariable Long id) {
+
+        return ResponseEntity.ok(
+                adminService.deleteProduct(id)
+        );
+    }
 
 
     // =================================
@@ -139,10 +166,9 @@ public ResponseEntity<String> deleteProduct(
         );
     }
 
-    // FIX: this used to unpack just `note` and drop the rest of the
-    // request body. The new warningRequired/warningNote fields need to
-    // reach AdminService too, so the whole body is passed through now
-    // instead of only its note field.
+    // The whole request body is passed through (not just its note field)
+    // so warningRequired/warningNote/blockStudent/deleteProduct reach
+    // AdminService too.
     @PutMapping("/complaints/{id}/resolve")
     public ResponseEntity<AdminComplaintResponse> resolveComplaint(
             @PathVariable Long id,
@@ -174,5 +200,21 @@ public ResponseEntity<String> deleteProduct(
         );
     }
 
+
+    // =================================
+    // ONE-TIME PRODUCT OWNERSHIP BACKFILL
+    //
+    // Run this once after deploying the ownership-transfer fix in
+    // PickupScheduleServiceImpl.confirmProductReceived(). Safe to call
+    // more than once — already-correct rows are a no-op.
+    // =================================
+
+    @PostMapping("/backfill-product-ownership")
+    public ResponseEntity<String> backfillProductOwnership() {
+
+        return ResponseEntity.ok(
+                adminService.backfillProductOwnership()
+        );
+    }
 
 }

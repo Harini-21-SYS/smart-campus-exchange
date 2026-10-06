@@ -1,10 +1,13 @@
 import { useState } from "react";
 import { FaStar } from "react-icons/fa";
+import useLockBodyScroll from "../../../hooks/useLockBodyScroll";
 import "./RequestModals.css";
 
 /* Shown from My Purchases once a pickup is COMPLETED and the buyer
    hasn't rated the seller yet. 1–5 stars, comment optional. */
 function RatingModal({ purchase, onCancel, onSubmit }) {
+  useLockBodyScroll();
+
   const [rating, setRating] = useState(0);
   const [hoverRating, setHoverRating] = useState(0);
   const [comment, setComment] = useState("");

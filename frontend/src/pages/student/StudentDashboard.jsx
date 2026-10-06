@@ -107,6 +107,24 @@ import ProductFormPage from "./sections/ProductFormPage";
      handleConfirmReceived / handleReportDeliveryIssue below, and the
      myPurchases filter — all check the REAL backend pickup status,
      not a mock Request.status value.
+
+   NOTE on product completion: when confirmProductReceived() finishes
+   on the backend, it also flips the underlying Product's status to
+   SOLD / EXCHANGED / DONATED and transfers ownership — see
+   ProductService.ACQUIRED_STATUSES and
+   PickupScheduleServiceImpl.confirmProductReceived() on the backend.
+   handleConfirmReceived below refreshes both myRequests AND
+   myProducts for that reason — the buyer's own myProducts can change
+   too (their offered item, in an Exchange), not just myRequests.
+
+   NOTE on admin product moderation: when an admin blocks a product,
+   the backend sets its status to BLOCKED and creates a
+   PRODUCT_BLOCKED notification for the seller (relatedId = product
+   id). Unblocking sets it back to AVAILABLE and creates
+   PRODUCT_UNBLOCKED. Blocked products are filtered out of Browse
+   Products below, but still show up in the seller's My Products.
+   Clicking the notification opens that product's detail page, where
+   Edit / Delete are hidden while it is blocked.
 --------------------------------------------------------- */
 
 // Every id that renderMain()'s switch actually knows how to render.
@@ -128,6 +146,16 @@ const VALID_SECTIONS = [
   "raiseComplaint",
   "complaintsAgainstMe",
 ];
+
+// How often the notifications list is re-fetched, so a notification
+// created by another user/admin (e.g. PRODUCT_BLOCKED) shows up
+// without the student having to reload the page.
+const NOTIFICATION_POLL_INTERVAL_MS = 30000;
+
+// NEW: true when the admin has blocked this product.
+const isProductBlocked = (p) =>
+  String(p?.status).toUpperCase() === "BLOCKED";
+
 const mapBackendRequest = (r) => ({
   id: r.id,
 
@@ -225,6 +253,12 @@ const mapBackendRequest = (r) => ({
     r.rescheduleReason ??
     null,
 
+  // Comes from the real backend field; the in-memory myRatings state
+  // is only a same-session fallback.
+  myRating:
+    r.myRating ??
+    null,
+
   time:
     r.createdAt
       ? new Date(r.createdAt).getTime()
@@ -302,6 +336,10 @@ const mapBackendComplaint = (complaint) => ({
     complaint.warningNote ??
     null,
 });
+
+// The backend doesn't send a `message` for notifications, so this is
+// the text the seller actually sees. Any notifyType missing from this
+// switch shows "You have a new notification."
 const getNotificationMessage = (type) => {
 
   switch (type) {
@@ -333,8 +371,14 @@ const getNotificationMessage = (type) => {
     case "BUYER_CONFIRMATION_REQUIRED":
       return "The seller marked the item as handed over — please confirm.";
 
+    case "PICKUP_REMINDER":
+      return "⏰ Pickup's almost here! Don't forget to swing by.";
+
     case "TRANSACTION_COMPLETED":
       return "A transaction was completed.";
+
+    case "SELLER_RATED":
+      return "You received a new rating.";
 
     case "DELIVERY_ISSUE_REPORTED":
       return "A delivery issue was reported.";
@@ -350,6 +394,12 @@ const getNotificationMessage = (type) => {
 
     case "SELLER_WARNING":
       return "An admin has issued a warning on your account — check Complaints Raised on Me for details.";
+
+    case "PRODUCT_BLOCKED":
+      return "Your product has been blocked by the admin.";
+
+    case "PRODUCT_UNBLOCKED":
+      return "Your product has been unblocked and is available again.";
 
     default:
       return "You have a new notification.";
@@ -431,10 +481,6 @@ function StudentDashboard() {
   const [myRequests, setMyRequests] = useState([]);
 
   // Ratings the buyer has submitted this session, keyed by request id.
-  // The backend doesn't echo `myRating` back on RequestResponse, so
-  // once rateSeller() succeeds we remember it here to switch that
-  // purchase card from "Rate Seller" to the read-only star display
-  // without needing a page reload.
   const [myRatings, setMyRatings] = useState({});
 
   // Which purchase "Report a problem" was clicked on, so
@@ -597,6 +643,11 @@ const loadComplaintsAgainstMe =
 ]);
 
 const [notifications, setNotifications] = useState([]);
+
+// Polls every NOTIFICATION_POLL_INTERVAL_MS instead of loading once
+// on mount, so a notification created while the student is already on
+// the dashboard (e.g. an admin blocking their product) appears
+// without a page reload.
 useEffect(() => {
   let cancelled = false;
 
@@ -619,8 +670,14 @@ useEffect(() => {
 
   loadNotifications();
 
+  const intervalId = setInterval(
+    loadNotifications,
+    NOTIFICATION_POLL_INTERVAL_MS
+  );
+
   return () => {
     cancelled = true;
+    clearInterval(intervalId);
   };
 }, []);
 const [notificationTarget, setNotificationTarget] = useState(null);
@@ -652,10 +709,15 @@ const loadBrowseProducts =
       const data =
         await getBrowseProducts();
 
+      // Blocked products (admin moderation) are dropped here as a
+      // frontend safety net so buyers never see them in Browse. The
+      // backend browse query should also return AVAILABLE only, and
+      // RequestServiceImpl.addRequest() should reject BLOCKED
+      // products — this filter alone doesn't stop a direct request.
       const mappedProducts =
-        (data || []).map(
-          mapBackendProduct
-        );
+        (data || [])
+          .map(mapBackendProduct)
+          .filter((p) => !isProductBlocked(p));
 
       setProducts(
         mappedProducts
@@ -767,8 +829,7 @@ const loadMyProducts =
   // "Purchases" = requests where the pickup was actually confirmed as
   // received by the buyer (pickupStatus === COMPLETED). Also the pool
   // Exchange offers are picked from — you can only offer something
-  // you've actually received. Enriched with myRating so
-  // MyPurchasesSection can show the read-only stars once rated.
+  // you've actually received.
   const myPurchases = useMemo(
     () =>
       myRequests
@@ -777,7 +838,7 @@ const loadMyProducts =
         )
         .map((r) => ({
           ...r,
-          myRating: myRatings[r.id] ?? null,
+          myRating: r.myRating ?? myRatings[r.id] ?? null,
         })),
     [myRequests, myRatings]
   );
@@ -1062,7 +1123,13 @@ const handleConfirmRequest = async () => {
 
       await confirmProductReceived(pickupId);
 
+      // confirmProductReceived() on the backend also flips the
+      // underlying Product's status (SOLD / EXCHANGED / DONATED) and
+      // transfers ownership. For an EXCHANGE this affects the buyer's
+      // OWN product too, so myProducts needs refreshing here
+      // alongside myRequests.
       await loadMyRequests();
+      await loadMyProducts();
 
       addNotification(
         `You confirmed pickup for "${request.productName}" with ${request.sellerName}.`
@@ -1106,6 +1173,8 @@ const handleConfirmRequest = async () => {
         ...prev,
         [purchase.id]: rating,
       }));
+
+      await loadMyRequests();
 
       showToast(`You rated ${purchase.sellerName} ${rating}/5.`);
     } catch (error) {
@@ -1193,21 +1262,11 @@ const handleCancelMyRequest = async (request) => {
         // 1. Update product details
         await updateProduct(productId, productData);
 
-        // 2. Upload newly selected images FIRST.
-        //
-        // FIX: this used to run AFTER the deletions below, which broke
-        // any edit that removed every existing image and replaced them
-        // with new ones. ProductService.deleteProductImage() refuses to
-        // delete when it would leave the product with zero images
-        // ("A product must have at least 1 image", 400) — and it has no
-        // way to know replacements are about to be uploaded. Uploading
-        // first means the product never dips to zero, so the deletes
-        // that follow always pass that check.
-        //
-        // NOTE: the backend also caps a product at 4 images total, and
-        // that check now runs before the deletions too — so removing 3
-        // of 4 images while adding 3 new ones (4 + 3 = 7) would fail on
-        // the cap instead. Replacing within the cap works fine.
+        // 2. Upload newly selected images FIRST, so the product never
+        // dips to zero images while old ones are being deleted
+        // (ProductService.deleteProductImage() refuses to leave a
+        // product with no images). The backend also caps a product at
+        // 4 images total.
         if (imageFiles.length > 0) {
           await uploadProductImages(productId, imageFiles, primaryImageIndex);
         }
@@ -1345,6 +1404,22 @@ const handleMarkNotificationAsRead = async (notification) => {
     }
 
     // ========================================
+    // REFRESH PRODUCT DATA (admin block / unblock)
+    // Keeps the fresh My Products list so the navigation below can
+    // open the affected product with its up-to-date status.
+    // ========================================
+
+    let refreshedMyProducts = null;
+
+    if (
+      notification.notifyType === "PRODUCT_BLOCKED" ||
+      notification.notifyType === "PRODUCT_UNBLOCKED"
+    ) {
+      refreshedMyProducts = await loadMyProducts();
+      await loadBrowseProducts();
+    }
+
+    // ========================================
     // NOTIFICATION NAVIGATION
     // ========================================
 
@@ -1425,6 +1500,28 @@ const handleMarkNotificationAsRead = async (notification) => {
         break;
 
 
+      // Opens the blocked / unblocked product's detail page. If the
+      // product can't be found (e.g. deleted since), the seller just
+      // lands on My Products instead.
+      case "PRODUCT_BLOCKED":
+      case "PRODUCT_UNBLOCKED": {
+
+        goToSection("myProducts");
+
+        const target = (refreshedMyProducts || []).find(
+          (p) => String(p.id) === String(notification.relatedId)
+        );
+
+        if (target) {
+          setSelectedProduct(target);
+          setReturnSection("myProducts"); // Back returns to My Products
+          setSubView("detail");
+        }
+
+        break;
+      }
+
+
       default:
 
         break;
@@ -1471,23 +1568,35 @@ const handleMarkAllNotificationsAsRead = async () => {
 
   const renderMain = () => {
     if (subView === "detail" && selectedProduct) {
-      const isOwner =
-  myProducts.some(
-    (product) =>
-      String(product.id) ===
-      String(selectedProduct.id)
-  );
+      // Prefer the latest copy from myProducts so the status
+      // (AVAILABLE / BLOCKED) is always fresh.
+      const liveProduct =
+        myProducts.find(
+          (p) => String(p.id) === String(selectedProduct.id)
+        ) || selectedProduct;
+
+      const isOwner = myProducts.some(
+        (p) => String(p.id) === String(selectedProduct.id)
+      );
+
+      const blocked = isOwner && isProductBlocked(liveProduct);
+
       return (
         <ProductDetailSection
-          product={selectedProduct}
+          product={liveProduct}
           isOwner={isOwner}
+          isBlocked={blocked}
           onBack={closeDetail}
           onRequest={handleRequestClick}
           onEdit={(p) => {
+            if (isProductBlocked(p)) return;
             setEditingProduct(p);
             setSubView("edit");
           }}
-          onDelete={(p) => setDeleteTarget(p)}
+          onDelete={(p) => {
+            if (isProductBlocked(p)) return;
+            setDeleteTarget(p);
+          }}
           onViewSeller={openSellerProfile}
         />
       );
@@ -1576,10 +1685,14 @@ const handleMarkAllNotificationsAsRead = async () => {
             onOpen={openDetail}
             onAdd={() => setSubView("add")}
             onEdit={(p) => {
+              if (isProductBlocked(p)) return;
               setEditingProduct(p);
               setSubView("edit");
             }}
-            onDelete={(p) => setDeleteTarget(p)}
+            onDelete={(p) => {
+              if (isProductBlocked(p)) return;
+              setDeleteTarget(p);
+            }}
           />
         );
      case "myRequests":
@@ -1612,14 +1725,9 @@ const handleMarkAllNotificationsAsRead = async () => {
     />
   );
   case "raiseComplaint":
-        // FIX: no `key` before meant this never remounted when a new
-        // purchase was targeted via "Report a problem" — the
-        // component's own initial-state comment calls this out
-        // explicitly. Keying on the target id (falling back to a
-        // stable string for the plain picker view) forces a fresh
-        // mount each time, so `selected` is recomputed from the
-        // current `preselected` instead of holding onto whatever was
-        // there from the last visit.
+        // Keyed on the target id (falling back to a stable string for
+        // the plain picker view) so it remounts each time a new
+        // purchase is targeted via "Report a problem".
         return (
           <RaiseComplaintSection
             key={raiseComplaintTarget?.id ?? "picker"}
@@ -1639,8 +1747,7 @@ const handleMarkAllNotificationsAsRead = async () => {
         // mainSection should always be one of VALID_SECTIONS (enforced at
         // every entry point above), so this should be unreachable. But if
         // it's ever hit anyway, fall back to Browse Products instead of
-        // returning null — an empty content area with no error is the
-        // exact "dashboard doesn't show up" symptom we're fixing.
+        // returning null.
         return (
           <BrowseProductsSection
             products={marketplaceProducts}

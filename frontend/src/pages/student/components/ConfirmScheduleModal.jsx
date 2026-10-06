@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { FaMapMarkerAlt, FaClock, FaCheckCircle, FaCalendarAlt } from "react-icons/fa";
+import useLockBodyScroll from "../../../hooks/useLockBodyScroll";
 import "./RequestModals.css";
 
 // Combines the backend's separate pickupDate ("2026-09-13") and
@@ -25,6 +26,8 @@ function formatPickupDateTime(pickupDate, pickupTime) {
    (-> CONFIRMED, unlocks the day-of handover) or ask for a different
    time (-> RESCHEDULE_REQUESTED, seller has to re-propose). */
 function ConfirmScheduleModal({ request, onCancel, onConfirm, onRequestReschedule }) {
+  useLockBodyScroll();
+
   const [mode, setMode] = useState("review"); // "review" | "reschedule"
   const [reason, setReason] = useState("");
   const [submitting, setSubmitting] = useState(false);

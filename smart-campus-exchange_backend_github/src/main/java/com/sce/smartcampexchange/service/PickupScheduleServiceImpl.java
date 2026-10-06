@@ -50,6 +50,8 @@ public class PickupScheduleServiceImpl
 
     private final ReviewRepository reviewRepository;
 
+    private final TrustScoreService trustScoreService;
+
     public PickupScheduleServiceImpl(
         PickupScheduleRepository pickupScheduleRepository,
         RequestRepository requestRepository,
@@ -57,7 +59,8 @@ public class PickupScheduleServiceImpl
         ProductRepository productRepository,
         NotificationService notificationService,
         ComplaintService complaintService,
-        ReviewRepository reviewRepository
+        ReviewRepository reviewRepository,
+        TrustScoreService trustScoreService
     ) {
         this.pickupScheduleRepository = pickupScheduleRepository;
         this.requestRepository = requestRepository;
@@ -66,6 +69,7 @@ public class PickupScheduleServiceImpl
         this.notificationService = notificationService;
         this.complaintService = complaintService;
         this.reviewRepository = reviewRepository;
+        this.trustScoreService = trustScoreService;
     }
 
     // =========================================================
@@ -756,6 +760,12 @@ public class PickupScheduleServiceImpl
                 )
         );
 
+        // A completed transaction affects the experience bonus for
+        // both sides — the seller and the requester each gained one
+        // completed transaction just now.
+        trustScoreService.recalculate(request.getSeller());
+        trustScoreService.recalculate(request.getRequester());
+
         return convertToResponse(savedPickup);
     }
 
@@ -844,6 +854,8 @@ public class PickupScheduleServiceImpl
                         request.getId()
                 )
         );
+
+        trustScoreService.recalculate(request.getSeller());
 
         return convertToResponse(pickup);
     }
@@ -964,6 +976,8 @@ public class PickupScheduleServiceImpl
                         request.getId()
                 )
         );
+
+        trustScoreService.recalculate(request.getSeller());
 
         return convertToResponse(savedPickup);
     }

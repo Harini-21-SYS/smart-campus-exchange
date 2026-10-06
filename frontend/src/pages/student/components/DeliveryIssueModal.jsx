@@ -1,4 +1,5 @@
 import { useState } from "react";
+import useLockBodyScroll from "../../../hooks/useLockBodyScroll";
 import "./RequestModals.css";
 
 // Must match PickupScheduleServiceImpl.reportDeliveryIssue's validReasons
@@ -17,6 +18,8 @@ const ISSUE_REASONS = [
    Submitting this calls reportDeliveryIssue, which on the backend
    also auto-files a complaint against the seller. */
 function DeliveryIssueModal({ request, onCancel, onSubmit }) {
+  useLockBodyScroll();
+
   const [reason, setReason] = useState(null);
   const [description, setDescription] = useState("");
   const [showDetails, setShowDetails] = useState(false);

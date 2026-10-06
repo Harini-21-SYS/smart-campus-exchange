@@ -1,0 +1,83 @@
+.pg-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin: 32px 0 8px;
+  flex-wrap: wrap;
+}
+
+.pg-arrow,
+.pg-num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 36px;
+  height: 36px;
+  padding: 0 10px;
+  border: 1px solid #e5e0d8;
+  border-radius: 9px;
+  background: #fff;
+  color: #3f4f42;
+  font-size: 13.5px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.pg-arrow {
+  color: #5b6b5e;
+  font-size: 12px;
+}
+
+.pg-arrow:hover:not(:disabled),
+.pg-num:hover:not(.pg-active) {
+  background: var(--dash-cream, #faf8f2);
+  border-color: rgba(31, 77, 58, 0.25);
+  color: #1f3d2b;
+}
+
+.pg-arrow:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.pg-num.pg-active {
+  background: #1f3d2b;
+  border-color: #1f3d2b;
+  color: #fff;
+  cursor: default;
+}
+
+.pg-ellipsis {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 28px;
+  height: 36px;
+  color: #a6a196;
+  font-size: 13px;
+  font-weight: 600;
+  user-select: none;
+}
+
+@media (max-width: 480px) {
+  .pg-bar {
+    gap: 4px;
+    margin: 24px 0 8px;
+  }
+
+  .pg-arrow,
+  .pg-num {
+    min-width: 32px;
+    height: 32px;
+    padding: 0 8px;
+    font-size: 13px;
+  }
+
+  .pg-ellipsis {
+    min-width: 20px;
+    height: 32px;
+  }
+}

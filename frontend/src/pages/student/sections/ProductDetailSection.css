@@ -424,3 +424,31 @@
   color: #9a9488;
   flex-shrink: 0;
 }
+/* ---- Blocked product (admin moderation) ---- */
+
+.pcard-blocked-badge,
+.pdetail-blocked-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  background: #fdecea;
+  color: #c62828;
+  width: fit-content;
+}
+
+.pdetail-blocked-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 0;
+  padding: 12px 14px;
+  border-radius: 8px;
+  background: #fdecea;
+  color: #b71c1c;
+  font-size: 0.9rem;
+  line-height: 1.4;
+}

@@ -18,6 +18,7 @@ import {
   FaExclamationCircle,
   FaEnvelope,
   FaLock,
+  FaBan,
 } from "react-icons/fa";
 
 // ---------- localStorage keys used to survive a page refresh ----------
@@ -33,6 +34,13 @@ const OTP_LENGTH = 4;
 
 // OTP is valid for 5 minutes — both OTP modals count down from this.
 const OTP_VALIDITY_SECONDS = 5 * 60;
+
+// NEW: prefix AuthService.login() puts on the thrown message when the
+// account is blocked, so this file can tell "blocked, here's why" apart
+// from every other login failure (wrong password, unverified email,
+// etc.) and show it in a dedicated modal instead of a toast that
+// disappears in 4 seconds. See AuthService.login() for where this is set.
+const ACCOUNT_BLOCKED_PREFIX = "ACCOUNT_BLOCKED::";
 
 // ---------- Register number -> Year / Fee category auto-detection ----------
 // Expected format: 2-digit admission year + optional "S" (self-financed) +
@@ -225,6 +233,11 @@ function Auth() {
 
   // ---------- 5-minute OTP countdown (shared by both OTP modals) ----------
   const [otpTimeLeft, setOtpTimeLeft] = useState(OTP_VALIDITY_SECONDS);
+
+  // NEW: holds the block reason text while the "Account Blocked" modal
+  // is open; null when it's closed. Set from handleLogin's catch block
+  // when the backend's message carries the ACCOUNT_BLOCKED:: prefix.
+  const [blockedReasonModal, setBlockedReasonModal] = useState(null);
 
   const navigate = useNavigate();
 
@@ -522,6 +535,12 @@ function Auth() {
   // FIX: route based on the role the backend actually returned, not a
   // hardcoded email — so ANY admin account lands on AdminDashboard, not
   // just one specific address.
+  //
+  // FIX: a blocked account's error message now carries the
+  // ACCOUNT_BLOCKED:: prefix (see AuthService.login()). Detected here
+  // and shown in a dedicated modal with the admin's actual reason,
+  // instead of folding it into the generic toast like every other
+  // login failure.
   const handleLogin = async (e) => {
     e.preventDefault();
 
@@ -555,11 +574,15 @@ function Auth() {
     console.log("LOGIN ERROR DATA:", error.response?.data);
     console.log("LOGIN ERROR MESSAGE:", error.response?.data?.message);
 
-    showToast(
+    const rawMessage =
       error.response?.data?.message ||
-        "Login failed. Check your details and try again.",
-      "error"
-    );
+      "Login failed. Check your details and try again.";
+
+    if (rawMessage.startsWith(ACCOUNT_BLOCKED_PREFIX)) {
+      setBlockedReasonModal(rawMessage.slice(ACCOUNT_BLOCKED_PREFIX.length));
+    } else {
+      showToast(rawMessage, "error");
+    }
   }
   };
 
@@ -1326,6 +1349,45 @@ function Auth() {
             <button className="verify-btn" onClick={handleResetPassword}>
               Reset Password
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* ---------- Account Blocked Modal ---------- */}
+      {blockedReasonModal && (
+        <div className="otp-overlay">
+          <div className="otp-modal">
+            <button className="otp-close" onClick={() => setBlockedReasonModal(null)}>
+              <FaTimes />
+            </button>
+
+            <div className="modal-badge" style={{ background: "#C0483D" }}>
+              <FaBan />
+            </div>
+
+            <h2>Account Blocked</h2>
+            <p>Your account has been blocked by an administrator.</p>
+
+            <p
+              style={{
+                fontSize: "13.5px",
+                color: "#C0483D",
+                fontWeight: 600,
+                background: "rgba(192,72,61,0.08)",
+                borderRadius: "10px",
+                padding: "12px 14px",
+                marginTop: "4px",
+                marginBottom: "18px",
+                textAlign: "left",
+                wordBreak: "break-word",
+              }}
+            >
+              Reason: {blockedReasonModal}
+            </p>
+
+            <p style={{ fontSize: "13px", color: "#888" }}>
+              If you believe this is a mistake, please contact the admin team.
+            </p>
           </div>
         </div>
       )}

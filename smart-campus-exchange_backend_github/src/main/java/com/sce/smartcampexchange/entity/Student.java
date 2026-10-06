@@ -41,6 +41,12 @@ public class Student {
     @Column(nullable = false)
     private boolean accountEnabled;
 
+    // NEW: set by AdminService.blockStudent() when an admin blocks this
+    // account, cleared by unblockStudent(). Surfaced to the student at
+    // login time by AuthService.login() when accountEnabled is false.
+    @Column(name = "block_reason", length = 500)
+    private String blockReason;
+
     @Enumerated(EnumType.STRING)
     private Role role;
 
@@ -160,6 +166,14 @@ public class Student {
 
     public void setAccountEnabled(boolean accountEnabled) {
         this.accountEnabled = accountEnabled;
+    }
+
+    public String getBlockReason() {
+        return blockReason;
+    }
+
+    public void setBlockReason(String blockReason) {
+        this.blockReason = blockReason;
     }
 
     public Role getRole() {

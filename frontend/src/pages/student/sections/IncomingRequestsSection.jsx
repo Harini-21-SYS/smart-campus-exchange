@@ -13,6 +13,7 @@ import {
 import "./RequestList.css";
 import PickupDetailsModal from "../components/PickupDetailsModal";
 import ProposeNewTimeModal from "../components/ProposeNewTimeModal";
+import ZoomableImage from "../components/ZoomableImage";
 
 const API_ORIGIN = "http://localhost:8081";
 
@@ -75,6 +76,19 @@ function mapRequest(r) {
     ? "Donate"
     : "Sell"),
 
+    // Backend sends flat offeredProductId/offeredProductTitle/
+    // offeredProductImage on RequestResponse — never a nested
+    // "offeredProduct" object — so it's reconstructed here for
+    // PickupDetailsModal's item-review step.
+    offeredProduct: r.offeredProductId
+      ? {
+          productId: r.offeredProductId,
+          productName: r.offeredProductTitle,
+          productImage: resolveImageUrl(r.offeredProductImage),
+          category: r.offeredProductCategory ?? null,
+        }
+      : null,
+
     message:
       r.message ?? "",
 
@@ -102,11 +116,9 @@ pickupStatus:
   r.pickupStatus ??
   null,
 
-// FIX: this is the buyer's explanation for asking for a different
-// time (RequestServiceImpl.convertToResponse() only fills it in
-// while pickupStatus is RESCHEDULE_REQUESTED). Without mapping it
-// here, the seller had no way to see why the buyer objected to the
-// proposed pickup.
+// The buyer's explanation for asking for a different time —
+// RequestServiceImpl.convertToResponse() only fills this in while
+// pickupStatus is RESCHEDULE_REQUESTED.
 rescheduleReason:
   r.rescheduleReason ??
   null,
@@ -116,7 +128,8 @@ rescheduleReason:
 function IncomingRequestsSection({
   onToast,
   notificationTargetId,
-  onRequestUpdated
+  onRequestUpdated,
+  onViewProduct,
 }) {
   
   const [requests, setRequests] = useState([]);
@@ -450,17 +463,28 @@ const handlePickupAccept = async ({ location, date, time }) => {
     );
   }
 
+  // FIX: this used to render `requests` in whatever order the last
+  // fetch/update happened to leave the array in — fine right after
+  // the initial load (the backend does return newest-first), but
+  // fragile after any in-place update, and easy to get wrong the
+  // moment two requests share a timestamp. Sorting explicitly by
+  // `time` descending on every render guarantees "latest first"
+  // regardless of how the array got built.
+  const sortedRequests = requests
+    .slice()
+    .sort((a, b) => b.time - a.time);
+
   return (
     <div className="dash-section">
       <div className="section-header">
         <h1>Incoming Requests</h1>
       </div>
 
-      {requests.length === 0 ? (
+      {sortedRequests.length === 0 ? (
         <EmptyState subtitle="No one has requested your products yet." />
       ) : (
         <div className="request-list">
-          {requests.map((r) => {
+          {sortedRequests.map((r) => {
             const info = TYPE_INFO[r.type] || TYPE_INFO.Sell;
             const isPending = r.status === "pending";
             const isActing = actingId === r.id;
@@ -486,6 +510,15 @@ const handlePickupAccept = async ({ location, date, time }) => {
             const isPickupCompleted =
               r.status === "accepted" && pickupStatus === "COMPLETED";
 
+            // Clicking the product (thumbnail or name/badge) opens
+            // that listing's detail view — same view as opening it
+            // from My Products, since this seller owns it.
+            const handleOpenProduct = () => {
+              if (r.productId != null) {
+                onViewProduct?.(r.productId);
+              }
+            };
+
             return (
             <div
               key={r.id}
@@ -495,6 +528,15 @@ const handlePickupAccept = async ({ location, date, time }) => {
                 <div className="request-card-top">
                   <div
                     className="request-thumb"
+                    onClick={handleOpenProduct}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        handleOpenProduct();
+                      }
+                    }}
                     style={{
                       width: 64,
                       height: 64,
@@ -503,13 +545,14 @@ const handlePickupAccept = async ({ location, date, time }) => {
                       overflow: "hidden",
                       background: "#f2efe6",
                       flexShrink: 0,
+                      cursor: r.productId != null ? "pointer" : "default",
                     }}
                   >
-                    {r.productImage ? (
-                      <img
+                                        {r.productImage ? (
+                      <ZoomableImage
                         src={r.productImage}
                         alt={r.productName}
-                        style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                        className="request-thumb-img"
                       />
                     ) : (
                       <span className="request-thumb-empty" />
@@ -518,7 +561,22 @@ const handlePickupAccept = async ({ location, date, time }) => {
 
                   <div className="request-card-main">
                     <span className={`pcard-type-badge ${info.badgeClass}`}>{r.type}</span>
-                    <h4>{r.productName}</h4>
+                    <h4
+                      onClick={handleOpenProduct}
+                      role="button"
+                      tabIndex={0}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          handleOpenProduct();
+                        }
+                      }}
+                      style={{
+                        cursor: r.productId != null ? "pointer" : "default",
+                      }}
+                    >
+                      {r.productName}
+                    </h4>
                     <p>
                       From {r.requesterName} &middot; {r.department}
                     </p>

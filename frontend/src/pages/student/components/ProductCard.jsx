@@ -1,6 +1,7 @@
 // ProductCard.jsx
 import { useState } from "react";
 import ImagePlaceholder from "./ImagePlaceholder";
+import ZoomableImage from "./ZoomableImage"; // adjust path to wherever ZoomableImage.jsx lives
 import { FaUser, FaStar } from "react-icons/fa";
 import { TYPE_INFO } from "../constants";
 
@@ -10,7 +11,9 @@ const UNKNOWN_TYPE_INFO = {
 };
 
 /* Used both in the marketplace grid and the "My Products" grid
-   (the `actions` render-prop differs between them) */
+   (the `actions` render-prop differs between them). `actions` is
+   optional now — MyProductsSection omits it for completed listings,
+   so it's guarded here instead of called unconditionally. */
 function ProductCard({ product, onOpen, actions }) {
   const info = TYPE_INFO[product.type] ?? UNKNOWN_TYPE_INFO;
 
@@ -57,7 +60,7 @@ function ProductCard({ product, onOpen, actions }) {
     <div className="pcard" onClick={() => onOpen(product)}>
       {hasImage ? (
         <div className="pcard-image">
-          <img
+          <ZoomableImage
             src={primaryImage.url}
             alt={product.name}
             onError={() => setImageFailed(true)}
@@ -91,14 +94,16 @@ function ProductCard({ product, onOpen, actions }) {
         </div>
         {trustScore !== null && (
           <span className="pcard-trust-badge">
-            <FaStar /> {trustScore}
+            <FaStar /> {Math.round(trustScore)}
           </span>
         )}
       </div>
 
-      <div className="pcard-footer">
-        {actions(product)}
-      </div>
+      {typeof actions === "function" && (
+        <div className="pcard-footer">
+          {actions(product)}
+        </div>
+      )}
     </div>
   );
 }

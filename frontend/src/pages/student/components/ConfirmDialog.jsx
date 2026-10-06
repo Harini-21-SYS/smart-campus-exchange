@@ -1,4 +1,8 @@
+import useLockBodyScroll from "../../../hooks/useLockBodyScroll";
+
 function ConfirmDialog({ title, message, onCancel, onConfirm, confirmLabel = "Confirm" }) {
+  useLockBodyScroll();
+
   return (
     <div className="dash-modal-overlay" onClick={onCancel}>
       <div className="dash-modal confirm-modal" onClick={(e) => e.stopPropagation()}>

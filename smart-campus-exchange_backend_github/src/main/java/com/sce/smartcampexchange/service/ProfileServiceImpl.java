@@ -4,6 +4,7 @@ import org.springframework.stereotype.Service;
 
 import com.sce.smartcampexchange.dto.ChangePasswordRequest;
 import com.sce.smartcampexchange.dto.ProfileResponseDTO;
+import com.sce.smartcampexchange.dto.TrustScoreResponse;
 import com.sce.smartcampexchange.entity.Student;
 import com.sce.smartcampexchange.repository.StudentRepository;
 import java.nio.file.Files;
@@ -17,15 +18,39 @@ public class ProfileServiceImpl
         implements ProfileService {
 
     private final StudentRepository studentRepository;
-    private final BCryptPasswordEncoder passwordEncoder; 
+    private final BCryptPasswordEncoder passwordEncoder;
+    private final TrustScoreService trustScoreService;
+
     public ProfileServiceImpl(
             StudentRepository studentRepository,
-            BCryptPasswordEncoder passwordEncoder) {
+            BCryptPasswordEncoder passwordEncoder,
+            TrustScoreService trustScoreService) {
 
         this.studentRepository =
                 studentRepository;
         this.passwordEncoder =
                 passwordEncoder;
+        this.trustScoreService =
+                trustScoreService;
+    }
+
+    // FIX: this is the piece that was actually missing. Both
+    // getProfile() and updateMobile() build a ProfileResponseDTO
+    // directly (updateProfileImage() delegates to getProfile(), so
+    // it's covered for free) — without this call, trustScore/
+    // trustLabel stayed at their zero-value Java defaults on every
+    // response, which is indistinguishable from "no data" on the
+    // frontend and is exactly what made the number look permanently
+    // frozen.
+    private void applyTrustScore(ProfileResponseDTO dto, Student student) {
+
+        TrustScoreResponse trust =
+                trustScoreService.getBreakdown(student.getStudentId());
+
+        if (trust != null) {
+            dto.setTrustScore(trust.getScore());
+            dto.setTrustLabel(trust.getLabel());
+        }
     }
 
     @Override
@@ -69,6 +94,8 @@ public class ProfileServiceImpl
         dto.setEmailVerified(
                 student.isEmailVerified());
 
+        applyTrustScore(dto, student);
+
         return dto;
     }
     
@@ -101,6 +128,8 @@ public class ProfileServiceImpl
         dto.setMobileNumber(student.getMobileNumber());
         dto.setProfileImage(student.getProfileImage());
         dto.setEmailVerified(student.isEmailVerified());
+
+        applyTrustScore(dto, student);
 
         return dto;
     }

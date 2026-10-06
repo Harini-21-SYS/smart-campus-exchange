@@ -1,18 +1,34 @@
 import { useState } from "react";
-import { FaMapMarkerAlt, FaClock, FaCheck, FaBan } from "react-icons/fa";
+import { FaMapMarkerAlt, FaClock, FaCheck, FaBan, FaThumbsUp, FaArrowLeft } from "react-icons/fa";
 import ImagePlaceholder from "./ImagePlaceholder";
+import useLockBodyScroll from "../../../hooks/useLockBodyScroll";
 import "./RequestModals.css";
+import ZoomableImage from "./ZoomableImage";
 
-/* Shown to the SELLER when responding to a pending request (Sell,
-   Donate, or Exchange). For Exchange requests the offered item is
-   shown so the seller can evaluate it before deciding. Accepting
-   requires a pickup location + time; rejecting doesn't. */
+/* Shown to the SELLER when responding to a pending request.
+
+   For Sell/Donate requests there's nothing to evaluate beyond the
+   request itself, so this goes straight to the schedule form.
+
+   For Exchange requests, the seller needs a real checkpoint to judge
+   the offered item BEFORE being asked to commit to a pickup time —
+   otherwise "Accept & Send Pickup Details" is the only button, which
+   silently also accepts an item the seller never actually looked at.
+   So this is a two-step flow for exchanges:
+     1. "review"   — show the offered item, seller either rejects the
+                     whole request outright, or confirms the item is
+                     acceptable and moves on.
+     2. "schedule" — location + date/time fields, same as before.
+   Sell/Donate requests skip straight to "schedule". */
 function PickupDetailsModal({ request, onCancel, onAccept, onReject }) {
-  const [location, setLocation] = useState("");
-  const [dateTime, setDateTime] = useState(""); // combined value straight from <input type="datetime-local">
-  const [error, setError] = useState("");
+  useLockBodyScroll();
 
   const isExchange = request.type === "Exchange";
+
+  const [step, setStep] = useState(isExchange ? "review" : "schedule");
+  const [location, setLocation] = useState("");
+  const [dateTime, setDateTime] = useState("");
+  const [error, setError] = useState("");
 
   const handleAcceptClick = () => {
     if (!location.trim() || !dateTime) {
@@ -20,14 +36,10 @@ function PickupDetailsModal({ request, onCancel, onAccept, onReject }) {
       return;
     }
 
-    // FIX: datetime-local gives one combined string like
+    // datetime-local gives one combined string like
     // "2026-09-13T14:30" — date and time glued together with "T".
-    // The backend's AcceptRequestRequest needs pickupDate and
-    // pickupTime as two separate fields (it builds a PickupSchedule
-    // with setPickupDate(...) / setPickupTime(...) independently), so
-    // this was previously sending only the combined string as "time"
-    // and nothing at all as "date" — that missing date is what the
-    // backend's required-field check was rejecting with a 400.
+    // The backend needs pickupDate and pickupTime as two separate
+    // fields, so split it here.
     const [datePart, timePart] = dateTime.split("T");
 
     onAccept({
@@ -37,6 +49,64 @@ function PickupDetailsModal({ request, onCancel, onAccept, onReject }) {
     });
   };
 
+  // ---------- Step 1 (exchange only): review the offered item ----------
+  if (step === "review") {
+    return (
+      <div className="dash-modal-overlay" onClick={onCancel}>
+        <div className="dash-modal request-modal" onClick={(e) => e.stopPropagation()}>
+          <h2>Review Offered Item</h2>
+          <p className="dash-modal-desc">
+            {request.requesterName} wants to exchange for{" "}
+            <strong>{request.productName}</strong>, offering the item below in return.
+          </p>
+
+          <div className="offered-item-card">
+            <span className="offered-item-label">Offered in exchange</span>
+            <div className="offered-item-row">
+                            {request.offeredProduct?.productImage ? (
+                <div className="offered-item-thumb">
+                  <ZoomableImage
+                    src={request.offeredProduct.productImage}
+                    alt={request.offeredProduct.productName}
+                  />
+                </div>
+              ) : (
+                <div className="offered-item-thumb">
+                  <ImagePlaceholder />
+                </div>
+              )}
+              <div>
+                <strong>{request.offeredProduct?.productName || "Unknown item"}</strong>
+                {request.offeredProduct?.category && (
+                  <span>{request.offeredProduct.category}</span>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {request.message && <p className="request-modal-message">"{request.message}"</p>}
+
+          <p className="dash-modal-desc" style={{ marginTop: 4 }}>
+            Is this item acceptable? If not, reject the request now — no schedule needed.
+          </p>
+
+          <div className="confirm-btn-row">
+            <button className="dash-btn dash-btn-danger" onClick={onReject}>
+              <FaBan /> Reject
+            </button>
+            <button className="dash-btn dash-btn-primary" onClick={() => setStep("schedule")}>
+              <FaThumbsUp /> Item Looks Good
+            </button>
+          </div>
+          <button type="button" className="request-modal-cancel" onClick={onCancel}>
+            Cancel
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // ---------- Step 2 (or the only step, for Sell/Donate): schedule pickup ----------
   return (
     <div className="dash-modal-overlay" onClick={onCancel}>
       <div className="dash-modal request-modal" onClick={(e) => e.stopPropagation()}>
@@ -64,7 +134,9 @@ function PickupDetailsModal({ request, onCancel, onAccept, onReject }) {
               )}
               <div>
                 <strong>{request.offeredProduct?.productName || "Unknown item"}</strong>
-                <span>{request.offeredProduct?.category}</span>
+                {request.offeredProduct?.category && (
+                  <span>{request.offeredProduct.category}</span>
+                )}
               </div>
             </div>
           </div>
@@ -101,6 +173,17 @@ function PickupDetailsModal({ request, onCancel, onAccept, onReject }) {
             <FaCheck /> Accept &amp; Send Pickup Details
           </button>
         </div>
+
+        {isExchange && (
+          <button
+            type="button"
+            className="request-modal-cancel"
+            onClick={() => setStep("review")}
+            style={{ marginTop: 8 }}
+          >
+            <FaArrowLeft /> Back to item review
+          </button>
+        )}
         <button type="button" className="request-modal-cancel" onClick={onCancel}>
           Cancel
         </button>

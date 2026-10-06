@@ -1,12 +1,39 @@
 // ProductDetailSection.jsx
 import { useState, useEffect } from "react";
-import { FaArrowLeft, FaChevronLeft, FaChevronRight, FaUser, FaPen, FaTrashAlt, FaStar, FaChevronRight as FaChevronRightSmall } from "react-icons/fa";
+import { FaArrowLeft, FaChevronLeft, FaChevronRight, FaUser, FaPen, FaTrashAlt, FaStar, FaCheckCircle, FaBan, FaChevronRight as FaChevronRightSmall } from "react-icons/fa";
 import ImagePlaceholder from "../components/ImagePlaceholder";
+import ZoomableImage from "../components/ZoomableImage"; // adjust path if it lives elsewhere
 import { TYPE_INFO } from "../constants";
 import { getMyProducts } from "../../../services/productService";
 import "./ProductDetailSection.css";
 
-function ProductDetailSection({ product, isOwner, onBack, onRequest, onEdit, onDelete, onViewSeller }) {
+// Same real backend statuses as MyProductsSection — a product only
+// ever reaches one of these via confirmProductReceived() completing a
+// BUY/EXCHANGE/DONATE request, at which point ownership also transfers
+// to the other party (see ProductService.ACQUIRED_STATUSES on the
+// backend). Kept in sync with MyProductsSection's COMPLETED_STATUSES.
+const COMPLETED_STATUSES = ["SOLD", "EXCHANGED", "DONATED"];
+
+function isCompleted(product) {
+  return COMPLETED_STATUSES.includes(String(product?.status).toUpperCase());
+}
+
+// Admin moderation: a blocked product is hidden from buyers, and the
+// seller can neither edit nor delete it until it is unblocked.
+function isBlockedStatus(product) {
+  return String(product?.status).toUpperCase() === "BLOCKED";
+}
+
+function ProductDetailSection({
+  product,
+  isOwner,
+  isBlocked = false,
+  onBack,
+  onRequest,
+  onEdit,
+  onDelete,
+  onViewSeller,
+}) {
   const [activeImg, setActiveImg] = useState(product.primaryIndex ?? 0);
   const info = TYPE_INFO[product.type] || TYPE_INFO.Sell;
   const images = product.images || [];
@@ -60,16 +87,17 @@ function ProductDetailSection({ product, isOwner, onBack, onRequest, onEdit, onD
   const goPrev = () => setActiveImg((i) => (i - 1 + images.length) % images.length);
   const goNext = () => setActiveImg((i) => (i + 1) % images.length);
 
-  // FIX: this is the actual missing piece — nothing in this file
-  // previously called onViewSeller at all, so the prop passed down
-  // from StudentDashboard was silently unused and clicking the card
-  // did nothing (you just stayed on the product page). Guarded on
-  // both the callback and product.ownerId existing, since without an
-  // id there's nothing to look the seller up by.
+  // Guarded on both the callback and product.ownerId existing, since
+  // without an id there's nothing to look the seller up by.
   const canViewSeller = typeof onViewSeller === "function" && product.ownerId != null;
   const handleSellerClick = () => {
     if (canViewSeller) onViewSeller(product);
   };
+
+  const completed = isCompleted(product);
+
+  // Blocked if the parent says so OR the product's own status says so.
+  const blocked = isBlocked || isBlockedStatus(product);
 
   return (
     <div className="dash-section">
@@ -81,7 +109,10 @@ function ProductDetailSection({ product, isOwner, onBack, onRequest, onEdit, onD
         <div className="pdetail-gallery">
           <div className="pdetail-main-image">
             {images[activeImg] ? (
-              <img src={images[activeImg].url} alt={product.title || product.name} />
+              <ZoomableImage
+                src={images[activeImg].url}
+                alt={product.title || product.name}
+              />
             ) : (
               <ImagePlaceholder />
             )}
@@ -130,6 +161,12 @@ function ProductDetailSection({ product, isOwner, onBack, onRequest, onEdit, onD
         <div className="pdetail-info">
           <span className={`pcard-type-badge pdetail-badge ${info.badgeClass}`}>{product.type}</span>
 
+          {blocked && (
+            <span className="pdetail-blocked-badge">
+              <FaBan /> Blocked
+            </span>
+          )}
+
           <h1 className="pdetail-name">{product.title || product.name}</h1>
           <p className="pdetail-meta">
             {product.category} &middot; {product.condition}
@@ -139,7 +176,6 @@ function ProductDetailSection({ product, isOwner, onBack, onRequest, onEdit, onD
 
           <p className="pdetail-desc">{product.description}</p>
 
-          {/* FIX: now a real button with onClick, instead of an inert div */}
           <button
             type="button"
             className={`pdetail-seller-card ${canViewSeller ? "pdetail-seller-card-clickable" : ""}`}
@@ -159,7 +195,7 @@ function ProductDetailSection({ product, isOwner, onBack, onRequest, onEdit, onD
             </div>
             {ownerTrustScore !== null && (
               <span className="pdetail-trust-badge">
-                <FaStar /> {ownerTrustScore}
+                <FaStar /> {Math.round(ownerTrustScore)}
               </span>
             )}
             {canViewSeller && <FaChevronRightSmall className="pdetail-seller-chevron" />}
@@ -167,14 +203,28 @@ function ProductDetailSection({ product, isOwner, onBack, onRequest, onEdit, onD
 
           <div className="pdetail-actions">
             {!ownershipChecked ? null : actualIsOwner ? (
-              <>
-                <button className="dash-btn dash-btn-outline dash-btn-block" onClick={() => onEdit(product)}>
-                  <FaPen /> Edit Listing
-                </button>
-                <button className="dash-btn dash-btn-danger dash-btn-block" onClick={() => onDelete(product)}>
-                  <FaTrashAlt /> Delete Listing
-                </button>
-              </>
+              completed ? (
+                <span className="pdetail-completed-badge">
+                  <FaCheckCircle /> Transaction Completed
+                </span>
+              ) : blocked ? (
+                // Blocked by admin: no Edit / Delete, and no Request
+                // button either (it's the seller's own product).
+                <p className="pdetail-blocked-note">
+                  <FaBan /> This product has been blocked by the admin and is
+                  hidden from buyers. You can't edit or delete it unless the
+                  admin unblocks it.
+                </p>
+              ) : (
+                <>
+                  <button className="dash-btn dash-btn-outline dash-btn-block" onClick={() => onEdit(product)}>
+                    <FaPen /> Edit Listing
+                  </button>
+                  <button className="dash-btn dash-btn-danger dash-btn-block" onClick={() => onDelete(product)}>
+                    <FaTrashAlt /> Delete Listing
+                  </button>
+                </>
+              )
             ) : (
               <button className={`dash-request-btn ${info.badgeClass}`} onClick={() => onRequest(product)}>
                 {info.actionLabel}

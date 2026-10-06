@@ -334,11 +334,22 @@ public class ProductService {
     }
 
     // =========================================================
-    // Get Other Students' Products
+    // Get Other Students' Products (the general/browse marketplace)
     // =========================================================
+    // FIX: findByOwnerNot(you) had no status filter, so every other
+    // student's product showed up here regardless of state —
+    // RESERVED, SOLD, EXCHANGED and DONATED items looked exactly as
+    // purchasable as AVAILABLE ones. A buyer could then request
+    // something already spoken for, only to have addRequest() reject
+    // it with "This product is no longer available". Only AVAILABLE
+    // products belong in the general listing; AVAILABLE is also the
+    // sole status new listings land in once addProduct() finishes
+    // (see the PENDING -> AVAILABLE flip at the end of that method).
     public List<ProductResponse> getOtherProducts() {
         Student loggedInStudent = getLoggedInStudent();
-        List<Product> products = productRepository.findByOwnerNot(loggedInStudent);
+        List<Product> products =
+                productRepository.findByOwnerNotAndStatus(
+                        loggedInStudent, "AVAILABLE");
         List<ProductResponse> responses = new ArrayList<>();
         for (Product product : products) {
             responses.add(convertToProductResponse(product));
@@ -349,9 +360,22 @@ public class ProductService {
     // =========================================================
     // Get My Products
     // =========================================================
+    // FIX: findByOwner(you) alone returns every product you're
+    // currently the DB owner of — including anything you've bought,
+    // received via exchange, or been donated, since ownership
+    // transfers to the recipient once a transaction completes. That
+    // made purchased/received items show up here as if you were
+    // selling them too, duplicating what already correctly appears in
+    // My Purchases. Excluding the terminal statuses keeps this to
+    // what you're actually listing.
+    private static final List<String> ACQUIRED_STATUSES =
+            List.of("SOLD", "EXCHANGED", "DONATED");
+
     public List<ProductResponse> getMyProducts() {
         Student loggedInStudent = getLoggedInStudent();
-        List<Product> products = productRepository.findByOwner(loggedInStudent);
+        List<Product> products =
+                productRepository.findByOwnerAndStatusNotIn(
+                        loggedInStudent, ACQUIRED_STATUSES);
         List<ProductResponse> responses = new ArrayList<>();
         for (Product product : products) {
             responses.add(convertToProductResponse(product));

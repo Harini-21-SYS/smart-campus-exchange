@@ -351,10 +351,25 @@ public LoginResponse login(
     	        "Email not verified");
     }
 
+    // FIX: previously just threw "Account Disabled" with no context,
+    // so a blocked student had no idea why. Now embeds the admin's
+    // stored reason (Student.blockReason, set by
+    // AdminService.blockStudent()) into the thrown message behind an
+    // ACCOUNT_BLOCKED:: prefix, which Auth.jsx detects and parses out
+    // to show in a dedicated "Account Blocked" modal instead of a
+    // generic toast. This reuses the existing error.response.data.message
+    // channel that every other login failure here already relies on —
+    // see the note in the chat reply about why, since this file alone
+    // doesn't show how that message reaches the frontend.
     if (!student.isAccountEnabled()) {
 
-        throw new RuntimeException(
-                "Account Disabled");
+        String reason = student.getBlockReason();
+        String reasonText =
+                (reason != null && !reason.trim().isEmpty())
+                        ? reason.trim()
+                        : "No reason was provided.";
+
+        throw new RuntimeException("ACCOUNT_BLOCKED::" + reasonText);
     }
 
     String token =

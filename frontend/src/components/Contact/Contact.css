@@ -136,3 +136,21 @@
 }
 
 }
+.form-control.is-invalid:focus{
+    box-shadow:none;
+    border-color:#C0483D;
+}
+
+.contact-status{
+    margin:0 0 16px;
+    font-size:15px;
+    font-weight:600;
+}
+
+.contact-status-success{ color:#1F4D3A; }
+.contact-status-error{ color:#C0483D; }
+
+.send-btn:disabled{
+    opacity:.6;
+    cursor:not-allowed;
+}

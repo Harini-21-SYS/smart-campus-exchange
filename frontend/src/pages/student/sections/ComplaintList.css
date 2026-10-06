@@ -151,3 +151,17 @@
     transform: scale(1);
   }
 }
+.complaint-card-thumb {
+  width: 56px;
+  height: 56px;
+  min-width: 56px;
+  border-radius: 10px;
+  overflow: hidden;
+  background: #f2efe6;
+}
+
+.complaint-card-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}

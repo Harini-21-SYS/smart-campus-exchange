@@ -33,12 +33,23 @@ export const AdminApi = {
         return api.get("/products").then(res => res.data);
     },
 
-    blockStudent(id) {
-        return api.put(`/students/${id}/block`).then(res => res.data);
+    // NOTE: now requires a reason — the backend rejects a blank one.
+    blockStudent(id, reason) {
+        return api.put(`/students/${id}/block`, { reason }).then(res => res.data);
     },
 
     unblockStudent(id) {
         return api.put(`/students/${id}/unblock`).then(res => res.data);
+    },
+
+    // ---------- Product moderation ----------
+
+    blockProduct(id) {
+        return api.put(`/products/${id}/block`).then(res => res.data);
+    },
+
+    unblockProduct(id) {
+        return api.put(`/products/${id}/unblock`).then(res => res.data);
     },
 
     deleteProduct(id) {
@@ -59,6 +70,20 @@ export const AdminApi = {
 
     getRequests() {
         return api.get("/requests").then(res => res.data);
+    },
+
+    // ---------- Contact messages (submitted via the public Contact form) ----------
+
+    getContactMessages() {
+        return api.get("/contact-messages").then(res => res.data);
+    },
+
+    markContactRead(id) {
+        return api.put(`/contact-messages/${id}/read`).then(res => res.data);
+    },
+
+    deleteContactMessage(id) {
+        return api.delete(`/contact-messages/${id}`).then(res => res.data);
     }
 
 };
